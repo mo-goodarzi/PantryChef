@@ -103,6 +103,7 @@ def test_no_missed_allergens_in_most_common_ingredients(name, expected):
         ("egg noodles", {E, G}),
         ("oyster sauce", {Allergen.MOLLUSCS}),
         ("imitation crab", {Allergen.FISH, Allergen.CRUSTACEANS}),
+        ("lump crabmeat", {Allergen.CRUSTACEANS}),  # compound word, found by the LLM first
         ("lactose-free milk", {M}),
         # punctuation and case
         ("Parmesan Cheese, grated", {M}),

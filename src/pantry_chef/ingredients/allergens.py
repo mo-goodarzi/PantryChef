@@ -324,6 +324,8 @@ RULES: dict[Allergen, AllergenRule] = {
             "crayfish",
             "langoustine",
             "krill",
+            "crabmeat",
+            "shrimpmeat",
         ),
         exceptions=("crab apple", "crabapple", "crab boil"),
     ),
