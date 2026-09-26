@@ -6,6 +6,7 @@ from collections import defaultdict
 
 from pantry_chef.ingredients.allergens import Allergen
 from pantry_chef.models.recipe import RecipeIngredient
+from pantry_chef.search.text import useful_tags
 
 INGREDIENTS_SQL = """
 SELECT ri.recipe_id, i.id AS ingredient_id, i.name, i.canonical_name, i.category,
@@ -64,3 +65,42 @@ def load_recipe_ingredients(
             )
         )
     return dict(result)
+
+
+def recipe_summaries(conn: sqlite3.Connection, recipe_ids: list[int]) -> dict[int, dict]:
+    """What an LLM (judge or reranker) sees about each recipe."""
+    summaries = {}
+    for recipe_id in recipe_ids:
+        row = conn.execute(
+            "SELECT name, minutes, meal_type, cuisine, description FROM recipes WHERE id = ?",
+            (recipe_id,),
+        ).fetchone()
+        tags = useful_tags(
+            [
+                r["name"]
+                for r in conn.execute(
+                    "SELECT t.name FROM recipe_tags rt JOIN tags t ON t.id = rt.tag_id "
+                    "WHERE rt.recipe_id = ?",
+                    (recipe_id,),
+                )
+            ]
+        )
+        ingredients = [
+            r["name"]
+            for r in conn.execute(
+                "SELECT i.name FROM recipe_ingredients ri JOIN ingredients i "
+                "ON i.id = ri.ingredient_id WHERE ri.recipe_id = ? ORDER BY ri.position",
+                (recipe_id,),
+            )
+        ]
+        summaries[recipe_id] = {
+            "recipe_id": recipe_id,
+            "name": row["name"],
+            "minutes": row["minutes"],
+            "meal_type": row["meal_type"],
+            "cuisine": row["cuisine"],
+            "description": (row["description"] or "")[:300],
+            "tags": tags[:15],
+            "ingredients": ingredients,
+        }
+    return summaries

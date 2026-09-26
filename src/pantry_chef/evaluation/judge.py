@@ -9,10 +9,10 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+from pantry_chef.db.repository import recipe_summaries
 from pantry_chef.evaluation.cases import SearchCase
 from pantry_chef.llm.factory import StructuredLLM
 from pantry_chef.llm.prompt_loader import load_prompt
-from pantry_chef.search.text import useful_tags
 
 PROMPT_NAME = "preference_judge"
 
@@ -25,45 +25,6 @@ class Judgment(BaseModel):
 
 class JudgmentBatch(BaseModel):
     judgments: list[Judgment]
-
-
-def recipe_summaries(conn: sqlite3.Connection, recipe_ids: list[int]) -> dict[int, dict]:
-    """What the judge sees about each recipe: name, time, meal, cuisine, text, tags."""
-    summaries = {}
-    for recipe_id in recipe_ids:
-        row = conn.execute(
-            "SELECT name, minutes, meal_type, cuisine, description FROM recipes WHERE id = ?",
-            (recipe_id,),
-        ).fetchone()
-        tags = useful_tags(
-            [
-                r["name"]
-                for r in conn.execute(
-                    "SELECT t.name FROM recipe_tags rt JOIN tags t ON t.id = rt.tag_id "
-                    "WHERE rt.recipe_id = ?",
-                    (recipe_id,),
-                )
-            ]
-        )
-        ingredients = [
-            r["name"]
-            for r in conn.execute(
-                "SELECT i.name FROM recipe_ingredients ri JOIN ingredients i "
-                "ON i.id = ri.ingredient_id WHERE ri.recipe_id = ? ORDER BY ri.position",
-                (recipe_id,),
-            )
-        ]
-        summaries[recipe_id] = {
-            "recipe_id": recipe_id,
-            "name": row["name"],
-            "minutes": row["minutes"],
-            "meal_type": row["meal_type"],
-            "cuisine": row["cuisine"],
-            "description": (row["description"] or "")[:300],
-            "tags": tags[:15],
-            "ingredients": ingredients,
-        }
-    return summaries
 
 
 def case_key(case: SearchCase) -> str:

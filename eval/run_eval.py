@@ -16,11 +16,16 @@ from pantry_chef.evaluation.search_eval import evaluate_variant, summarize, writ
 from pantry_chef.llm.factory import create_llm
 from pantry_chef.observability import configure_logging
 from pantry_chef.search.engine import SearchOptions, find_recipes, semantic_from_settings
+from pantry_chef.search.rerank import LLMReranker
 
 ROOT = Path(__file__).parent
 VARIANTS = {
     "coverage": SearchOptions(),
     "semantic": SearchOptions(use_semantic=True),
+    "semantic+diversity": SearchOptions(use_semantic=True, use_diversity=True),
+    "semantic+diversity+rerank": SearchOptions(
+        use_semantic=True, use_diversity=True, use_rerank=True
+    ),
 }
 
 
@@ -44,6 +49,7 @@ def main() -> None:
     variants = args.variants.split(",")
     needs_semantic = any(VARIANTS[v].use_semantic for v in variants)
     semantic = semantic_from_settings(settings) if needs_semantic else None
+    reranker = LLMReranker(create_llm(settings), conn)
 
     all_results = {}
     for variant in variants:
@@ -52,7 +58,7 @@ def main() -> None:
             conn,
             cases,
             variant,
-            lambda q, o=options: find_recipes(conn, q, o, semantic=semantic),
+            lambda q, o=options: find_recipes(conn, q, o, semantic=semantic, reranker=reranker),
             judge,
         )
         s = summarize(all_results[variant])

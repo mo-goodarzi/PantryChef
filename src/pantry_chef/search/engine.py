@@ -1,7 +1,7 @@
 """Search pipeline.
 
 search():        hard filters -> ingredient coverage -> (semantic re-scoring) -> candidates
-find_recipes():  search -> verify -> top k (diversity and rerank are added as options)
+find_recipes():  search -> verify -> (diversity) -> (LLM rerank) -> top k
 """
 
 import sqlite3
@@ -16,7 +16,9 @@ from pantry_chef.models.recipe import Candidate, RecipeIngredient
 from pantry_chef.models.verification import VerificationStatus
 from pantry_chef.observability import span
 from pantry_chef.search.coverage import CoverageRow, rank_by_coverage
+from pantry_chef.search.diversity import mmr
 from pantry_chef.search.filters import filter_conditions
+from pantry_chef.search.rerank import Reranker
 from pantry_chef.search.semantic import Embedder, RecipeVectorStore, semantic_scores
 
 
@@ -139,6 +141,10 @@ class SearchOptions:
     pool_size: int = 50  # candidates to verify
     top_k: int = 5
     use_semantic: bool = False
+    use_diversity: bool = False  # needs semantic (recipe vectors)
+    use_rerank: bool = False
+    shortlist_size: int = 20  # verified recipes passed to diversity / rerank
+    mmr_lambda: float = 0.7
 
 
 def find_recipes(
@@ -146,11 +152,14 @@ def find_recipes(
     query: RecipeQuery,
     options: SearchOptions | None = None,
     semantic: SemanticSearch | None = None,
+    reranker: Reranker | None = None,
 ) -> list[Candidate]:
-    """Full pipeline: search -> verify -> top k verified recipes."""
+    """Full pipeline: search -> verify -> (diversity) -> (rerank) -> top k verified."""
     options = options or SearchOptions()
-    if options.use_semantic and semantic is None:
-        raise ValueError("use_semantic=True needs a SemanticSearch")
+    if (options.use_semantic or options.use_diversity) and semantic is None:
+        raise ValueError("use_semantic / use_diversity need a SemanticSearch")
+    if options.use_rerank and reranker is None:
+        raise ValueError("use_rerank=True needs a Reranker")
     result = search(
         conn, query, limit=options.pool_size, semantic=semantic if options.use_semantic else None
     )
@@ -158,4 +167,13 @@ def find_recipes(
         verified = [
             c for c in result.candidates if verify(c, query).status is VerificationStatus.PASS
         ]
-    return verified[: options.top_k]
+    shortlist = verified[: options.shortlist_size]
+
+    if options.use_diversity and semantic is not None:
+        with span("search.diversity", candidates=len(shortlist)):
+            vectors = semantic.store.get_vectors([c.recipe_id for c in shortlist])
+            shortlist = mmr(shortlist, vectors, k=len(shortlist), lambda_=options.mmr_lambda)
+    if options.use_rerank and reranker is not None:
+        with span("search.rerank", candidates=len(shortlist)):
+            return reranker.rerank(query, shortlist, options.top_k)
+    return shortlist[: options.top_k]
