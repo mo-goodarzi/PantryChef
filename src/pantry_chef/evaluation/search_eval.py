@@ -161,7 +161,7 @@ def write_report(
                 lines.append(f"- **{r.case_id}** ({r.group}): {top or 'no results'}")
         lines.append("")
 
-    md_path.write_text("\n".join(lines) + "\n")
+    md_path.write_text("\n".join(lines).rstrip() + "\n")
     json_path.write_text(
         json.dumps(
             {
