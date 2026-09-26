@@ -158,3 +158,40 @@ Fixes:
 The reviewed sample with notes is `data/processed/label_spot_check.csv`; the re-labeled
 sample is `label_spot_check_v2.csv` (both git-ignored, rebuilt by
 `scripts/export_label_sample.py`).
+
+## 2026-09-27 — Phase 3: walking skeleton (no LLM)
+
+**Two independent allergen layers.** The SQL filter excludes recipes via the materialized
+`recipe_allergens` table. The verifier re-checks every ingredient with its own allergens
+plus those inherited from parent ingredients and contained ingredients
+(`ingredient_parent`, `ingredient_relation` "contains"), loaded by a separate query. A
+property-style test (500 random recipes and allergy profiles) checks that the verifier
+never passes a recipe containing a user allergen.
+
+**Candidates share at least one KEY ingredient with the pantry** (the plan said "at least
+one pantry ingredient"). Matching on staples or spices ("salt") makes almost every recipe
+a candidate and adds nothing. Together with a precomputed `recipes.n_key` (distinct key
+ingredients per recipe), this made search ~6x faster: 0.20–0.48 s on the full DB instead
+of up to 2.8 s for broad pantries (target < 2 s).
+
+**Key ingredients are counted by canonical name,** so "egg" and "eggs" in one recipe
+count once. Without this, recipes with duplicate lines ranked first.
+
+**Ranking:** ingredient score = have_key / total_key − 0.1 × missing key ingredients;
+ties go to recipes that use more of the pantry, then to a Bayesian average rating
+(prior weight 10 ratings toward the overall mean), so a single 5-star review does not beat
+hundreds of 4.8s.
+
+**Diets** supported by filters and verifier: vegetarian, vegan, gluten-free (the three
+with recipe flags). A NULL (unknown) flag never passes a diet filter.
+
+**User allergy words** are mapped to EU codes with a small alias table ("shellfish" →
+crustaceans + molluscs, "dairy" → milk). Unknown words are rejected with an error, never
+ignored.
+
+**Exact canonical matching only** (plan): "toast" does not match "bread" yet; that is the
+Phase 5a ingredient matcher's job.
+
+**Data quirk seen:** some Food.com recipes omit their main ingredient (e.g. "peach kuchen"
+lists no peaches), so a recipe can pass verification without it. Out of scope to fix; the
+Phase 4 LLM rerank and preference judge may catch obvious cases.

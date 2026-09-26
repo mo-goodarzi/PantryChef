@@ -123,6 +123,10 @@ def derive_recipe_data(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
         UPDATE recipes SET
+          n_key = (
+            SELECT COUNT(DISTINCT i.canonical_name)
+            FROM recipe_ingredients ri JOIN ingredients i ON i.id = ri.ingredient_id
+            WHERE ri.recipe_id = recipes.id AND ri.is_key = 1),
           is_vegetarian = (
             SELECT CASE WHEN MAX(i.contains_meat OR i.contains_fish) = 1 THEN 0
                         WHEN MAX(i.category IS NULL) = 1 THEN NULL ELSE 1 END

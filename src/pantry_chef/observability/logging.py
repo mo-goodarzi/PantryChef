@@ -12,6 +12,11 @@ import structlog
 MASK = "***"
 
 
+def current_stdout_logger(*_args: object) -> structlog.PrintLogger:
+    """Write to whatever sys.stdout is at log time (tests and tools may replace it)."""
+    return structlog.PrintLogger(sys.stdout)
+
+
 def configure_logging(level: str = "INFO", json_output: bool = True) -> None:
     """Configure structlog once at program start."""
     renderer = (
@@ -26,7 +31,7 @@ def configure_logging(level: str = "INFO", json_output: bool = True) -> None:
             renderer,
         ],
         wrapper_class=structlog.make_filtering_bound_logger(logging.getLevelName(level.upper())),
-        logger_factory=structlog.PrintLoggerFactory(file=sys.stdout),
+        logger_factory=current_stdout_logger,
         cache_logger_on_first_use=False,
     )
 

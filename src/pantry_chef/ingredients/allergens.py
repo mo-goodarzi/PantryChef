@@ -413,3 +413,40 @@ def detect_allergens(name: str) -> set[Allergen]:
     """Allergens found by keyword rules in one ingredient name."""
     text = prepare(name)
     return {allergen for allergen, rule in RULES.items() if rule_matches(text, rule)}
+
+
+# How people name allergies -> EU allergen codes. "shellfish" covers both groups.
+USER_ALLERGY_ALIASES: dict[str, set[Allergen]] = {
+    "peanut": {Allergen.PEANUTS},
+    "nut": {Allergen.TREE_NUTS},
+    "nuts": {Allergen.TREE_NUTS},
+    "tree nut": {Allergen.TREE_NUTS},
+    "tree nuts": {Allergen.TREE_NUTS},
+    "dairy": {Allergen.MILK},
+    "lactose": {Allergen.MILK},
+    "egg": {Allergen.EGGS},
+    "wheat": {Allergen.GLUTEN},
+    "shellfish": {Allergen.CRUSTACEANS, Allergen.MOLLUSCS},
+    "seafood": {Allergen.FISH, Allergen.CRUSTACEANS, Allergen.MOLLUSCS},
+    "shrimp": {Allergen.CRUSTACEANS},
+    "soya": {Allergen.SOY},
+    "sulfites": {Allergen.SULPHITES},
+    "sulphite": {Allergen.SULPHITES},
+    "sulfite": {Allergen.SULPHITES},
+    "mollusks": {Allergen.MOLLUSCS},
+}
+
+
+def parse_user_allergy(text: str) -> set[Allergen]:
+    """Map one allergy as a user writes it ("Peanut", "dairy", "tree_nuts") to codes.
+
+    Raises ValueError for unknown words: an allergy must never be silently ignored.
+    """
+    key = " ".join(text.lower().replace("_", " ").replace("-", " ").split())
+    if key in USER_ALLERGY_ALIASES:
+        return USER_ALLERGY_ALIASES[key]
+    for allergen in Allergen:
+        if key == allergen.value.replace("_", " "):
+            return {allergen}
+    known = ", ".join(a.value for a in Allergen)
+    raise ValueError(f"unknown allergy {text!r}; use one of: {known}")

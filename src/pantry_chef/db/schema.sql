@@ -13,7 +13,8 @@ CREATE TABLE recipes (
   protein_pdv REAL, sat_fat_pdv REAL, carbs_pdv REAL,
   cuisine TEXT,                      -- derived from tags
   meal_type TEXT,                    -- derived from tags (breakfast, main-dish, dessert...)
-  is_vegetarian INTEGER, is_vegan INTEGER, is_gluten_free INTEGER  -- derived in Phase 2
+  is_vegetarian INTEGER, is_vegan INTEGER, is_gluten_free INTEGER, -- derived in Phase 2
+  n_key INTEGER                      -- distinct key ingredients (canonical), for search
 );
 
 CREATE TABLE ingredients (
@@ -90,6 +91,7 @@ CREATE TABLE profiles (              -- written only when consent_to_store is tr
 );
 
 CREATE INDEX idx_ri_ingredient ON recipe_ingredients(ingredient_id);
+CREATE INDEX idx_ingredients_canonical ON ingredients(canonical_name);
 CREATE INDEX idx_rt_tag ON recipe_tags(tag_id);
 CREATE INDEX idx_recipes_minutes ON recipes(minutes);
 CREATE INDEX idx_ra_allergen ON recipe_allergens(allergen);

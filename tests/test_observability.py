@@ -72,3 +72,11 @@ def test_traced_decorator_wraps_function_in_span(capsys):
     assert parse("eggs") == "EGGS"
     [line] = read_lines(capsys)
     assert line["span"] == "parse_request"
+
+
+def test_logs_follow_a_replaced_stdout(capsys):
+    configure_logging(level="INFO", json_output=True)
+    capsys.readouterr()  # pytest swaps sys.stdout between tests; logging must follow it
+    score("after_swap", 1)
+    [line] = read_lines(capsys)
+    assert line["score"] == "after_swap"

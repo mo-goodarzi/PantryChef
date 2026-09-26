@@ -6,7 +6,7 @@ A multi-agent recipe assistant. Tell it what you have at home ("eggs, milk, toas
 it returns safe, suitable recipes you can actually make, checked against your allergies
 and diet, plus an optional matching YouTube video.
 
-**Status:** early development (Phase 2: ingredient knowledge). See
+**Status:** v0.05, a working search without any LLM (Phase 3). See the plan for what comes next. See
 [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for the design and build order.
 
 ## Setup
@@ -38,6 +38,28 @@ uv run python scripts/enrich_db.py           # rules + labels -> allergens, diet
 ```
 
 Data files are never committed.
+
+## Find recipes (terminal)
+
+```bash
+uv run python -m pantry_chef.search.cli --have "eggs,milk,bread" --max-minutes 30
+uv run python -m pantry_chef.search.cli --have "eggs,milk,flour,butter" \
+    --allergy "peanuts,tree nuts" --diet vegetarian --show-failed
+```
+
+Example (`--have "eggs,milk,bread" --max-minutes 30`), 0.24 s on 231k recipes:
+
+```
+Pantry: bread, egg, milk
+19,751 recipes use your ingredients and pass the filters; 50 of the top 50 pass verification
+
+ 1. quick and easy french toast  | 15 min | 4.9* (22) | id 131428
+     uses: egg, milk, bread
+     also needs (non-key): pure vanilla extract, cinnamon
+```
+
+Allergens and diets are enforced twice: by SQL filters before ranking and by a
+deterministic verifier afterwards.
 
 ## Development
 
