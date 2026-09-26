@@ -18,7 +18,10 @@ class Settings(BaseSettings):
     chroma_path: Path = Path("data/processed/chroma")
 
     # LLM
-    llm_provider: Literal["anthropic", "openai"] = "anthropic"
+    llm_provider: Literal["openai"] = "openai"
+    llm_model: str = "gpt-5.4-mini"
+    llm_reasoning_effort: Literal["minimal", "low", "medium", "high"] = "low"
+    llm_timeout_seconds: float = 120
     anthropic_api_key: SecretStr | None = None
     openai_api_key: SecretStr | None = None
 

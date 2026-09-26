@@ -6,7 +6,7 @@ A multi-agent recipe assistant. Tell it what you have at home ("eggs, milk, toas
 it returns safe, suitable recipes you can actually make, checked against your allergies
 and diet, plus an optional matching YouTube video.
 
-**Status:** early development (Phase 1: data ingestion). See
+**Status:** early development (Phase 2: ingredient knowledge). See
 [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for the design and build order.
 
 ## Setup
@@ -27,6 +27,14 @@ into `data/raw/`, then build the database (about 30 s):
 uv run python scripts/build_db.py            # full build -> data/processed/pantry.db
 uv run python scripts/build_db.py --limit 1000   # quick development build
 uv run python scripts/inspect_data.py        # data quality report
+```
+
+Then add ingredient knowledge (needs `OPENAI_API_KEY` in `.env`; labels are cached in
+`data/processed/ingredient_labels.json`, so reruns are free):
+
+```bash
+uv run python scripts/label_ingredients.py   # LLM labels: category, allergens, diet
+uv run python scripts/enrich_db.py           # rules + labels -> allergens, diet flags, key ingredients
 ```
 
 Data files are never committed.

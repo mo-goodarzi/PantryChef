@@ -1,0 +1,5328 @@
+{
+  "active dry yeast": {
+    "parents": [
+      "yeast"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "instant yeast",
+        "note": "Use slightly less; mix into flour"
+      },
+      {
+        "name": "bread machine yeast",
+        "note": "Works similarly in most breads"
+      }
+    ]
+  },
+  "all-purpose flour": {
+    "parents": [
+      "flour"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "plain flour",
+        "note": "Use 1:1"
+      },
+      {
+        "name": "unbleached all-purpose flour",
+        "note": "Use 1:1"
+      },
+      {
+        "name": "unbleached flour",
+        "note": "Use 1:1"
+      }
+    ]
+  },
+  "allspice": {
+    "parents": [
+      "spice"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "ground allspice",
+        "note": "same spice, ground form"
+      },
+      {
+        "name": "ground nutmeg",
+        "note": "warm spice, use less"
+      },
+      {
+        "name": "ground clove",
+        "note": "strong; use sparingly"
+      }
+    ]
+  },
+  "almond": {
+    "parents": [
+      "nut"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "cashew",
+        "note": "Similar mild nut"
+      },
+      {
+        "name": "hazelnut",
+        "note": "Good in baking"
+      },
+      {
+        "name": "pecan",
+        "note": "Works in desserts"
+      }
+    ]
+  },
+  "almond extract": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "vanilla extract",
+        "note": "Less nutty, use small amount"
+      },
+      {
+        "name": "vanilla",
+        "note": "Works in desserts"
+      }
+    ]
+  },
+  "apple": {
+    "parents": [
+      "fruit"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "pear",
+        "note": "Similar fresh texture"
+      },
+      {
+        "name": "peach",
+        "note": "Works in desserts and salads"
+      },
+      {
+        "name": "granny smith apple",
+        "note": "If tartness is desired"
+      }
+    ]
+  },
+  "apple cider vinegar": {
+    "parents": [
+      "vinegar"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "cider vinegar",
+        "note": "Same thing, same amount"
+      },
+      {
+        "name": "white vinegar",
+        "note": "Use a little less"
+      }
+    ]
+  },
+  "apple juice": {
+    "parents": [
+      "juice"
+    ],
+    "contains": [
+      "apple",
+      "water"
+    ],
+    "substitutes": [
+      {
+        "name": "apple cider",
+        "note": "More robust apple flavor"
+      },
+      {
+        "name": "orange juice",
+        "note": "Different but common juice swap"
+      }
+    ]
+  },
+  "applesauce": {
+    "parents": [],
+    "contains": [
+      "apple",
+      "sugar",
+      "water"
+    ],
+    "substitutes": [
+      {
+        "name": "unsweetened applesauce",
+        "note": "Use in baking for less sugar."
+      },
+      {
+        "name": "apple butter",
+        "note": "Thicker, sweeter spread substitute."
+      }
+    ]
+  },
+  "asparagus": {
+    "parents": [
+      "vegetable"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "broccoli floret",
+        "note": "Similar roasted side dish"
+      },
+      {
+        "name": "green bean",
+        "note": "Works in most vegetable dishes"
+      }
+    ]
+  },
+  "avocado": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "guacamole",
+        "note": "For spreadable avocado flavor"
+      }
+    ]
+  },
+  "bacon": {
+    "parents": [
+      "meat"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "pancetta",
+        "note": "Closest savory swap"
+      },
+      {
+        "name": "smoked bacon",
+        "note": "Very similar"
+      },
+      {
+        "name": "ham",
+        "note": "Less smoky, workable"
+      }
+    ]
+  },
+  "baking powder": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "baking soda",
+        "note": "Needs added acid"
+      },
+      {
+        "name": "self-rising flour",
+        "note": "Adjust other leaveners"
+      }
+    ]
+  },
+  "baking soda": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "bicarbonate of soda",
+        "note": "Same ingredient"
+      },
+      {
+        "name": "baking powder",
+        "note": "Needs extra acid"
+      }
+    ]
+  },
+  "balsamic vinegar": {
+    "parents": [
+      "vinegar"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "red wine vinegar",
+        "note": "Similar tang, slightly less sweet"
+      },
+      {
+        "name": "cider vinegar",
+        "note": "Good acidity in dressings"
+      },
+      {
+        "name": "white wine vinegar",
+        "note": "Milder, cleaner vinegar flavor"
+      }
+    ]
+  },
+  "banana": {
+    "parents": [
+      "fruit"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "applesauce",
+        "note": "Good in baking for moisture"
+      },
+      {
+        "name": "applesauce",
+        "note": "Similar moisture in baked goods"
+      },
+      {
+        "name": "pumpkin puree",
+        "note": "Works in quick breads"
+      }
+    ]
+  },
+  "barbecue sauce": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "ketchup",
+        "note": "Add vinegar and spices"
+      },
+      {
+        "name": "sweet chili sauce",
+        "note": "For sweet-savory glazing"
+      }
+    ]
+  },
+  "basil": {
+    "parents": [
+      "herb"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "dried basil",
+        "note": "Use less if dried"
+      },
+      {
+        "name": "sweet basil",
+        "note": "Same herb, similar use"
+      },
+      {
+        "name": "oregano",
+        "note": "More robust, use less"
+      }
+    ]
+  },
+  "basil leaf": {
+    "parents": [
+      "basil"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "basil",
+        "note": "Use same amount, chopped"
+      }
+    ]
+  },
+  "bay leaf": {
+    "parents": [
+      "herb"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "thyme",
+        "note": "Use in soups and stews"
+      },
+      {
+        "name": "oregano",
+        "note": "Less subtle, use sparingly"
+      },
+      {
+        "name": "dried thyme",
+        "note": "Good savory alternative"
+      }
+    ]
+  },
+  "beef broth": {
+    "parents": [
+      "broth"
+    ],
+    "contains": [
+      "beef"
+    ],
+    "substitutes": [
+      {
+        "name": "beef stock",
+        "note": "Very similar savory base"
+      },
+      {
+        "name": "beef bouillon",
+        "note": "Dilute to taste"
+      }
+    ]
+  },
+  "beer": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "dark beer",
+        "note": "For richer flavor"
+      },
+      {
+        "name": "water",
+        "note": "Add seasoning for flavor"
+      }
+    ]
+  },
+  "bell pepper": {
+    "parents": [
+      "pepper"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "green pepper",
+        "note": "Closest common swap"
+      },
+      {
+        "name": "red bell pepper",
+        "note": "Similar texture and sweetness"
+      }
+    ]
+  },
+  "black bean": {
+    "parents": [
+      "bean"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "kidney bean",
+        "note": "Similar texture in dishes"
+      },
+      {
+        "name": "pinto bean",
+        "note": "Good in soups and chili"
+      }
+    ]
+  },
+  "black olive": {
+    "parents": [
+      "olive"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "green olive",
+        "note": "Similar briny olive flavor"
+      },
+      {
+        "name": "kalamata olive",
+        "note": "Similar briny olive flavor"
+      }
+    ]
+  },
+  "black pepper": {
+    "parents": [
+      "pepper"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "ground black pepper",
+        "note": "Use 1:1"
+      },
+      {
+        "name": "ground pepper",
+        "note": "Use 1:1"
+      },
+      {
+        "name": "cracked black pepper",
+        "note": "Use slightly less"
+      }
+    ]
+  },
+  "blue cheese": {
+    "parents": [
+      "cheese"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "gorgonzola",
+        "note": "Closest bold, tangy flavor."
+      },
+      {
+        "name": "feta cheese",
+        "note": "Less creamy, still salty."
+      }
+    ]
+  },
+  "blueberry": {
+    "parents": [
+      "berry"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "frozen blueberry",
+        "note": "Use in baking or sauces"
+      },
+      {
+        "name": "blackberry",
+        "note": "Similar berry flavor"
+      }
+    ]
+  },
+  "boiling water": {
+    "parents": [
+      "water"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "water",
+        "note": "Use heated water as needed"
+      }
+    ]
+  },
+  "bread": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "white bread",
+        "note": "similar texture in sandwiches"
+      },
+      {
+        "name": "french bread",
+        "note": "good for serving or dipping"
+      },
+      {
+        "name": "whole wheat bread",
+        "note": "similar use, slightly heartier"
+      }
+    ]
+  },
+  "bread flour": {
+    "parents": [
+      "flour"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "all-purpose flour",
+        "note": "Use for softer bread."
+      }
+    ]
+  },
+  "breadcrumb": {
+    "parents": [],
+    "contains": [
+      "bread"
+    ],
+    "substitutes": [
+      {
+        "name": "panko breadcrumb",
+        "note": "Lighter, crispier coating"
+      },
+      {
+        "name": "dry breadcrumb",
+        "note": "Similar binding and coating"
+      },
+      {
+        "name": "cracker crumb",
+        "note": "Good crunchy substitute"
+      }
+    ]
+  },
+  "broccoli": {
+    "parents": [
+      "vegetable"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "broccoli floret",
+        "note": "same vegetable, pre-cut"
+      },
+      {
+        "name": "broccoli floret",
+        "note": "same vegetable, pre-cut"
+      },
+      {
+        "name": "cauliflower",
+        "note": "similar texture when cooked"
+      }
+    ]
+  },
+  "broccoli floret": {
+    "parents": [
+      "broccoli"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "broccoli",
+        "note": "Use same amount, chopped small."
+      }
+    ]
+  },
+  "brown sugar": {
+    "parents": [
+      "sugar"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "light brown sugar",
+        "note": "Use 1:1"
+      },
+      {
+        "name": "dark brown sugar",
+        "note": "Richer molasses flavor, 1:1"
+      },
+      {
+        "name": "white sugar",
+        "note": "Add a little molasses"
+      }
+    ]
+  },
+  "butter": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "margarine",
+        "note": "1:1 in most recipes"
+      },
+      {
+        "name": "shortening",
+        "note": "Best for baking texture"
+      },
+      {
+        "name": "oil",
+        "note": "Use in moist batters"
+      }
+    ]
+  },
+  "buttermilk": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "milk",
+        "note": "Add lemon juice for tang"
+      },
+      {
+        "name": "plain yogurt",
+        "note": "Thin slightly for baking"
+      },
+      {
+        "name": "sour cream",
+        "note": "Use thinned with water"
+      }
+    ]
+  },
+  "cabbage": {
+    "parents": [
+      "vegetable"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "green cabbage",
+        "note": "closest general cabbage substitute"
+      },
+      {
+        "name": "savoy cabbage",
+        "note": "similar in cooked dishes"
+      },
+      {
+        "name": "napa cabbage",
+        "note": "works well raw or cooked"
+      }
+    ]
+  },
+  "canola oil": {
+    "parents": [
+      "oil"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "vegetable oil",
+        "note": "Neutral 1:1 swap"
+      },
+      {
+        "name": "oil",
+        "note": "Use any neutral cooking oil"
+      },
+      {
+        "name": "sunflower oil",
+        "note": "Similar neutral frying oil"
+      }
+    ]
+  },
+  "caper": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "green olive",
+        "note": "salty briny alternative"
+      },
+      {
+        "name": "black olive",
+        "note": "briny, slightly different"
+      },
+      {
+        "name": "pickle",
+        "note": "adds tang and salt"
+      }
+    ]
+  },
+  "carrot": {
+    "parents": [
+      "vegetable"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "parsnip",
+        "note": "Similar texture, sweeter"
+      },
+      {
+        "name": "sweet potato",
+        "note": "Best in cooked dishes"
+      },
+      {
+        "name": "butternut squash",
+        "note": "Use in soups or roasting"
+      }
+    ]
+  },
+  "caster sugar": {
+    "parents": [
+      "sugar"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "granulated sugar",
+        "note": "Close in baking and drinks."
+      },
+      {
+        "name": "white sugar",
+        "note": "Use same amount."
+      }
+    ]
+  },
+  "cauliflower": {
+    "parents": [
+      "vegetable"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "broccoli",
+        "note": "Similar texture when cooked"
+      },
+      {
+        "name": "broccoli floret",
+        "note": "Good roasted substitute"
+      },
+      {
+        "name": "zucchini",
+        "note": "Milder, lighter vegetable option"
+      }
+    ]
+  },
+  "cayenne": {
+    "parents": [
+      "spice"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "cayenne pepper",
+        "note": "same spice, use equally"
+      },
+      {
+        "name": "red pepper flake",
+        "note": "similar heat, slightly textured"
+      },
+      {
+        "name": "ground red pepper",
+        "note": "similar heat in seasoning"
+      }
+    ]
+  },
+  "cayenne pepper": {
+    "parents": [
+      "spice"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "red pepper flake",
+        "note": "Adds heat, less uniform"
+      },
+      {
+        "name": "ground red pepper",
+        "note": "Similar heat, use less"
+      },
+      {
+        "name": "chili powder",
+        "note": "Milder, less sharp heat"
+      }
+    ]
+  },
+  "celery": {
+    "parents": [
+      "vegetable"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "celery rib",
+        "note": "Same flavor, smaller piece"
+      },
+      {
+        "name": "carrot",
+        "note": "Different crunch, in soups"
+      },
+      {
+        "name": "green onion",
+        "note": "Use for aromatic base"
+      }
+    ]
+  },
+  "celery rib": {
+    "parents": [
+      "celery"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "celery",
+        "note": "Use same amount, chopped"
+      }
+    ]
+  },
+  "celery seed": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "celery salt",
+        "note": "Use less and reduce added salt."
+      }
+    ]
+  },
+  "cheddar cheese": {
+    "parents": [
+      "cheese"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "sharp cheddar cheese",
+        "note": "Stronger flavor"
+      },
+      {
+        "name": "mild cheddar cheese",
+        "note": "Similar mildness"
+      },
+      {
+        "name": "colby cheese",
+        "note": "Milder, similar melt"
+      }
+    ]
+  },
+  "cheese": {
+    "parents": [],
+    "contains": [],
+    "substitutes": []
+  },
+  "cherry tomato": {
+    "parents": [
+      "tomato"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "grape tomato",
+        "note": "similar size and sweetness"
+      },
+      {
+        "name": "roma tomato",
+        "note": "best in salads and roasting"
+      },
+      {
+        "name": "tomato",
+        "note": "use chopped as needed"
+      }
+    ]
+  },
+  "chicken": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "turkey",
+        "note": "Similar lean poultry"
+      },
+      {
+        "name": "cooked chicken",
+        "note": "Use in cooked recipes"
+      }
+    ]
+  },
+  "chicken breast": {
+    "parents": [
+      "chicken"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "chicken breast half",
+        "note": "Very similar, same cooking"
+      },
+      {
+        "name": "chicken cutlet",
+        "note": "Pound thin if needed"
+      },
+      {
+        "name": "cooked chicken breast",
+        "note": "Use in cold dishes"
+      }
+    ]
+  },
+  "chicken breast half": {
+    "parents": [
+      "chicken breast"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "chicken breast",
+        "note": "Use equivalent portion"
+      }
+    ]
+  },
+  "chicken broth": {
+    "parents": [
+      "broth"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "chicken stock",
+        "note": "Very similar, richer"
+      },
+      {
+        "name": "low sodium chicken broth",
+        "note": "Use if salt-sensitive"
+      },
+      {
+        "name": "vegetable broth",
+        "note": "For lighter flavor"
+      }
+    ]
+  },
+  "chicken stock": {
+    "parents": [
+      "stock"
+    ],
+    "contains": [
+      "chicken"
+    ],
+    "substitutes": [
+      {
+        "name": "chicken broth",
+        "note": "Very close flavor"
+      },
+      {
+        "name": "vegetable stock",
+        "note": "For lighter savory base"
+      },
+      {
+        "name": "beef stock",
+        "note": "Only if flavor can change"
+      }
+    ]
+  },
+  "chicken thigh": {
+    "parents": [
+      "chicken"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "chicken breast",
+        "note": "Lean swap; cooks faster"
+      },
+      {
+        "name": "chicken drumstick",
+        "note": "Similar flavor, slightly different cut"
+      }
+    ]
+  },
+  "chickpea": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "garbanzo bean",
+        "note": "Same ingredient, different name."
+      },
+      {
+        "name": "white bean",
+        "note": "Closest mild bean substitute."
+      }
+    ]
+  },
+  "chili powder": {
+    "parents": [
+      "spice"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "cayenne pepper",
+        "note": "Hotter, use less"
+      },
+      {
+        "name": "paprika",
+        "note": "Milder, less heat"
+      },
+      {
+        "name": "curry powder",
+        "note": "Different flavor, works sometimes"
+      }
+    ]
+  },
+  "chive": {
+    "parents": [
+      "herb"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "green onion",
+        "note": "Use green tops only"
+      },
+      {
+        "name": "scallion",
+        "note": "Mild onion flavor"
+      }
+    ]
+  },
+  "chocolate chip": {
+    "parents": [],
+    "contains": [
+      "chocolate"
+    ],
+    "substitutes": [
+      {
+        "name": "semisweet chocolate morsel",
+        "note": "Same baking use"
+      },
+      {
+        "name": "milk chocolate chip",
+        "note": "Sweeter result"
+      }
+    ]
+  },
+  "cider vinegar": {
+    "parents": [
+      "vinegar"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "apple cider vinegar",
+        "note": "Same flavor family"
+      },
+      {
+        "name": "white vinegar",
+        "note": "Sharper, use less"
+      }
+    ]
+  },
+  "cilantro": {
+    "parents": [
+      "herb"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "parsley",
+        "note": "Best for freshness, less citrus"
+      },
+      {
+        "name": "flat leaf parsley",
+        "note": "Use as fresh herb swap"
+      },
+      {
+        "name": "coriander leaf",
+        "note": "Same herb family"
+      }
+    ]
+  },
+  "cilantro leaf": {
+    "parents": [
+      "cilantro"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "cilantro",
+        "note": "Use leaves directly"
+      },
+      {
+        "name": "coriander leaf",
+        "note": "Same herb, alternate name"
+      },
+      {
+        "name": "parsley",
+        "note": "Milder fresh herb substitute"
+      }
+    ]
+  },
+  "cinnamon": {
+    "parents": [
+      "spice"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "ground cinnamon",
+        "note": "Use 1:1"
+      },
+      {
+        "name": "cinnamon sugar",
+        "note": "If sweetness fits"
+      },
+      {
+        "name": "ground allspice",
+        "note": "Use less; stronger"
+      }
+    ]
+  },
+  "cinnamon stick": {
+    "parents": [
+      "cinnamon"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "ground cinnamon",
+        "note": "use less; no infusing needed"
+      },
+      {
+        "name": "ground allspice",
+        "note": "warm spice, different aroma"
+      },
+      {
+        "name": "ground nutmeg",
+        "note": "use sparingly for warmth"
+      }
+    ]
+  },
+  "clove": {
+    "parents": [
+      "spice"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "ground clove",
+        "note": "Use less, stronger form"
+      },
+      {
+        "name": "whole clove",
+        "note": "Similar flavor"
+      }
+    ]
+  },
+  "coarse salt": {
+    "parents": [
+      "salt"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "kosher salt",
+        "note": "Closest easy replacement"
+      },
+      {
+        "name": "sea salt",
+        "note": "Similar texture and saltiness"
+      },
+      {
+        "name": "table salt",
+        "note": "Use less; finer and stronger"
+      }
+    ]
+  },
+  "cocoa": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "cocoa powder",
+        "note": "use similarly in baking"
+      },
+      {
+        "name": "unsweetened cocoa",
+        "note": "similar flavor, no sugar"
+      },
+      {
+        "name": "unsweetened cocoa powder",
+        "note": "closest baking substitute"
+      }
+    ]
+  },
+  "cocoa powder": {
+    "parents": [
+      "cocoa"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "unsweetened cocoa powder",
+        "note": "Essentially the same"
+      },
+      {
+        "name": "dutch-processed cocoa powder",
+        "note": "Use in baking; milder acidity"
+      }
+    ]
+  },
+  "coconut": {
+    "parents": [
+      "fruit"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "desiccated coconut",
+        "note": "Use for texture and flavor"
+      },
+      {
+        "name": "flaked coconut",
+        "note": "Similar coconut texture"
+      }
+    ]
+  },
+  "coconut milk": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "light coconut milk",
+        "note": "Lighter flavor and texture"
+      },
+      {
+        "name": "almond milk",
+        "note": "Less rich, in savory dishes"
+      }
+    ]
+  },
+  "confectioners' sugar": {
+    "parents": [
+      "sugar"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "powdered sugar",
+        "note": "Direct replacement"
+      },
+      {
+        "name": "icing sugar",
+        "note": "Same as powdered sugar"
+      }
+    ]
+  },
+  "cooked chicken": {
+    "parents": [
+      "chicken"
+    ],
+    "contains": [
+      "chicken"
+    ],
+    "substitutes": [
+      {
+        "name": "cooked chicken breast",
+        "note": "Leaner chicken option"
+      },
+      {
+        "name": "chicken breast",
+        "note": "Cook first, then use"
+      }
+    ]
+  },
+  "cooked rice": {
+    "parents": [],
+    "contains": [
+      "rice"
+    ],
+    "substitutes": [
+      {
+        "name": "white rice",
+        "note": "similar side dish texture"
+      },
+      {
+        "name": "brown rice",
+        "note": "heavier, nuttier alternative"
+      },
+      {
+        "name": "long grain rice",
+        "note": "works in most dishes"
+      }
+    ]
+  },
+  "cooking oil": {
+    "parents": [
+      "oil"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "vegetable oil",
+        "note": "Neutral 1:1 substitute"
+      },
+      {
+        "name": "canola oil",
+        "note": "Neutral, good for cooking"
+      }
+    ]
+  },
+  "cooking spray": {
+    "parents": [
+      "oil"
+    ],
+    "contains": [
+      "oil"
+    ],
+    "substitutes": [
+      {
+        "name": "vegetable oil",
+        "note": "Brush lightly instead"
+      },
+      {
+        "name": "olive oil",
+        "note": "Use small amount"
+      }
+    ]
+  },
+  "cool whip": {
+    "parents": [
+      "whipped topping"
+    ],
+    "contains": [
+      "sugar",
+      "vegetable oil",
+      "water"
+    ],
+    "substitutes": [
+      {
+        "name": "whipped topping",
+        "note": "Direct replacement, same amount."
+      },
+      {
+        "name": "whipped cream",
+        "note": "Use for similar topping texture."
+      }
+    ]
+  },
+  "coriander": {
+    "parents": [
+      "spice"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "ground coriander",
+        "note": "same spice, ground form"
+      },
+      {
+        "name": "coriander seed",
+        "note": "best for pickling or spice blends"
+      },
+      {
+        "name": "cumin",
+        "note": "different, but similar warmth"
+      }
+    ]
+  },
+  "corn": {
+    "parents": [
+      "vegetable"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "frozen corn",
+        "note": "similar in most recipes"
+      },
+      {
+        "name": "whole kernel corn",
+        "note": "same use, ready to cook"
+      },
+      {
+        "name": "frozen whole kernel corn",
+        "note": "closest general substitute"
+      }
+    ]
+  },
+  "corn tortilla": {
+    "parents": [
+      "tortilla"
+    ],
+    "contains": [
+      "cornmeal",
+      "water"
+    ],
+    "substitutes": [
+      {
+        "name": "flour tortilla",
+        "note": "Use for softer wraps"
+      },
+      {
+        "name": "tortilla",
+        "note": "General wrap replacement"
+      },
+      {
+        "name": "flour tortilla",
+        "note": "Works in most taco recipes"
+      }
+    ]
+  },
+  "cornmeal": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "polenta",
+        "note": "Similar coarse corn texture"
+      },
+      {
+        "name": "yellow cornmeal",
+        "note": "Same use, same amount"
+      }
+    ]
+  },
+  "cornstarch": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "arrowroot",
+        "note": "Use same amount"
+      },
+      {
+        "name": "potato starch",
+        "note": "Similar thickening"
+      },
+      {
+        "name": "flour",
+        "note": "Use more, cook longer"
+      }
+    ]
+  },
+  "cranberry": {
+    "parents": [
+      "fruit"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "dried cranberry",
+        "note": "Best if texture is not critical"
+      },
+      {
+        "name": "berry",
+        "note": "Similar tart fruit profile"
+      },
+      {
+        "name": "raspberry",
+        "note": "Tart berry flavor in desserts"
+      }
+    ]
+  },
+  "cream": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "heavy cream",
+        "note": "Richer, use slightly less"
+      },
+      {
+        "name": "half-and-half",
+        "note": "Lighter, less rich"
+      }
+    ]
+  },
+  "cream cheese": {
+    "parents": [
+      "cheese"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "neufchatel cheese",
+        "note": "Softer, lower fat"
+      },
+      {
+        "name": "mascarpone cheese",
+        "note": "Richer, slightly sweeter"
+      },
+      {
+        "name": "reduced-fat cream cheese",
+        "note": "Same use, lighter"
+      }
+    ]
+  },
+  "cream of chicken soup": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "condensed cream of chicken soup",
+        "note": "Use same amount"
+      },
+      {
+        "name": "chicken broth",
+        "note": "Add thickener and cream"
+      }
+    ]
+  },
+  "cream of mushroom soup": {
+    "parents": [],
+    "contains": [
+      "cream",
+      "flour",
+      "mushroom"
+    ],
+    "substitutes": [
+      {
+        "name": "condensed cream of mushroom soup",
+        "note": "Same use, condensed form"
+      },
+      {
+        "name": "mushroom soup",
+        "note": "Similar in casseroles"
+      }
+    ]
+  },
+  "cream of tartar": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "lemon juice",
+        "note": "Use for acidity in meringues"
+      },
+      {
+        "name": "vinegar",
+        "note": "Acid substitute for stabilizing whites"
+      },
+      {
+        "name": "white vinegar",
+        "note": "Works for acidity, use sparingly"
+      }
+    ]
+  },
+  "crushed pineapple": {
+    "parents": [
+      "pineapple"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "pineapple chunks in juice",
+        "note": "Chop before using"
+      },
+      {
+        "name": "pineapple tidbit",
+        "note": "Drain and chop if needed"
+      }
+    ]
+  },
+  "crushed red pepper flake": {
+    "parents": [
+      "pepper"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "red pepper flake",
+        "note": "Direct replacement"
+      },
+      {
+        "name": "cayenne",
+        "note": "Use much less"
+      },
+      {
+        "name": "hot red pepper flake",
+        "note": "Same heat profile"
+      }
+    ]
+  },
+  "crushed tomato": {
+    "parents": [
+      "tomato"
+    ],
+    "contains": [
+      "tomato"
+    ],
+    "substitutes": [
+      {
+        "name": "tomato",
+        "note": "Crush before using"
+      },
+      {
+        "name": "tomato puree",
+        "note": "Smoother, thicker sauce base"
+      },
+      {
+        "name": "canned tomato",
+        "note": "Drain and crush if needed"
+      }
+    ]
+  },
+  "cucumber": {
+    "parents": [
+      "vegetable"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "zucchini",
+        "note": "Best in cooked dishes"
+      },
+      {
+        "name": "celery",
+        "note": "For crunch in salads"
+      },
+      {
+        "name": "jicama",
+        "note": "Crisp in raw preparations"
+      }
+    ]
+  },
+  "cumin": {
+    "parents": [
+      "spice"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "ground cumin",
+        "note": "Same flavor, just ground"
+      },
+      {
+        "name": "coriander",
+        "note": "Earthy, but different profile"
+      },
+      {
+        "name": "chili powder",
+        "note": "In spice blends only"
+      }
+    ]
+  },
+  "cumin seed": {
+    "parents": [
+      "cumin"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "cumin",
+        "note": "Closest flavor match, use ground"
+      },
+      {
+        "name": "ground cumin",
+        "note": "Use in place of seeds"
+      },
+      {
+        "name": "coriander seed",
+        "note": "Different but compatible spice"
+      }
+    ]
+  },
+  "curry powder": {
+    "parents": [
+      "spice"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "garam masala",
+        "note": "Add extra turmeric if needed"
+      },
+      {
+        "name": "curry paste",
+        "note": "Use for stronger curry flavor"
+      },
+      {
+        "name": "ground cumin",
+        "note": "Partially similar warm spice"
+      }
+    ]
+  },
+  "dark brown sugar": {
+    "parents": [
+      "brown sugar"
+    ],
+    "contains": [
+      "brown sugar"
+    ],
+    "substitutes": [
+      {
+        "name": "light brown sugar",
+        "note": "milder molasses flavor"
+      },
+      {
+        "name": "brown sugar",
+        "note": "closest general substitute"
+      },
+      {
+        "name": "golden brown sugar",
+        "note": "similar sweetness, lighter color"
+      }
+    ]
+  },
+  "date": {
+    "parents": [
+      "fruit"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "raisin",
+        "note": "Similar sweet dried fruit"
+      },
+      {
+        "name": "dried apricot",
+        "note": "Chewy dried-fruit substitute"
+      },
+      {
+        "name": "fig",
+        "note": "Sweet, sticky fruit replacement"
+      }
+    ]
+  },
+  "dijon mustard": {
+    "parents": [
+      "mustard"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "prepared mustard",
+        "note": "Use for similar tang"
+      },
+      {
+        "name": "yellow mustard",
+        "note": "Milder but works in sauces"
+      },
+      {
+        "name": "whole grain mustard",
+        "note": "Similar flavor, more texture"
+      }
+    ]
+  },
+  "dill": {
+    "parents": [
+      "herb"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "dill weed",
+        "note": "Use same amount"
+      },
+      {
+        "name": "dill seed",
+        "note": "Different form, similar flavor"
+      }
+    ]
+  },
+  "dried basil": {
+    "parents": [
+      "basil"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "basil",
+        "note": "Use more fresh basil"
+      },
+      {
+        "name": "dried oregano",
+        "note": "Good Italian-style swap"
+      }
+    ]
+  },
+  "dried cranberry": {
+    "parents": [
+      "cranberry"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "raisin",
+        "note": "Similar sweet-tart dried fruit."
+      }
+    ]
+  },
+  "dried oregano": {
+    "parents": [
+      "oregano"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "oregano",
+        "note": "Use fresh or dried interchangeably"
+      },
+      {
+        "name": "italian seasoning",
+        "note": "Good herb blend replacement"
+      },
+      {
+        "name": "dried basil",
+        "note": "Different but compatible"
+      }
+    ]
+  },
+  "dried parsley": {
+    "parents": [
+      "parsley"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "parsley",
+        "note": "Use fresh if available."
+      },
+      {
+        "name": "dried basil",
+        "note": "Good in savory dishes."
+      }
+    ]
+  },
+  "dried rosemary": {
+    "parents": [
+      "rosemary"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "rosemary",
+        "note": "Use a bit less, stronger fresh flavor"
+      },
+      {
+        "name": "thyme",
+        "note": "Earthy herb, slightly different flavor"
+      },
+      {
+        "name": "dried thyme",
+        "note": "Works in savory dishes"
+      }
+    ]
+  },
+  "dried thyme": {
+    "parents": [
+      "thyme"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "thyme",
+        "note": "Use a bit more fresh"
+      },
+      {
+        "name": "dried oregano",
+        "note": "More savory, less floral"
+      },
+      {
+        "name": "dried rosemary",
+        "note": "Use sparingly, stronger flavor"
+      }
+    ]
+  },
+  "dry mustard": {
+    "parents": [
+      "mustard"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "mustard",
+        "note": "Use prepared mustard instead"
+      }
+    ]
+  },
+  "dry sherry": {
+    "parents": [
+      "sherry wine"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "sherry wine",
+        "note": "Use same amount."
+      },
+      {
+        "name": "dry white wine",
+        "note": "Good in sauces and deglazing."
+      }
+    ]
+  },
+  "dry white wine": {
+    "parents": [
+      "white wine"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "white wine",
+        "note": "Use for cooking"
+      },
+      {
+        "name": "dry sherry",
+        "note": "Similar savory depth"
+      },
+      {
+        "name": "chicken broth",
+        "note": "Nonalcoholic option"
+      }
+    ]
+  },
+  "egg": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "egg substitute",
+        "note": "Use as directed on package"
+      },
+      {
+        "name": "egg white",
+        "note": "Use when only binding is needed"
+      },
+      {
+        "name": "egg yolk",
+        "note": "Richer, but not a full swap"
+      }
+    ]
+  },
+  "egg white": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "egg substitute",
+        "note": "Use for scrambling or baking"
+      },
+      {
+        "name": "egg",
+        "note": "Use whites only if separating"
+      }
+    ]
+  },
+  "egg yolk": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "egg",
+        "note": "Use whole egg when needed"
+      },
+      {
+        "name": "egg substitute",
+        "note": "For binding and richness"
+      },
+      {
+        "name": "mayonnaise",
+        "note": "In emulsions and dressings"
+      }
+    ]
+  },
+  "eggplant": {
+    "parents": [
+      "vegetable"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "zucchini",
+        "note": "Similar roasting and grilling use"
+      },
+      {
+        "name": "portabella mushroom",
+        "note": "Meaty texture in savory dishes"
+      }
+    ]
+  },
+  "elbow macaroni": {
+    "parents": [
+      "macaroni"
+    ],
+    "contains": [
+      "flour",
+      "water"
+    ],
+    "substitutes": [
+      {
+        "name": "macaroni",
+        "note": "Same style pasta"
+      },
+      {
+        "name": "shell pasta",
+        "note": "Works in casseroles"
+      },
+      {
+        "name": "penne pasta",
+        "note": "Good in baked dishes"
+      }
+    ]
+  },
+  "evaporated milk": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "powdered milk",
+        "note": "Reconstitute for similar richness"
+      },
+      {
+        "name": "half-and-half",
+        "note": "Closest creamy substitute"
+      }
+    ]
+  },
+  "feta cheese": {
+    "parents": [
+      "cheese"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "goat cheese",
+        "note": "Tangy, crumbly replacement"
+      },
+      {
+        "name": "queso fresco",
+        "note": "Mild, crumbly alternative"
+      }
+    ]
+  },
+  "fish sauce": {
+    "parents": [],
+    "contains": [
+      "fish",
+      "salt"
+    ],
+    "substitutes": [
+      {
+        "name": "soy sauce",
+        "note": "Best savory umami replacement."
+      },
+      {
+        "name": "soy sauce",
+        "note": "Use with a squeeze of lime."
+      }
+    ]
+  },
+  "flat leaf parsley": {
+    "parents": [
+      "parsley"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "parsley",
+        "note": "Use same amount."
+      },
+      {
+        "name": "flat-leaf italian parsley",
+        "note": "Same herb, similar flavor."
+      }
+    ]
+  },
+  "flour": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "all-purpose flour",
+        "note": "Use 1:1 in most recipes"
+      },
+      {
+        "name": "plain flour",
+        "note": "Use 1:1"
+      },
+      {
+        "name": "unbleached flour",
+        "note": "Use 1:1"
+      }
+    ]
+  },
+  "flour tortilla": {
+    "parents": [
+      "tortilla"
+    ],
+    "contains": [
+      "flour"
+    ],
+    "substitutes": [
+      {
+        "name": "corn tortilla",
+        "note": "works in wraps or tacos"
+      },
+      {
+        "name": "whole wheat tortilla",
+        "note": "similar wrap, more fiber"
+      },
+      {
+        "name": "pita bread",
+        "note": "use for sandwiches or wraps"
+      }
+    ]
+  },
+  "french bread": {
+    "parents": [
+      "bread"
+    ],
+    "contains": [
+      "flour",
+      "salt",
+      "water",
+      "yeast"
+    ],
+    "substitutes": [
+      {
+        "name": "baguette",
+        "note": "Very similar crusty loaf"
+      },
+      {
+        "name": "bread",
+        "note": "General replacement for sandwiches"
+      },
+      {
+        "name": "crusty bread",
+        "note": "Best for similar texture"
+      }
+    ]
+  },
+  "frozen pea": {
+    "parents": [
+      "pea"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "frozen green pea",
+        "note": "Same use, same amount"
+      },
+      {
+        "name": "green pea",
+        "note": "Use if cooking from fresh"
+      }
+    ]
+  },
+  "frozen spinach": {
+    "parents": [
+      "spinach"
+    ],
+    "contains": [
+      "spinach"
+    ],
+    "substitutes": [
+      {
+        "name": "spinach",
+        "note": "Use fresh, cook down"
+      },
+      {
+        "name": "baby spinach",
+        "note": "Similar when wilted"
+      }
+    ]
+  },
+  "garlic": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "garlic powder",
+        "note": "Use less; more concentrated"
+      },
+      {
+        "name": "garlic clove",
+        "note": "Use several cloves if needed"
+      },
+      {
+        "name": "garlic paste",
+        "note": "Use less; concentrated"
+      }
+    ]
+  },
+  "garlic clove": {
+    "parents": [
+      "garlic"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "garlic powder",
+        "note": "Use a pinch instead"
+      },
+      {
+        "name": "garlic paste",
+        "note": "Use less; more concentrated"
+      },
+      {
+        "name": "granulated garlic",
+        "note": "Use a little less"
+      }
+    ]
+  },
+  "garlic powder": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "granulated garlic",
+        "note": "Use a bit less"
+      },
+      {
+        "name": "garlic granule",
+        "note": "Use a bit less"
+      },
+      {
+        "name": "garlic salt",
+        "note": "If extra salt is okay"
+      }
+    ]
+  },
+  "garlic salt": {
+    "parents": [],
+    "contains": [
+      "garlic",
+      "salt"
+    ],
+    "substitutes": [
+      {
+        "name": "garlic powder",
+        "note": "Add salt separately"
+      }
+    ]
+  },
+  "ginger": {
+    "parents": [
+      "spice"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "ground ginger",
+        "note": "Use less than fresh"
+      },
+      {
+        "name": "gingerroot",
+        "note": "Same ingredient, fresh form"
+      },
+      {
+        "name": "crystallized ginger",
+        "note": "For sweet recipes only"
+      }
+    ]
+  },
+  "gingerroot": {
+    "parents": [
+      "ginger"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "ginger",
+        "note": "Same ingredient, shorter name"
+      },
+      {
+        "name": "ground ginger",
+        "note": "Use less, dried form"
+      }
+    ]
+  },
+  "granny smith apple": {
+    "parents": [
+      "apple"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "tart apple",
+        "note": "Similar tartness and firmness"
+      },
+      {
+        "name": "apple",
+        "note": "Use if tartness is not vital"
+      },
+      {
+        "name": "golden delicious apple",
+        "note": "Less tart, still works in baking"
+      }
+    ]
+  },
+  "granulated sugar": {
+    "parents": [
+      "sugar"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "white sugar",
+        "note": "Same use, same amount"
+      },
+      {
+        "name": "caster sugar",
+        "note": "Dissolves faster"
+      },
+      {
+        "name": "raw sugar",
+        "note": "Slightly different flavor"
+      }
+    ]
+  },
+  "green bean": {
+    "parents": [
+      "bean"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "frozen green bean",
+        "note": "Use same way"
+      },
+      {
+        "name": "french style green bean",
+        "note": "Similar in cooked dishes"
+      }
+    ]
+  },
+  "green bell pepper": {
+    "parents": [
+      "bell pepper"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "green pepper",
+        "note": "Same ingredient naming variant"
+      },
+      {
+        "name": "red bell pepper",
+        "note": "Sweeter but similar"
+      },
+      {
+        "name": "yellow pepper",
+        "note": "Milder and sweeter"
+      }
+    ]
+  },
+  "green chili": {
+    "parents": [
+      "chili",
+      "pepper"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "jalapeno pepper",
+        "note": "Similar heat and fresh flavor"
+      }
+    ]
+  },
+  "green onion": {
+    "parents": [
+      "onion"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "scallion",
+        "note": "Same ingredient"
+      },
+      {
+        "name": "spring onion",
+        "note": "Use similarly"
+      },
+      {
+        "name": "chive",
+        "note": "Milder, use more"
+      }
+    ]
+  },
+  "green pepper": {
+    "parents": [
+      "bell pepper"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "green bell pepper",
+        "note": "Same ingredient naming variant"
+      },
+      {
+        "name": "red bell pepper",
+        "note": "Sweeter but similar crunch"
+      },
+      {
+        "name": "bell pepper",
+        "note": "Generic pepper substitute"
+      }
+    ]
+  },
+  "ground allspice": {
+    "parents": [
+      "allspice"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "allspice",
+        "note": "Use slightly less if whole."
+      },
+      {
+        "name": "ground nutmeg",
+        "note": "Use in small amounts only."
+      }
+    ]
+  },
+  "ground beef": {
+    "parents": [
+      "beef"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "ground chuck",
+        "note": "Similar fat and flavor"
+      },
+      {
+        "name": "ground sirloin",
+        "note": "Leaner, good swap"
+      },
+      {
+        "name": "ground turkey",
+        "note": "Leaner, different flavor"
+      }
+    ]
+  },
+  "ground black pepper": {
+    "parents": [
+      "black pepper"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "black pepper",
+        "note": "Use 1:1"
+      },
+      {
+        "name": "ground pepper",
+        "note": "Use 1:1"
+      },
+      {
+        "name": "cracked black pepper",
+        "note": "Use slightly less"
+      }
+    ]
+  },
+  "ground cinnamon": {
+    "parents": [
+      "cinnamon"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "cinnamon",
+        "note": "Use same amount"
+      },
+      {
+        "name": "cinnamon stick",
+        "note": "Grind or steep longer"
+      },
+      {
+        "name": "pumpkin pie spice",
+        "note": "In sweet recipes only"
+      }
+    ]
+  },
+  "ground clove": {
+    "parents": [
+      "clove"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "clove",
+        "note": "Use a little less"
+      }
+    ]
+  },
+  "ground coriander": {
+    "parents": [
+      "coriander"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "coriander",
+        "note": "Same spice, whole form"
+      },
+      {
+        "name": "coriander powder",
+        "note": "Equivalent seasoning"
+      }
+    ]
+  },
+  "ground cumin": {
+    "parents": [
+      "cumin"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "cumin powder",
+        "note": "Same ingredient, same use"
+      },
+      {
+        "name": "cumin seed",
+        "note": "Toast and grind first"
+      },
+      {
+        "name": "ground coriander",
+        "note": "Different but similar warmth"
+      }
+    ]
+  },
+  "ground ginger": {
+    "parents": [
+      "ginger"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "ginger",
+        "note": "Use slightly less ground ginger"
+      },
+      {
+        "name": "gingerroot",
+        "note": "Grate fresh for stronger flavor"
+      }
+    ]
+  },
+  "ground nutmeg": {
+    "parents": [
+      "nutmeg"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "nutmeg",
+        "note": "Use freshly grated if possible"
+      },
+      {
+        "name": "ground cinnamon",
+        "note": "Different, but warm spice"
+      }
+    ]
+  },
+  "ground pepper": {
+    "parents": [
+      "pepper"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "black pepper",
+        "note": "Closest general seasoning"
+      },
+      {
+        "name": "ground black pepper",
+        "note": "Same usage, common form"
+      },
+      {
+        "name": "pepper",
+        "note": "Use in similar amounts"
+      }
+    ]
+  },
+  "half-and-half": {
+    "parents": [],
+    "contains": [
+      "cream",
+      "milk"
+    ],
+    "substitutes": [
+      {
+        "name": "heavy cream",
+        "note": "Dilute slightly if needed"
+      },
+      {
+        "name": "whole milk",
+        "note": "Less rich, works in sauces"
+      }
+    ]
+  },
+  "ham": {
+    "parents": [
+      "meat"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "prosciutto",
+        "note": "salty pork, thin slices"
+      },
+      {
+        "name": "smoked ham",
+        "note": "closest ham substitute"
+      },
+      {
+        "name": "cooked bacon",
+        "note": "similar savory pork flavor"
+      }
+    ]
+  },
+  "hard-boiled egg": {
+    "parents": [],
+    "contains": [
+      "egg"
+    ],
+    "substitutes": [
+      {
+        "name": "egg",
+        "note": "Use for salads or sandwiches."
+      }
+    ]
+  },
+  "heavy cream": {
+    "parents": [
+      "cream"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "whipping cream",
+        "note": "Slightly lighter but similar"
+      },
+      {
+        "name": "heavy whipping cream",
+        "note": "Closest direct substitute"
+      },
+      {
+        "name": "half-and-half cream",
+        "note": "Use for less richness"
+      }
+    ]
+  },
+  "heavy whipping cream": {
+    "parents": [
+      "heavy cream"
+    ],
+    "contains": [
+      "cream"
+    ],
+    "substitutes": [
+      {
+        "name": "heavy cream",
+        "note": "Closest equivalent"
+      },
+      {
+        "name": "whipping cream",
+        "note": "Slightly lighter, still whips"
+      },
+      {
+        "name": "double cream",
+        "note": "Richer than heavy cream"
+      }
+    ]
+  },
+  "honey": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "maple syrup",
+        "note": "Similar sweetness, thinner"
+      },
+      {
+        "name": "agave nectar",
+        "note": "Use same amount"
+      },
+      {
+        "name": "light corn syrup",
+        "note": "Milder sweetness, less flavor"
+      }
+    ]
+  },
+  "hot pepper sauce": {
+    "parents": [
+      "hot sauce"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "hot sauce",
+        "note": "Direct spicy sauce replacement."
+      },
+      {
+        "name": "tabasco sauce",
+        "note": "Use a few drops less."
+      }
+    ]
+  },
+  "hot sauce": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "tabasco sauce",
+        "note": "Similar heat and acidity"
+      },
+      {
+        "name": "frank's red hot sauce",
+        "note": "Similar everyday hot sauce"
+      }
+    ]
+  },
+  "hot water": {
+    "parents": [
+      "water"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "boiling water",
+        "note": "same use, hotter"
+      },
+      {
+        "name": "water",
+        "note": "works if heat is unneeded"
+      },
+      {
+        "name": "sparkling water",
+        "note": "for mixing, not heating"
+      }
+    ]
+  },
+  "ice": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "ice cube",
+        "note": "Same use for chilling"
+      }
+    ]
+  },
+  "ice cube": {
+    "parents": [
+      "ice"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "ice",
+        "note": "Same chilling use"
+      }
+    ]
+  },
+  "icing sugar": {
+    "parents": [
+      "sugar"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "confectioners' sugar",
+        "note": "Same use, same amount."
+      },
+      {
+        "name": "powdered sugar",
+        "note": "Direct replacement."
+      }
+    ]
+  },
+  "italian seasoning": {
+    "parents": [
+      "seasoning"
+    ],
+    "contains": [
+      "basil",
+      "oregano",
+      "rosemary",
+      "thyme"
+    ],
+    "substitutes": [
+      {
+        "name": "dried oregano",
+        "note": "Use as main herb"
+      },
+      {
+        "name": "mixed herb",
+        "note": "Similar herb blend"
+      }
+    ]
+  },
+  "jalapeno": {
+    "parents": [
+      "pepper"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "jalapeno pepper",
+        "note": "Same ingredient, full name"
+      },
+      {
+        "name": "serrano pepper",
+        "note": "Slightly hotter swap"
+      }
+    ]
+  },
+  "jalapeno pepper": {
+    "parents": [
+      "pepper"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "green chili",
+        "note": "Similar fresh heat"
+      },
+      {
+        "name": "serrano pepper",
+        "note": "Hotter, use less"
+      }
+    ]
+  },
+  "kalamata olive": {
+    "parents": [
+      "olive"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "black olive",
+        "note": "Similar salty olive flavor"
+      },
+      {
+        "name": "olive",
+        "note": "General olive replacement"
+      },
+      {
+        "name": "green olive",
+        "note": "Brinier, less intense"
+      }
+    ]
+  },
+  "ketchup": {
+    "parents": [],
+    "contains": [
+      "tomato"
+    ],
+    "substitutes": [
+      {
+        "name": "catsup",
+        "note": "Same condiment name variant"
+      },
+      {
+        "name": "tomato ketchup",
+        "note": "Same flavor profile"
+      },
+      {
+        "name": "barbecue sauce",
+        "note": "Use in savory sauces"
+      }
+    ]
+  },
+  "kidney bean": {
+    "parents": [
+      "bean"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "red bean",
+        "note": "Similar texture in soups"
+      },
+      {
+        "name": "pinto bean",
+        "note": "Works well in chili"
+      },
+      {
+        "name": "cannellini bean",
+        "note": "Milder, creamier alternative"
+      }
+    ]
+  },
+  "kosher salt": {
+    "parents": [
+      "salt"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "sea salt",
+        "note": "Use slightly less by volume"
+      },
+      {
+        "name": "coarse salt",
+        "note": "Similar crystals and salting"
+      },
+      {
+        "name": "table salt",
+        "note": "Use less; finer and saltier"
+      }
+    ]
+  },
+  "lean ground beef": {
+    "parents": [
+      "ground beef"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "ground beef",
+        "note": "Use and drain excess fat"
+      },
+      {
+        "name": "ground chuck",
+        "note": "Slightly richer but similar"
+      }
+    ]
+  },
+  "leek": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "onion",
+        "note": "similar allium flavor"
+      },
+      {
+        "name": "shallot",
+        "note": "milder onion-like flavor"
+      },
+      {
+        "name": "green onion",
+        "note": "good for soups and sautés"
+      }
+    ]
+  },
+  "lemon": {
+    "parents": [
+      "fruit"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "lime",
+        "note": "Similar acidity and freshness"
+      },
+      {
+        "name": "lemon juice",
+        "note": "If only juice is needed"
+      },
+      {
+        "name": "orange",
+        "note": "Less tart, for some desserts"
+      }
+    ]
+  },
+  "lemon juice": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "lime juice",
+        "note": "Similar acidity"
+      },
+      {
+        "name": "white vinegar",
+        "note": "Use less; stronger"
+      },
+      {
+        "name": "apple cider vinegar",
+        "note": "Use small amount"
+      }
+    ]
+  },
+  "lemon rind": {
+    "parents": [
+      "lemon zest"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "lemon zest",
+        "note": "Same part of the lemon"
+      },
+      {
+        "name": "orange rind",
+        "note": "Use for a different citrus note"
+      }
+    ]
+  },
+  "lemon zest": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "lemon peel",
+        "note": "Similar citrus aroma"
+      },
+      {
+        "name": "orange zest",
+        "note": "Sweeter citrus note"
+      },
+      {
+        "name": "lime zest",
+        "note": "Sharper citrus flavor"
+      }
+    ]
+  },
+  "lettuce": {
+    "parents": [
+      "vegetable"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "romaine lettuce",
+        "note": "similar crunch in salads"
+      },
+      {
+        "name": "iceberg lettuce",
+        "note": "mild and crisp"
+      },
+      {
+        "name": "mixed salad green",
+        "note": "works in salads and wraps"
+      }
+    ]
+  },
+  "light brown sugar": {
+    "parents": [
+      "brown sugar"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "brown sugar",
+        "note": "Direct replacement"
+      },
+      {
+        "name": "dark brown sugar",
+        "note": "Richer molasses flavor"
+      },
+      {
+        "name": "golden brown sugar",
+        "note": "Similar sweetness"
+      }
+    ]
+  },
+  "light corn syrup": {
+    "parents": [
+      "corn syrup"
+    ],
+    "contains": [
+      "corn syrup",
+      "water"
+    ],
+    "substitutes": [
+      {
+        "name": "corn syrup",
+        "note": "Use for similar sweetness and texture"
+      },
+      {
+        "name": "golden syrup",
+        "note": "Comparable thick sweetener"
+      },
+      {
+        "name": "simple syrup",
+        "note": "Use for sweetness, thinner texture"
+      }
+    ]
+  },
+  "lime": {
+    "parents": [
+      "fruit"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "lemon",
+        "note": "similar acidity, less tropical"
+      },
+      {
+        "name": "lime juice",
+        "note": "use for acidity and brightness"
+      },
+      {
+        "name": "lemon juice",
+        "note": "good acid substitute"
+      }
+    ]
+  },
+  "lime juice": {
+    "parents": [
+      "juice"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "lemon juice",
+        "note": "Closest acidic swap"
+      },
+      {
+        "name": "lime",
+        "note": "Freshly squeeze"
+      },
+      {
+        "name": "key lime juice",
+        "note": "Same use, more tart"
+      }
+    ]
+  },
+  "low sodium chicken broth": {
+    "parents": [
+      "chicken broth"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "chicken broth",
+        "note": "Use if sodium is not a concern"
+      },
+      {
+        "name": "chicken stock",
+        "note": "Similar savory base, slightly richer"
+      },
+      {
+        "name": "vegetable broth",
+        "note": "For lighter, vegetarian soups"
+      }
+    ]
+  },
+  "mango": {
+    "parents": [
+      "fruit"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "peach",
+        "note": "Similar sweetness and texture."
+      },
+      {
+        "name": "papaya",
+        "note": "Works in smoothies and salads."
+      }
+    ]
+  },
+  "maple syrup": {
+    "parents": [
+      "syrup"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "pure maple syrup",
+        "note": "Same use, more natural"
+      },
+      {
+        "name": "corn syrup",
+        "note": "Only for sweetness"
+      }
+    ]
+  },
+  "margarine": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "butter",
+        "note": "Best overall baking swap"
+      },
+      {
+        "name": "shortening",
+        "note": "Better for texture, less flavor"
+      },
+      {
+        "name": "vegetable oil",
+        "note": "Use in moist batters"
+      }
+    ]
+  },
+  "mayonnaise": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "light mayonnaise",
+        "note": "Same use, lighter"
+      },
+      {
+        "name": "miracle whip",
+        "note": "Sweeter, similar texture"
+      },
+      {
+        "name": "sour cream",
+        "note": "Good in dressings"
+      }
+    ]
+  },
+  "milk": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "low-fat milk",
+        "note": "Use 1:1"
+      },
+      {
+        "name": "whole milk",
+        "note": "Use 1:1"
+      },
+      {
+        "name": "nonfat milk",
+        "note": "Use 1:1"
+      }
+    ]
+  },
+  "mint": {
+    "parents": [
+      "herb"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "mint leaf",
+        "note": "same herb, fresher form"
+      },
+      {
+        "name": "dried mint",
+        "note": "use less; more concentrated"
+      },
+      {
+        "name": "peppermint extract",
+        "note": "very strong; use sparingly"
+      }
+    ]
+  },
+  "mint leaf": {
+    "parents": [
+      "mint"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "mint",
+        "note": "Use chopped leaves or fresh sprigs."
+      }
+    ]
+  },
+  "molasses": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "dark corn syrup",
+        "note": "similar sweetness and color"
+      },
+      {
+        "name": "dark molasses",
+        "note": "same style, stronger flavor"
+      },
+      {
+        "name": "brown sugar",
+        "note": "use in baked goods"
+      }
+    ]
+  },
+  "monterey jack cheese": {
+    "parents": [
+      "cheese"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "mozzarella cheese",
+        "note": "Mild melt-friendly substitute"
+      },
+      {
+        "name": "cheddar cheese",
+        "note": "Slightly sharper but works"
+      }
+    ]
+  },
+  "mozzarella cheese": {
+    "parents": [
+      "cheese"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "provolone cheese",
+        "note": "Melts similarly"
+      },
+      {
+        "name": "monterey jack cheese",
+        "note": "Mild meltable replacement"
+      },
+      {
+        "name": "fontina cheese",
+        "note": "Good melt and stretch"
+      }
+    ]
+  },
+  "mushroom": {
+    "parents": [
+      "vegetable"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "button mushroom",
+        "note": "Closest common swap"
+      },
+      {
+        "name": "cremini mushroom",
+        "note": "Similar texture and flavor"
+      },
+      {
+        "name": "portabella mushroom",
+        "note": "Use for meatier result"
+      }
+    ]
+  },
+  "mustard": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "dijon mustard",
+        "note": "Best all-purpose swap."
+      },
+      {
+        "name": "prepared mustard",
+        "note": "Similar flavor and texture."
+      }
+    ]
+  },
+  "nut": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "walnut",
+        "note": "General nut replacement"
+      },
+      {
+        "name": "pecan",
+        "note": "Similar crunch and richness"
+      },
+      {
+        "name": "almond",
+        "note": "Works for texture and garnish"
+      }
+    ]
+  },
+  "nutmeg": {
+    "parents": [
+      "spice"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "ground nutmeg",
+        "note": "Same use, if ground"
+      },
+      {
+        "name": "allspice",
+        "note": "Use a little less"
+      },
+      {
+        "name": "ground cinnamon",
+        "note": "Different but workable"
+      }
+    ]
+  },
+  "oil": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "vegetable oil",
+        "note": "Neutral 1:1 replacement"
+      },
+      {
+        "name": "canola oil",
+        "note": "Neutral 1:1 replacement"
+      },
+      {
+        "name": "olive oil",
+        "note": "For savory dishes"
+      }
+    ]
+  },
+  "olive": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "black olive",
+        "note": "Best for salads and toppings."
+      },
+      {
+        "name": "green olive",
+        "note": "Use when briny flavor fits."
+      }
+    ]
+  },
+  "olive oil": {
+    "parents": [
+      "oil"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "vegetable oil",
+        "note": "Neutral flavor, 1:1"
+      },
+      {
+        "name": "canola oil",
+        "note": "Neutral, 1:1"
+      },
+      {
+        "name": "light olive oil",
+        "note": "Similar use, milder flavor"
+      }
+    ]
+  },
+  "onion": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "shallot",
+        "note": "Milder, use slightly less"
+      },
+      {
+        "name": "green onion",
+        "note": "Best raw or lightly cooked"
+      },
+      {
+        "name": "red onion",
+        "note": "Use for similar sharpness"
+      }
+    ]
+  },
+  "onion powder": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "dried onion",
+        "note": "Similar onion flavor"
+      },
+      {
+        "name": "instant onion",
+        "note": "Use in dry mixes"
+      },
+      {
+        "name": "onion flake",
+        "note": "Rehydrate if needed"
+      }
+    ]
+  },
+  "orange": {
+    "parents": [
+      "fruit"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "mandarin orange",
+        "note": "similar citrus sweetness"
+      },
+      {
+        "name": "grapefruit",
+        "note": "use for citrus flavor"
+      },
+      {
+        "name": "apple",
+        "note": "for sweetness, not citrus"
+      }
+    ]
+  },
+  "orange juice": {
+    "parents": [
+      "juice"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "apple juice",
+        "note": "Mild sweet acidity"
+      },
+      {
+        "name": "pineapple juice",
+        "note": "Adds sweetness and acidity"
+      },
+      {
+        "name": "apple cider",
+        "note": "Good in marinades and drinks"
+      }
+    ]
+  },
+  "orange zest": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "orange peel",
+        "note": "Use finely grated peel"
+      },
+      {
+        "name": "orange rind",
+        "note": "Similar citrus aroma"
+      }
+    ]
+  },
+  "oregano": {
+    "parents": [
+      "herb"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "dried oregano",
+        "note": "Same herb, dried form"
+      },
+      {
+        "name": "marjoram",
+        "note": "Milder but related flavor"
+      },
+      {
+        "name": "italian seasoning",
+        "note": "Blend that often includes oregano"
+      }
+    ]
+  },
+  "paprika": {
+    "parents": [
+      "spice"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "sweet paprika",
+        "note": "Same use, milder"
+      },
+      {
+        "name": "smoked paprika",
+        "note": "Adds smoky flavor"
+      },
+      {
+        "name": "hungarian paprika",
+        "note": "Good general paprika swap"
+      }
+    ]
+  },
+  "parmesan cheese": {
+    "parents": [
+      "cheese"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "parmigiano-reggiano cheese",
+        "note": "Closest match, 1:1"
+      },
+      {
+        "name": "romano cheese",
+        "note": "Sharper flavor, use less"
+      },
+      {
+        "name": "pecorino romano cheese",
+        "note": "Saltier, use less"
+      }
+    ]
+  },
+  "parsley": {
+    "parents": [
+      "herb"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "dried parsley",
+        "note": "Use less if dried"
+      },
+      {
+        "name": "flat leaf parsley",
+        "note": "Similar fresh herb"
+      },
+      {
+        "name": "cilantro",
+        "note": "Only if flavor fits"
+      }
+    ]
+  },
+  "pasta": {
+    "parents": [],
+    "contains": [
+      "flour",
+      "water"
+    ],
+    "substitutes": [
+      {
+        "name": "noodle",
+        "note": "General pasta replacement"
+      },
+      {
+        "name": "spaghetti",
+        "note": "Use for long pasta dishes"
+      },
+      {
+        "name": "rice noodle",
+        "note": "Good in Asian-style dishes"
+      }
+    ]
+  },
+  "peach": {
+    "parents": [
+      "fruit"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "nectarine",
+        "note": "Very similar flavor and use"
+      },
+      {
+        "name": "apricot",
+        "note": "Slightly tarter substitute"
+      }
+    ]
+  },
+  "peanut": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "almond",
+        "note": "Similar crunch in snacks and baking."
+      },
+      {
+        "name": "cashew",
+        "note": "Works well in mixes and salads."
+      }
+    ]
+  },
+  "peanut butter": {
+    "parents": [],
+    "contains": [
+      "peanut"
+    ],
+    "substitutes": [
+      {
+        "name": "creamy peanut butter",
+        "note": "Closest in texture"
+      },
+      {
+        "name": "chunky peanut butter",
+        "note": "If texture is acceptable"
+      }
+    ]
+  },
+  "peanut oil": {
+    "parents": [
+      "oil"
+    ],
+    "contains": [
+      "peanut"
+    ],
+    "substitutes": [
+      {
+        "name": "vegetable oil",
+        "note": "neutral high-heat substitute"
+      },
+      {
+        "name": "canola oil",
+        "note": "good frying substitute"
+      },
+      {
+        "name": "canola oil",
+        "note": "good frying substitute"
+      }
+    ]
+  },
+  "pecan": {
+    "parents": [
+      "nut"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "walnut",
+        "note": "Closest texture and flavor"
+      },
+      {
+        "name": "almond",
+        "note": "Works in baking and toppings"
+      },
+      {
+        "name": "cashew",
+        "note": "Milder, similar crunch"
+      }
+    ]
+  },
+  "pepper": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "black pepper",
+        "note": "Use same amount"
+      },
+      {
+        "name": "ground pepper",
+        "note": "Use same amount"
+      },
+      {
+        "name": "white pepper",
+        "note": "Use slightly less"
+      }
+    ]
+  },
+  "pine nut": {
+    "parents": [
+      "nut"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "walnut",
+        "note": "similar texture in pesto"
+      },
+      {
+        "name": "almond",
+        "note": "works in baking or pesto"
+      },
+      {
+        "name": "cashew",
+        "note": "mild nut replacement"
+      }
+    ]
+  },
+  "pineapple": {
+    "parents": [
+      "fruit"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "mango",
+        "note": "Tropical fruit with similar sweetness"
+      },
+      {
+        "name": "peach",
+        "note": "Works in fruit salads and desserts"
+      },
+      {
+        "name": "papaya",
+        "note": "Similar tropical flavor"
+      }
+    ]
+  },
+  "pineapple juice": {
+    "parents": [
+      "juice"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "orange juice",
+        "note": "Similar sweetness and acidity"
+      },
+      {
+        "name": "apple juice",
+        "note": "Mild fruity substitute"
+      }
+    ]
+  },
+  "plain flour": {
+    "parents": [
+      "flour"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "all-purpose flour",
+        "note": "1:1 in most recipes."
+      }
+    ]
+  },
+  "plain yogurt": {
+    "parents": [
+      "yogurt"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "plain low-fat yogurt",
+        "note": "similar tang and texture"
+      },
+      {
+        "name": "greek yogurt",
+        "note": "thicker; thin if needed"
+      },
+      {
+        "name": "yoghurt",
+        "note": "same general use"
+      }
+    ]
+  },
+  "plum tomato": {
+    "parents": [
+      "tomato"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "roma tomato",
+        "note": "Closest common replacement"
+      },
+      {
+        "name": "tomato",
+        "note": "Use for general cooking"
+      }
+    ]
+  },
+  "pork chop": {
+    "parents": [
+      "pork"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "pork loin chop",
+        "note": "Closest cut substitute"
+      },
+      {
+        "name": "pork loin",
+        "note": "Slice into chops if needed"
+      }
+    ]
+  },
+  "pork tenderloin": {
+    "parents": [
+      "pork"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "pork loin",
+        "note": "Similar lean cut"
+      },
+      {
+        "name": "chicken breast",
+        "note": "Lean, mild alternative"
+      },
+      {
+        "name": "chicken breast half",
+        "note": "Works in many main dishes"
+      }
+    ]
+  },
+  "potato": {
+    "parents": [
+      "vegetable"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "sweet potato",
+        "note": "Different but works well"
+      },
+      {
+        "name": "red potato",
+        "note": "Similar in many dishes"
+      },
+      {
+        "name": "russet potato",
+        "note": "Use for baking or mashing"
+      }
+    ]
+  },
+  "powdered sugar": {
+    "parents": [
+      "sugar"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "confectioners' sugar",
+        "note": "Same ingredient name variant"
+      },
+      {
+        "name": "icing sugar",
+        "note": "Same use for frosting and dusting"
+      },
+      {
+        "name": "granulated sugar",
+        "note": "Blend for powders if needed"
+      }
+    ]
+  },
+  "prepared mustard": {
+    "parents": [
+      "mustard"
+    ],
+    "contains": [
+      "mustard seed",
+      "salt",
+      "turmeric",
+      "vinegar",
+      "water"
+    ],
+    "substitutes": [
+      {
+        "name": "mustard",
+        "note": "Direct replacement in most recipes."
+      },
+      {
+        "name": "dijon mustard",
+        "note": "Use for a sharper flavor."
+      }
+    ]
+  },
+  "pure vanilla extract": {
+    "parents": [
+      "vanilla extract"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "vanilla extract",
+        "note": "Same use, same amount"
+      },
+      {
+        "name": "vanilla essence",
+        "note": "Use a little more"
+      }
+    ]
+  },
+  "raisin": {
+    "parents": [
+      "dried fruit"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "dried cranberry",
+        "note": "Similar chewy sweetness"
+      },
+      {
+        "name": "currant",
+        "note": "Small dried fruit swap"
+      },
+      {
+        "name": "dried cherry",
+        "note": "Works in baking and salads"
+      }
+    ]
+  },
+  "raspberry": {
+    "parents": [
+      "fruit"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "strawberry",
+        "note": "Similar berry sweetness"
+      },
+      {
+        "name": "berry",
+        "note": "General berry replacement"
+      },
+      {
+        "name": "blackberry",
+        "note": "Comparable tartness"
+      }
+    ]
+  },
+  "red bell pepper": {
+    "parents": [
+      "bell pepper"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "green pepper",
+        "note": "Similar shape, less sweet"
+      },
+      {
+        "name": "green bell pepper",
+        "note": "Works in cooked dishes"
+      },
+      {
+        "name": "yellow pepper",
+        "note": "Similar sweetness and texture"
+      }
+    ]
+  },
+  "red onion": {
+    "parents": [
+      "onion"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "onion",
+        "note": "Use same amount"
+      },
+      {
+        "name": "yellow onion",
+        "note": "Good all-purpose swap"
+      },
+      {
+        "name": "shallot",
+        "note": "Milder, finer flavor"
+      }
+    ]
+  },
+  "red pepper": {
+    "parents": [
+      "pepper"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "red bell pepper",
+        "note": "For mild sweetness and color"
+      }
+    ]
+  },
+  "red pepper flake": {
+    "parents": [
+      "crushed red pepper flake"
+    ],
+    "contains": [
+      "red pepper"
+    ],
+    "substitutes": [
+      {
+        "name": "crushed red pepper flake",
+        "note": "Direct substitute for heat"
+      }
+    ]
+  },
+  "red potato": {
+    "parents": [
+      "potato"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "potato",
+        "note": "works in most recipes"
+      },
+      {
+        "name": "white potato",
+        "note": "similar texture when cooked"
+      },
+      {
+        "name": "yukon gold potato",
+        "note": "good all-purpose replacement"
+      }
+    ]
+  },
+  "red wine": {
+    "parents": [
+      "wine"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "dry red wine",
+        "note": "Closest match in cooking"
+      },
+      {
+        "name": "burgundy wine",
+        "note": "Similar in sauces and braises"
+      }
+    ]
+  },
+  "red wine vinegar": {
+    "parents": [
+      "vinegar"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "balsamic vinegar",
+        "note": "Sweeter, darker flavor"
+      },
+      {
+        "name": "white wine vinegar",
+        "note": "Similar acidity, milder"
+      },
+      {
+        "name": "cider vinegar",
+        "note": "Works in dressings"
+      }
+    ]
+  },
+  "rice": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "white rice",
+        "note": "Same use, different texture"
+      },
+      {
+        "name": "brown rice",
+        "note": "Nuttier, chewier result"
+      }
+    ]
+  },
+  "rice vinegar": {
+    "parents": [
+      "vinegar"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "white vinegar",
+        "note": "Use less; sharper acidity"
+      },
+      {
+        "name": "apple cider vinegar",
+        "note": "Milder, slightly fruity"
+      }
+    ]
+  },
+  "ricotta cheese": {
+    "parents": [
+      "cheese"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "cottage cheese",
+        "note": "Drain for similar texture"
+      },
+      {
+        "name": "mascarpone cheese",
+        "note": "Richer, smoother filling"
+      }
+    ]
+  },
+  "roasted red pepper": {
+    "parents": [
+      "red bell pepper"
+    ],
+    "contains": [
+      "red bell pepper"
+    ],
+    "substitutes": [
+      {
+        "name": "red bell pepper",
+        "note": "Roast it for similar flavor"
+      },
+      {
+        "name": "red pepper",
+        "note": "Use in cooked dishes"
+      },
+      {
+        "name": "sweet red pepper",
+        "note": "Good in salads and sauces"
+      }
+    ]
+  },
+  "rolled oat": {
+    "parents": [
+      "oat"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "old fashioned oat",
+        "note": "Same use, same amount"
+      },
+      {
+        "name": "quick oat",
+        "note": "Softer texture, cooks faster"
+      }
+    ]
+  },
+  "roma tomato": {
+    "parents": [
+      "tomato"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "plum tomato",
+        "note": "Very similar shape and texture"
+      },
+      {
+        "name": "tomato",
+        "note": "Use in most cooked dishes"
+      },
+      {
+        "name": "italian plum tomato",
+        "note": "Close match for sauces"
+      }
+    ]
+  },
+  "rosemary": {
+    "parents": [
+      "herb"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "thyme",
+        "note": "Similar savory herb profile"
+      },
+      {
+        "name": "dried rosemary",
+        "note": "Use less if dried"
+      }
+    ]
+  },
+  "russet potato": {
+    "parents": [
+      "potato"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "potato",
+        "note": "General all-purpose potato"
+      },
+      {
+        "name": "baking potato",
+        "note": "Very similar starchy texture"
+      },
+      {
+        "name": "idaho potato",
+        "note": "Comparable for baking and mashing"
+      }
+    ]
+  },
+  "sage": {
+    "parents": [
+      "herb"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "thyme",
+        "note": "Similar savory herbal flavor."
+      },
+      {
+        "name": "rosemary",
+        "note": "Use a bit less for stronger flavor."
+      }
+    ]
+  },
+  "salmon fillet": {
+    "parents": [
+      "fish fillet"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "fish fillet",
+        "note": "Similar cooking method and texture."
+      },
+      {
+        "name": "tilapia fillet",
+        "note": "Milder fish, cooks similarly."
+      }
+    ]
+  },
+  "salsa": {
+    "parents": [],
+    "contains": [
+      "onion",
+      "pepper",
+      "tomato"
+    ],
+    "substitutes": [
+      {
+        "name": "picante sauce",
+        "note": "Similar texture and heat"
+      },
+      {
+        "name": "chunky salsa",
+        "note": "Use for thicker salsa"
+      },
+      {
+        "name": "rotel",
+        "note": "Good in cooked dishes"
+      }
+    ]
+  },
+  "salt": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "kosher salt",
+        "note": "Use same amount; slightly coarser"
+      },
+      {
+        "name": "sea salt",
+        "note": "Use same amount"
+      },
+      {
+        "name": "table salt",
+        "note": "Use same amount"
+      }
+    ]
+  },
+  "salt & ground black pepper": {
+    "parents": [
+      "salt and pepper"
+    ],
+    "contains": [
+      "ground black pepper",
+      "salt"
+    ],
+    "substitutes": [
+      {
+        "name": "salt & pepper",
+        "note": "Nearly identical seasoning"
+      }
+    ]
+  },
+  "salt & pepper": {
+    "parents": [
+      "salt and pepper"
+    ],
+    "contains": [
+      "pepper",
+      "salt"
+    ],
+    "substitutes": [
+      {
+        "name": "salt and pepper",
+        "note": "Same seasoning blend"
+      },
+      {
+        "name": "salt & ground black pepper",
+        "note": "Closest blend equivalent"
+      }
+    ]
+  },
+  "salt and pepper": {
+    "parents": [],
+    "contains": [
+      "pepper",
+      "salt"
+    ],
+    "substitutes": [
+      {
+        "name": "salt & pepper",
+        "note": "Same seasoning blend"
+      },
+      {
+        "name": "salt & ground black pepper",
+        "note": "Same use"
+      },
+      {
+        "name": "salt and black pepper",
+        "note": "Same use"
+      }
+    ]
+  },
+  "scallion": {
+    "parents": [
+      "green onion"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "green onion",
+        "note": "Same ingredient name variant"
+      },
+      {
+        "name": "chive",
+        "note": "Milder onion flavor"
+      },
+      {
+        "name": "shallot",
+        "note": "Use less; stronger flavor"
+      }
+    ]
+  },
+  "sea salt": {
+    "parents": [
+      "salt"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "kosher salt",
+        "note": "Use a bit more by volume"
+      },
+      {
+        "name": "table salt",
+        "note": "Use less by volume"
+      },
+      {
+        "name": "fine sea salt",
+        "note": "Same flavor, finer texture"
+      }
+    ]
+  },
+  "seasoning salt": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "season salt",
+        "note": "Very similar seasoned salt"
+      }
+    ]
+  },
+  "semi-sweet chocolate chip": {
+    "parents": [
+      "chocolate chip"
+    ],
+    "contains": [
+      "chocolate"
+    ],
+    "substitutes": [
+      {
+        "name": "semisweet chocolate morsel",
+        "note": "Same use, same sweetness"
+      }
+    ]
+  },
+  "sesame oil": {
+    "parents": [
+      "oil"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "toasted sesame oil",
+        "note": "Use less; stronger flavor"
+      },
+      {
+        "name": "dark sesame oil",
+        "note": "Use very sparingly"
+      },
+      {
+        "name": "olive oil",
+        "note": "For neutral cooking only"
+      }
+    ]
+  },
+  "sesame seed": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "toasted sesame seed",
+        "note": "Use same amount"
+      },
+      {
+        "name": "poppy seed",
+        "note": "Different but similar texture"
+      }
+    ]
+  },
+  "shallot": {
+    "parents": [
+      "onion"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "red onion",
+        "note": "Milder if used raw"
+      },
+      {
+        "name": "green onion",
+        "note": "Best in cooked dishes"
+      },
+      {
+        "name": "onion",
+        "note": "Use less; stronger flavor"
+      }
+    ]
+  },
+  "sharp cheddar cheese": {
+    "parents": [
+      "cheddar cheese"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "cheddar cheese",
+        "note": "Use same amount"
+      }
+    ]
+  },
+  "shortening": {
+    "parents": [
+      "vegetable shortening"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "margarine",
+        "note": "Works in baking, less flaky"
+      }
+    ]
+  },
+  "shrimp": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "prawn",
+        "note": "Nearly identical in most recipes"
+      },
+      {
+        "name": "scallop",
+        "note": "Similar seafood texture"
+      },
+      {
+        "name": "crabmeat",
+        "note": "Works in seafood dishes"
+      }
+    ]
+  },
+  "skim milk": {
+    "parents": [
+      "milk"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "low-fat milk",
+        "note": "Closest everyday swap"
+      },
+      {
+        "name": "nonfat milk",
+        "note": "Same fat-free purpose"
+      }
+    ]
+  },
+  "slivered almond": {
+    "parents": [
+      "almond"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "almond",
+        "note": "Chop if you need thinner pieces."
+      },
+      {
+        "name": "toasted almond",
+        "note": "Similar crunch and flavor."
+      }
+    ]
+  },
+  "sour cream": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "plain yogurt",
+        "note": "Use 1:1"
+      },
+      {
+        "name": "greek yogurt",
+        "note": "Use 1:1"
+      },
+      {
+        "name": "creme fraiche",
+        "note": "Use 1:1"
+      }
+    ]
+  },
+  "soy sauce": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "tamari",
+        "note": "Use same amount"
+      },
+      {
+        "name": "light soy sauce",
+        "note": "Slightly saltier, same use"
+      },
+      {
+        "name": "reduced sodium soy sauce",
+        "note": "Same flavor, less salt"
+      }
+    ]
+  },
+  "spaghetti": {
+    "parents": [
+      "pasta"
+    ],
+    "contains": [
+      "flour",
+      "water"
+    ],
+    "substitutes": [
+      {
+        "name": "thin spaghetti",
+        "note": "Very similar shape"
+      },
+      {
+        "name": "linguine",
+        "note": "Works in most sauces"
+      },
+      {
+        "name": "linguine",
+        "note": "Use for a similar pasta shape"
+      }
+    ]
+  },
+  "spinach": {
+    "parents": [],
+    "contains": [],
+    "substitutes": []
+  },
+  "strawberry": {
+    "parents": [
+      "fruit"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "raspberry",
+        "note": "Similar berry sweetness"
+      },
+      {
+        "name": "blueberry",
+        "note": "Works in baked desserts"
+      },
+      {
+        "name": "cherry",
+        "note": "Use in sweet fillings"
+      }
+    ]
+  },
+  "sugar": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "granulated sugar",
+        "note": "Use 1:1"
+      },
+      {
+        "name": "caster sugar",
+        "note": "Dissolves a bit faster"
+      },
+      {
+        "name": "white sugar",
+        "note": "Use 1:1"
+      }
+    ]
+  },
+  "sweet onion": {
+    "parents": [
+      "onion"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "onion",
+        "note": "general substitute in cooking"
+      },
+      {
+        "name": "yellow onion",
+        "note": "similar sweet-savory flavor"
+      },
+      {
+        "name": "vidalia onion",
+        "note": "closest sweet onion style"
+      }
+    ]
+  },
+  "sweet potato": {
+    "parents": [
+      "potato"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "yam",
+        "note": "Very similar in recipes"
+      },
+      {
+        "name": "baking potato",
+        "note": "Different flavor, similar use"
+      }
+    ]
+  },
+  "sweetened condensed milk": {
+    "parents": [],
+    "contains": [
+      "milk",
+      "sugar"
+    ],
+    "substitutes": [
+      {
+        "name": "evaporated milk",
+        "note": "less sweet; add sugar"
+      },
+      {
+        "name": "condensed milk",
+        "note": "similar sweetness and texture"
+      },
+      {
+        "name": "sweetened flaked coconut",
+        "note": "not direct, for some desserts"
+      }
+    ]
+  },
+  "swiss cheese": {
+    "parents": [
+      "cheese"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "gruyere cheese",
+        "note": "Closest flavor match"
+      },
+      {
+        "name": "provolone cheese",
+        "note": "Mild melting substitute"
+      }
+    ]
+  },
+  "tabasco sauce": {
+    "parents": [
+      "hot sauce"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "hot sauce",
+        "note": "Use for similar heat"
+      },
+      {
+        "name": "frank's red hot sauce",
+        "note": "Mildly similar hot sauce"
+      }
+    ]
+  },
+  "thyme": {
+    "parents": [
+      "herb"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "dried thyme",
+        "note": "Use less if dried"
+      },
+      {
+        "name": "rosemary",
+        "note": "Use sparingly; more piney"
+      },
+      {
+        "name": "oregano",
+        "note": "Works in savory dishes"
+      }
+    ]
+  },
+  "tomato": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "cherry tomato",
+        "note": "Use in salads or roasting"
+      },
+      {
+        "name": "plum tomato",
+        "note": "Good cooking substitute"
+      },
+      {
+        "name": "roma tomato",
+        "note": "Good for sauces"
+      }
+    ]
+  },
+  "tomato paste": {
+    "parents": [],
+    "contains": [
+      "tomato"
+    ],
+    "substitutes": [
+      {
+        "name": "tomato puree",
+        "note": "Use more for same thickness"
+      },
+      {
+        "name": "crushed tomato",
+        "note": "Reduce longer for thickness"
+      },
+      {
+        "name": "tomato sauce",
+        "note": "Less concentrated, adjust seasoning"
+      }
+    ]
+  },
+  "tomato sauce": {
+    "parents": [],
+    "contains": [
+      "tomato"
+    ],
+    "substitutes": [
+      {
+        "name": "spaghetti sauce",
+        "note": "Use if seasoning is okay"
+      },
+      {
+        "name": "marinara sauce",
+        "note": "Similar tomato base"
+      },
+      {
+        "name": "tomato puree",
+        "note": "Add seasoning as needed"
+      }
+    ]
+  },
+  "turmeric": {
+    "parents": [
+      "spice"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "ground cumin",
+        "note": "different flavor, similar warmth"
+      },
+      {
+        "name": "curry powder",
+        "note": "adds color and earthy spice"
+      },
+      {
+        "name": "ground coriander",
+        "note": "mild, warm spice note"
+      }
+    ]
+  },
+  "unsweetened cocoa powder": {
+    "parents": [
+      "cocoa powder"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "cocoa powder",
+        "note": "Use if unsweetened is acceptable"
+      },
+      {
+        "name": "unsweetened cocoa",
+        "note": "Same use, similar flavor"
+      },
+      {
+        "name": "baking cocoa",
+        "note": "Equivalent in most recipes"
+      }
+    ]
+  },
+  "vanilla": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "vanilla extract",
+        "note": "Use a little less"
+      },
+      {
+        "name": "pure vanilla extract",
+        "note": "Use a little less"
+      },
+      {
+        "name": "vanilla essence",
+        "note": "Use a little less"
+      }
+    ]
+  },
+  "vanilla extract": {
+    "parents": [
+      "vanilla"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "pure vanilla extract",
+        "note": "Best direct swap, same use"
+      },
+      {
+        "name": "vanilla essence",
+        "note": "Use same amount"
+      },
+      {
+        "name": "vanilla bean",
+        "note": "Use seeds, more intense"
+      }
+    ]
+  },
+  "vanilla ice cream": {
+    "parents": [
+      "ice cream"
+    ],
+    "contains": [
+      "cream",
+      "milk",
+      "sugar",
+      "vanilla"
+    ],
+    "substitutes": [
+      {
+        "name": "ice cream",
+        "note": "Closest general replacement"
+      },
+      {
+        "name": "whipped cream",
+        "note": "Use for topping, less frozen texture"
+      },
+      {
+        "name": "frozen whipped topping",
+        "note": "Similar cold dessert topping"
+      }
+    ]
+  },
+  "vegetable broth": {
+    "parents": [
+      "broth"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "vegetable stock",
+        "note": "Very similar flavor"
+      },
+      {
+        "name": "water",
+        "note": "Add seasoning as needed"
+      }
+    ]
+  },
+  "vegetable oil": {
+    "parents": [
+      "oil"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "canola oil",
+        "note": "Use 1:1"
+      },
+      {
+        "name": "corn oil",
+        "note": "Use 1:1"
+      },
+      {
+        "name": "salad oil",
+        "note": "Use 1:1"
+      }
+    ]
+  },
+  "vegetable stock": {
+    "parents": [
+      "stock"
+    ],
+    "contains": [
+      "carrot",
+      "celery",
+      "onion",
+      "water"
+    ],
+    "substitutes": [
+      {
+        "name": "vegetable broth",
+        "note": "Direct swap, same amount."
+      },
+      {
+        "name": "chicken stock",
+        "note": "Use if meat is okay."
+      }
+    ]
+  },
+  "vinegar": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "lemon juice",
+        "note": "For acidity in dressings"
+      },
+      {
+        "name": "lime juice",
+        "note": "Fresh acidic substitute"
+      },
+      {
+        "name": "white wine vinegar",
+        "note": "Milder vinegar flavor"
+      }
+    ]
+  },
+  "vodka": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "white wine",
+        "note": "Use for deglazing and sauces."
+      }
+    ]
+  },
+  "walnut": {
+    "parents": [
+      "nut"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "pecan",
+        "note": "Similar texture and richness"
+      },
+      {
+        "name": "almond",
+        "note": "Use for crunch"
+      },
+      {
+        "name": "hazelnut",
+        "note": "Works in baking"
+      }
+    ]
+  },
+  "water": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "chicken broth",
+        "note": "For savory dishes"
+      },
+      {
+        "name": "vegetable broth",
+        "note": "Adds more flavor"
+      },
+      {
+        "name": "stock",
+        "note": "Use when extra flavor helps"
+      }
+    ]
+  },
+  "whipped cream": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "whipping cream",
+        "note": "Whip before serving"
+      },
+      {
+        "name": "whipped topping",
+        "note": "Stabler, sweeter topping"
+      }
+    ]
+  },
+  "whipping cream": {
+    "parents": [
+      "cream"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "heavy cream",
+        "note": "Very similar richness"
+      },
+      {
+        "name": "heavy whipping cream",
+        "note": "Best direct replacement"
+      },
+      {
+        "name": "half-and-half",
+        "note": "Less rich, thinner"
+      }
+    ]
+  },
+  "white bread": {
+    "parents": [
+      "bread"
+    ],
+    "contains": [
+      "flour",
+      "salt",
+      "sugar",
+      "water",
+      "yeast"
+    ],
+    "substitutes": [
+      {
+        "name": "bread",
+        "note": "General sandwich bread replacement"
+      },
+      {
+        "name": "french bread",
+        "note": "Use for sandwiches or toast"
+      },
+      {
+        "name": "whole wheat bread",
+        "note": "Heartier, less refined option"
+      }
+    ]
+  },
+  "white onion": {
+    "parents": [
+      "onion"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "onion",
+        "note": "closest general substitute"
+      },
+      {
+        "name": "yellow onion",
+        "note": "similar flavor in cooking"
+      },
+      {
+        "name": "sweet onion",
+        "note": "milder, slightly sweeter"
+      }
+    ]
+  },
+  "white pepper": {
+    "parents": [
+      "pepper"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "black pepper",
+        "note": "Use same amount, slightly bolder"
+      }
+    ]
+  },
+  "white sugar": {
+    "parents": [
+      "sugar"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "granulated sugar",
+        "note": "Direct replacement"
+      },
+      {
+        "name": "caster sugar",
+        "note": "Dissolves a bit faster"
+      },
+      {
+        "name": "sugar",
+        "note": "Use 1:1 in most recipes"
+      }
+    ]
+  },
+  "white vinegar": {
+    "parents": [
+      "vinegar"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "vinegar",
+        "note": "General 1:1 substitute"
+      },
+      {
+        "name": "cider vinegar",
+        "note": "Use for acidity"
+      }
+    ]
+  },
+  "white wine": {
+    "parents": [
+      "wine"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "dry white wine",
+        "note": "Best cooking substitute"
+      },
+      {
+        "name": "dry sherry",
+        "note": "Adds similar savory notes"
+      },
+      {
+        "name": "chicken broth",
+        "note": "Nonalcoholic cooking liquid"
+      }
+    ]
+  },
+  "white wine vinegar": {
+    "parents": [
+      "vinegar"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "white vinegar",
+        "note": "Use less if very strong"
+      },
+      {
+        "name": "rice vinegar",
+        "note": "Milder, less sharp"
+      }
+    ]
+  },
+  "whole milk": {
+    "parents": [
+      "milk"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "2% low-fat milk",
+        "note": "Slightly lighter dairy"
+      },
+      {
+        "name": "half-and-half",
+        "note": "Richer but close"
+      }
+    ]
+  },
+  "whole wheat flour": {
+    "parents": [
+      "flour"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "whole wheat pastry flour",
+        "note": "Softer texture"
+      },
+      {
+        "name": "all-purpose flour",
+        "note": "Less nutty, lighter"
+      },
+      {
+        "name": "white flour",
+        "note": "Use with more liquid"
+      }
+    ]
+  },
+  "worcestershire sauce": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "soy sauce",
+        "note": "Use a little less"
+      },
+      {
+        "name": "hoisin sauce",
+        "note": "Sweeter, thicker"
+      },
+      {
+        "name": "balsamic vinegar",
+        "note": "Add umami, less savory"
+      }
+    ]
+  },
+  "yeast": {
+    "parents": [],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "active dry yeast",
+        "note": "Use same amount if recipe allows."
+      },
+      {
+        "name": "dry yeast",
+        "note": "Direct substitute in bread dough."
+      }
+    ]
+  },
+  "yellow onion": {
+    "parents": [
+      "onion"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "white onion",
+        "note": "Similar all-purpose onion"
+      },
+      {
+        "name": "sweet onion",
+        "note": "Milder and sweeter"
+      },
+      {
+        "name": "red onion",
+        "note": "Best raw or lightly cooked"
+      }
+    ]
+  },
+  "zucchini": {
+    "parents": [
+      "vegetable"
+    ],
+    "contains": [],
+    "substitutes": [
+      {
+        "name": "yellow squash",
+        "note": "Similar texture and cooking use"
+      },
+      {
+        "name": "courgette",
+        "note": "Same ingredient name variant"
+      },
+      {
+        "name": "cucumber",
+        "note": "Only in raw dishes"
+      }
+    ]
+  }
+}
