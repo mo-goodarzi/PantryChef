@@ -125,5 +125,36 @@ removed 32 of 252 parent relations (12.7%): parts (egg white → egg), processed
 change allergens** (worcestershire → soy sauce swaps fish for soy + gluten), so the Phase 5a
 verifier must re-check allergens for every suggested substitute.
 
-**Pending:** manual spot check of 200 random labels (`scripts/export_label_sample.py`,
-`data/processed/label_spot_check.csv`); the error rate is recorded here after review.
+**Spot check (200 random ingredients, reviewed 2026-09-27).** 29 of 200 had at least one
+wrong field. Per field (v1 labels):
+
+| Field | Errors | Notes |
+|---|---|---|
+| quantity_matters | 13 (6.5%) | systematic: the v1 prompt called flour, milk, butter, rice and bread "quantity matters", contradicting the plan |
+| allergens missed | 3 (1.5%) | non-dairy creamer (milk, a **rule bug**), Branston pickle (gluten), Rose's lime (sulphites); used in 51, 2 and 1 recipes |
+| allergens extra | 6 (3%) | over-flags only (e.g. milk on 100% baking chocolate, fish on gummy fish candy) |
+| category | 5 (2.5%) | e.g. ground coffee as liquid, longans in syrup as sweetener |
+| diet fields | 3 (1.5%) | gummy candy not flagged as gelatin (meat); two animal_product over-flags |
+| staples | 2 (1%) | brand names of vegetable oil not recognized |
+
+Fixes:
+- **"non-dairy" is no longer a free-from label.** US non-dairy creamers and whipped
+  toppings usually contain casein; ~300 recipes use them. "creamer" is now a milk keyword.
+- **Marshmallows and gummy candy count as meat** (gelatin); marshmallow creme does not
+  (egg whites).
+- **quantity_matters has its own prompt and cache** (`quantity_matters.md`, v1), written
+  from the plan: true when recipes need a substantial amount AND people often have only a
+  little (eggs, meat, fish, pasta, cheese, main vegetables); false for household basics
+  (flour, sugar, rice, bread, milk, cream, butter, oil, spices, condiments). Relabeling cost
+  150 calls (160k in / 256k out tokens). On the same 200-ingredient sample, clear
+  quantity_matters errors dropped from 13 (6.5%) to 5 (2.5%): three bread items still true,
+  ladyfingers and honey-roasted peanuts false. All plan examples are now correct
+  (eggs, pasta: yes; milk, toast, salt, flour, butter, rice: no). 34% of recipe-ingredient
+  rows now have quantity_matters.
+- The two remaining missed allergens need brand knowledge (Branston pickle, Rose's lime)
+  and are accepted as residual risk (3 recipes); the verifier's hidden-allergen check in
+  Phase 5a is the next safety layer.
+
+The reviewed sample with notes is `data/processed/label_spot_check.csv`; the re-labeled
+sample is `label_spot_check_v2.csv` (both git-ignored, rebuilt by
+`scripts/export_label_sample.py`).
