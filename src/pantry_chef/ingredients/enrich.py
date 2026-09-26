@@ -8,11 +8,13 @@ Recipe-level data (recipe_allergens, is_key, diet flags) is then derived in SQL.
 """
 
 import sqlite3
+from collections import defaultdict
 from dataclasses import dataclass
 
 from pantry_chef.ingredients.allergens import Allergen, detect_allergens
 from pantry_chef.ingredients.diet import detect_meat
 from pantry_chef.ingredients.normalize import normalize
+from pantry_chef.ingredients.relations import load_seed
 from pantry_chef.ingredients.staples import is_staple
 from pantry_chef.models.ingredient import Category, IngredientLabel
 
@@ -140,14 +142,56 @@ def derive_recipe_data(conn: sqlite3.Connection) -> None:
     )
 
 
-def enrich_database(conn: sqlite3.Connection, labels: dict[str, IngredientLabel]) -> dict:
+def write_relations(conn: sqlite3.Connection, seed: dict[str, dict]) -> int:
+    """Store the reviewed relation seed (keyed by canonical name) for every ingredient id.
+
+    One canonical name can cover several raw names ("egg", "eggs", "large eggs"), so each
+    relation is stored for all of them. Returns the number of rows written.
+    """
+    ids_by_canonical: dict[str, list[int]] = defaultdict(list)
+    for row in conn.execute("SELECT id, canonical_name FROM ingredients"):
+        ids_by_canonical[row["canonical_name"]].append(row["id"])
+
+    parent_rows: set[tuple[int, int]] = set()
+    relation_rows: dict[tuple[int, int, str], str | None] = {}
+    for name, relations in seed.items():
+        for a in ids_by_canonical.get(name, []):
+            for parent in relations["parents"]:
+                parent_rows |= {(a, b) for b in ids_by_canonical.get(parent, [])}
+            for part in relations["contains"]:
+                for b in ids_by_canonical.get(part, []):
+                    relation_rows[(a, b, "contains")] = None
+            for substitute in relations["substitutes"]:
+                for b in ids_by_canonical.get(substitute["name"], []):
+                    relation_rows[(a, b, "substitute")] = substitute["note"]
+
+    conn.execute("DELETE FROM ingredient_parent")
+    conn.execute("DELETE FROM ingredient_relation")
+    conn.executemany(
+        "INSERT INTO ingredient_parent (child_id, parent_id) VALUES (?, ?)", sorted(parent_rows)
+    )
+    conn.executemany(
+        "INSERT INTO ingredient_relation (a_id, b_id, relation, note) VALUES (?, ?, ?, ?)",
+        [(a, b, relation, note) for (a, b, relation), note in sorted(relation_rows.items())],
+    )
+    return len(parent_rows) + len(relation_rows)
+
+
+def enrich_database(
+    conn: sqlite3.Connection,
+    labels: dict[str, IngredientLabel],
+    relation_seed: dict[str, dict] | None = None,
+) -> dict:
     """Apply rules + labels to every ingredient, then derive recipe data. Returns counts."""
+    seed = load_seed() if relation_seed is None else relation_seed
     rows = conn.execute("SELECT id, name FROM ingredients").fetchall()
     facts = {row["id"]: combine(row["name"], labels.get(row["name"])) for row in rows}
     with conn:
         write_ingredient_facts(conn, facts)
         derive_recipe_data(conn)
+        relation_rows = write_relations(conn, seed)
     return {
+        "relation_rows": relation_rows,
         "ingredients": len(facts),
         "labeled": sum(f.category is not None for f in facts.values()),
         "staples": sum(f.is_staple for f in facts.values()),

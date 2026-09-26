@@ -36,3 +36,23 @@ class IngredientLabel(BaseModel):
 
 class IngredientLabelBatch(BaseModel):
     labels: list[IngredientLabel]
+
+
+class Substitute(BaseModel):
+    name: str = Field(description="An ingredient from the vocabulary.")
+    note: str = Field(description="Short note on when or how to substitute (max 12 words).")
+
+
+class IngredientRelations(BaseModel):
+    name: str = Field(description="The ingredient name exactly as given in the input.")
+    parents: list[str] = Field(
+        description="More general vocabulary ingredients this one is a kind of."
+    )
+    contains: list[str] = Field(
+        description="Vocabulary ingredients this compound ingredient is usually made with."
+    )
+    substitutes: list[Substitute]
+
+
+class IngredientRelationsBatch(BaseModel):
+    items: list[IngredientRelations]
