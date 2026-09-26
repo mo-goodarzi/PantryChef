@@ -2,7 +2,6 @@ import json
 import sqlite3
 from pathlib import Path
 
-import pandas as pd
 import pytest
 
 from pantry_chef.db.connection import connect
@@ -17,36 +16,9 @@ N_UNUSABLE = 2  # one recipe with an empty name, one with no steps
 
 
 @pytest.fixture
-def irkaal_parquet(tmp_path: Path) -> Path:
-    """A tiny irkaal file: same columns and value formats as the real recipes.parquet."""
-    path = tmp_path / "irkaal.parquet"
-    rows = [
-        # Lists line up: eggs get a count, milk and butter are not counted ingredients.
-        (9000001, 2.0, ["eggs", "milk", "butter"], ["1 -2", "1", "1\u20442"]),
-        # Name list lost an item, so quantities cannot be trusted.
-        (5170, 4.0, ["flour", "eggs"], ["2", "2", "1"]),
-        # No servings; recipe not in our database is ignored.
-        (9000002, None, ["bread"], ["2"]),
-        (123, 1.0, ["eggs"], ["3"]),
-    ]
-    pd.DataFrame(
-        rows,
-        columns=[
-            "RecipeId",
-            "RecipeServings",
-            "RecipeIngredientParts",
-            "RecipeIngredientQuantities",
-        ],
-    ).to_parquet(path)
-    return path
-
-
-@pytest.fixture
-def db_path(tmp_path: Path, irkaal_parquet: Path) -> Path:
+def db_path(tmp_path: Path) -> Path:
     path = tmp_path / "pantry.db"
-    build_database(
-        RECIPES_CSV, path, interactions_csv=INTERACTIONS_CSV, irkaal_parquet=irkaal_parquet
-    )
+    build_database(RECIPES_CSV, path, interactions_csv=INTERACTIONS_CSV)
     return path
 
 
@@ -155,10 +127,9 @@ def test_foreign_keys_are_enforced(conn):
         )
 
 
-def test_rebuild_is_idempotent(db_path, irkaal_parquet):
-    kwargs = {"interactions_csv": INTERACTIONS_CSV, "irkaal_parquet": irkaal_parquet}
-    first = build_database(RECIPES_CSV, db_path, **kwargs)
-    second = build_database(RECIPES_CSV, db_path, **kwargs)
+def test_rebuild_is_idempotent(db_path):
+    first = build_database(RECIPES_CSV, db_path, interactions_csv=INTERACTIONS_CSV)
+    second = build_database(RECIPES_CSV, db_path, interactions_csv=INTERACTIONS_CSV)
 
     assert first == second
     conn = connect(db_path)
@@ -181,46 +152,4 @@ def test_failed_build_keeps_previous_database(db_path, tmp_path):
 
     conn = connect(db_path)
     assert count(conn, "recipes") == N_ROWS - N_UNUSABLE
-    conn.close()
-
-
-def count_where(conn: sqlite3.Connection, table: str, condition: str) -> int:
-    return conn.execute(f"SELECT COUNT(*) FROM {table} WHERE {condition}").fetchone()[0]
-
-
-def egg_quantity(conn: sqlite3.Connection, recipe_id: int):
-    return conn.execute(
-        "SELECT ri.quantity, ri.unit, ri.quantity_source FROM recipe_ingredients ri "
-        "JOIN ingredients i ON i.id = ri.ingredient_id "
-        "WHERE ri.recipe_id = ? AND i.name = 'eggs'",
-        (recipe_id,),
-    ).fetchone()
-
-
-def test_irkaal_count_is_stored_with_unit_and_source(conn):
-    row = egg_quantity(conn, 9000001)
-    assert (row["quantity"], row["unit"], row["quantity_source"]) == (1.0, "count", "dataset")
-
-
-def test_irkaal_quantities_for_uncounted_ingredients_are_not_stored(conn):
-    stored = count_where(conn, "recipe_ingredients", "recipe_id = 9000001 AND quantity IS NOT NULL")
-    assert stored == 1  # only eggs
-
-
-def test_irkaal_misaligned_lists_store_no_quantity(conn):
-    assert egg_quantity(conn, 5170)["quantity"] is None
-
-
-def test_irkaal_servings(conn):
-    rows = conn.execute("SELECT id, servings FROM recipes WHERE id IN (9000001, 5170, 9000002)")
-    servings = {row["id"]: row["servings"] for row in rows}
-    assert servings == {9000001: 2.0, 5170: 4.0, 9000002: None}
-
-
-def test_build_without_irkaal_leaves_quantities_empty(tmp_path):
-    path = tmp_path / "pantry.db"
-    summary = build_database(RECIPES_CSV, path)
-    assert summary.n_counted_quantities == 0
-    conn = connect(path)
-    assert count_where(conn, "recipe_ingredients", "quantity IS NOT NULL") == 0
     conn.close()

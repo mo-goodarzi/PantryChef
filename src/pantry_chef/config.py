@@ -14,7 +14,6 @@ class Settings(BaseSettings):
     # Data paths
     raw_recipes_csv: Path = Path("data/raw/RAW_recipes.csv")
     raw_interactions_csv: Path = Path("data/raw/RAW_interactions.csv")
-    irkaal_recipes_parquet: Path = Path("data/raw/recipes.parquet")
     db_path: Path = Path("data/processed/pantry.db")
     chroma_path: Path = Path("data/processed/chroma")
 

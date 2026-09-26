@@ -1,7 +1,4 @@
-"""Build the SQLite database from the Food.com files.
-
-Sources: RAW_recipes.csv (recipes), RAW_interactions.csv (ratings) and the irkaal
-recipes.parquet (servings and ingredient counts).
+"""Build the SQLite database from the Food.com CSV files.
 
 The build writes to a temporary file and swaps it in at the end, so a failed run never
 leaves a half-built database and every run starts from scratch (idempotent).
@@ -26,7 +23,6 @@ from pantry_chef.db.parsing import (
     parse_list,
     split_nutrition,
 )
-from pantry_chef.db.quantities import counted_quantities
 from pantry_chef.db.tag_mapping import derive_cuisine, derive_meal_type
 from pantry_chef.observability import get_logger, span
 
@@ -65,9 +61,6 @@ class BuildSummary:
     n_tags: int = 0
     n_recipe_tags: int = 0
     n_recipes_with_stats: int = 0
-    n_recipes_with_servings: int = 0
-    n_counted_quantities: int = 0
-    n_recipes_with_counts: int = 0
     minutes: dict[str, float] = field(default_factory=dict)
 
 
@@ -186,56 +179,6 @@ def insert_recipe_stats(conn: sqlite3.Connection, stats: pd.DataFrame) -> None:
     )
 
 
-def apply_irkaal(
-    conn: sqlite3.Connection, irkaal: pd.DataFrame, recipes: list[PreparedRecipe]
-) -> tuple[int, int, int]:
-    """Add servings and ingredient counts from the irkaal dataset.
-
-    Returns (recipes with servings, counted quantities, recipes with at least one count).
-    """
-    ingredients_by_id = {r.row["id"]: set(r.ingredients) for r in recipes}
-    servings_rows = []
-    quantity_rows = []
-    recipes_with_counts = 0
-
-    for record in irkaal.itertuples(index=False):
-        recipe_id = int(record.RecipeId)
-        if recipe_id not in ingredients_by_id:
-            continue
-        if pd.notna(record.RecipeServings) and record.RecipeServings > 0:
-            servings_rows.append((float(record.RecipeServings), recipe_id))
-
-        parts = [] if record.RecipeIngredientParts is None else list(record.RecipeIngredientParts)
-        quantities = (
-            []
-            if record.RecipeIngredientQuantities is None
-            else list(record.RecipeIngredientQuantities)
-        )
-        counts = counted_quantities(parts, quantities, ingredients_by_id[recipe_id])
-        recipes_with_counts += bool(counts)
-        quantity_rows += [(count, recipe_id, name) for name, count in counts.items()]
-
-    conn.executemany("UPDATE recipes SET servings = ? WHERE id = ?", servings_rows)
-    conn.executemany(
-        "UPDATE recipe_ingredients SET quantity = ?, unit = 'count', quantity_source = 'dataset' "
-        "WHERE recipe_id = ? AND ingredient_id = (SELECT id FROM ingredients WHERE name = ?)",
-        quantity_rows,
-    )
-    return len(servings_rows), len(quantity_rows), recipes_with_counts
-
-
-def read_irkaal(parquet_path: Path) -> pd.DataFrame:
-    return pd.read_parquet(
-        parquet_path,
-        columns=[
-            "RecipeId",
-            "RecipeServings",
-            "RecipeIngredientParts",
-            "RecipeIngredientQuantities",
-        ],
-    )
-
-
 def minutes_distribution(minutes: pd.Series) -> dict[str, float]:
     return {
         "p10": float(minutes.quantile(0.10)),
@@ -251,7 +194,6 @@ def build_database(
     recipes_csv: Path,
     db_path: Path,
     interactions_csv: Path | None = None,
-    irkaal_parquet: Path | None = None,
     limit: int | None = None,
 ) -> BuildSummary:
     """Build the database from scratch at `db_path`."""
@@ -283,14 +225,6 @@ def build_database(
                 stats = compute_recipe_stats(interactions, {r.row["id"] for r in recipes})
                 insert_recipe_stats(conn, stats)
                 summary.n_recipes_with_stats = len(stats)
-
-            if irkaal_parquet is not None:
-                with span("build_db.irkaal"):
-                    (
-                        summary.n_recipes_with_servings,
-                        summary.n_counted_quantities,
-                        summary.n_recipes_with_counts,
-                    ) = apply_irkaal(conn, read_irkaal(irkaal_parquet), recipes)
     finally:
         conn.close()
 
@@ -305,6 +239,5 @@ def build_database(
         skipped=dict(skipped),
         ingredients=summary.n_ingredients,
         tags=summary.n_tags,
-        counted_quantities=summary.n_counted_quantities,
     )
     return summary

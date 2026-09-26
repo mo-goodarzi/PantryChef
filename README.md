@@ -19,11 +19,9 @@ uv run pre-commit install
 cp .env.example .env   # fill in keys when needed
 ```
 
-Download two Kaggle datasets into `data/raw/`:
+Download the Kaggle dataset
 [Food.com Recipes and Interactions](https://www.kaggle.com/datasets/shuyangli94/food-com-recipes-and-user-interactions)
-(`RAW_recipes.csv`, `RAW_interactions.csv`) and
-[Food.com Recipes and Reviews](https://www.kaggle.com/datasets/irkaal/foodcom-recipes-and-reviews)
-(`recipes.parquet`, for servings and ingredient counts), then build the database (about 45 s):
+into `data/raw/`, then build the database (about 30 s):
 
 ```bash
 uv run python scripts/build_db.py            # full build -> data/processed/pantry.db
