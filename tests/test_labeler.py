@@ -3,15 +3,20 @@ import json
 import pytest
 
 from pantry_chef.ingredients.allergens import Allergen
-from pantry_chef.ingredients.labeler import label_ingredients, load_cache
-from pantry_chef.models.ingredient import Category, IngredientLabel, IngredientLabelBatch
+from pantry_chef.ingredients.labeler import QUANTITY_TASK, label_ingredients, load_cache
+from pantry_chef.models.ingredient import (
+    Category,
+    IngredientLabel,
+    IngredientLabelBatch,
+    QuantityLabel,
+    QuantityLabelBatch,
+)
 
 
 def make_label(name: str) -> IngredientLabel:
     return IngredientLabel(
         name=name,
         category=Category.DAIRY if name == "butter" else Category.OTHER,
-        quantity_matters=True,
         allergens=[Allergen.MILK] if name == "butter" else [],
         contains_meat=False,
         contains_fish=False,
@@ -113,3 +118,27 @@ def test_failed_batch_does_not_stop_the_run(cache_path):
 
     assert summary.failed_batches == 1
     assert set(load_cache(cache_path)) == {"b", "c"}
+
+
+class FakeQuantityLLM:
+    def __init__(self):
+        self.prompts = []
+
+    def generate(self, prompt, schema, **variables):
+        self.prompts.append(prompt.name)
+        assert schema is QuantityLabelBatch
+        names = json.loads(variables["ingredients"])
+        return QuantityLabelBatch(
+            labels=[QuantityLabel(name=n, quantity_matters=n == "eggs") for n in names]
+        )
+
+
+def test_quantity_task_uses_its_own_prompt_schema_and_cache(tmp_path):
+    cache_path = tmp_path / "quantity.json"
+    llm = FakeQuantityLLM()
+
+    label_ingredients(["eggs", "flour"], llm, cache_path, task=QUANTITY_TASK)
+
+    assert llm.prompts == ["quantity_matters"]
+    cache = load_cache(cache_path, QUANTITY_TASK.item_schema)
+    assert cache["eggs"].quantity_matters and not cache["flour"].quantity_matters

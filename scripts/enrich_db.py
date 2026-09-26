@@ -12,10 +12,11 @@ from pathlib import Path
 from pantry_chef.config import get_settings
 from pantry_chef.db.connection import connect
 from pantry_chef.ingredients.enrich import enrich_database
-from pantry_chef.ingredients.labeler import load_cache
+from pantry_chef.ingredients.labeler import QUANTITY_TASK, load_cache
 from pantry_chef.observability import configure_logging, span, trace
 
 DEFAULT_LABELS = Path("data/processed/ingredient_labels.json")
+DEFAULT_QUANTITY_LABELS = Path("data/processed/quantity_labels.json")
 
 REPORT_QUERIES = {
     "recipe-ingredient rows with a category (target >= 95%)": (
@@ -23,6 +24,10 @@ REPORT_QUERIES = {
         "JOIN ingredients i ON i.id = ri.ingredient_id"
     ),
     "recipe-ingredient rows that are key": "SELECT AVG(is_key) FROM recipe_ingredients",
+    "recipe-ingredient rows where quantity matters": (
+        "SELECT AVG(i.quantity_matters) FROM recipe_ingredients ri "
+        "JOIN ingredients i ON i.id = ri.ingredient_id"
+    ),
     "recipes with at least one allergen": (
         "SELECT AVG(EXISTS (SELECT 1 FROM recipe_allergens ra WHERE ra.recipe_id = r.id)) "
         "FROM recipes r"
@@ -39,12 +44,17 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--db", type=Path, default=settings.db_path)
     parser.add_argument("--labels", type=Path, default=DEFAULT_LABELS)
+    parser.add_argument("--quantity-labels", type=Path, default=DEFAULT_QUANTITY_LABELS)
     args = parser.parse_args()
 
     configure_logging(settings.log_level)
     conn = connect(args.db)
     with trace("enrich_db"), span("enrich_db.apply"):
-        counts = enrich_database(conn, load_cache(args.labels))
+        counts = enrich_database(
+            conn,
+            load_cache(args.labels),
+            load_cache(args.quantity_labels, QUANTITY_TASK.item_schema),
+        )
 
     print("\nIngredients")
     for key, value in counts.items():

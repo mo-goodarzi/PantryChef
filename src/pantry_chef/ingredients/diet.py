@@ -46,6 +46,10 @@ MEAT_RULE = AllergenRule(
         "suet",
         "bone marrow",
         "jello",
+        # usually made with gelatin
+        "marshmallow",
+        "gummy",
+        "gummies",
     ),
     exceptions=(
         "hamburger bun",
@@ -54,6 +58,10 @@ MEAT_RULE = AllergenRule(
         "steak sauce",
         "steak seasoning",
         "beefsteak tomato",
+        # made with egg whites, not gelatin
+        "marshmallow creme",
+        "marshmallow cream",
+        "marshmallow fluff",
     ),
     free_from=("vegetarian", "vegan", "veggie", "meatless", "meat-free", "soy", "tofu"),
 )
