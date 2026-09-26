@@ -195,3 +195,54 @@ Phase 5a ingredient matcher's job.
 **Data quirk seen:** some Food.com recipes omit their main ingredient (e.g. "peach kuchen"
 lists no peaches), so a recipe can pass verification without it. Out of scope to fix; the
 Phase 4 LLM rerank and preference judge may catch obvious cases.
+
+## 2026-09-27 — Phase 4: search quality, measured
+
+**Eval set:** 50 hand-written cases (`eval/cases/search.json`) across breakfast, dinner,
+lunch, soup, salad, sides, desserts, snacks, drinks, cuisines, restrictions and vague wishes,
+including traps (shellfish allergy with shrimp in the pantry, milk allergy with milk in the
+pantry, one-ingredient pantries). A result is **good** when it passes the hard rules in code
+(allergens, diet, time, at most 1 missing key ingredient) AND an LLM judge rates its fit to
+the wish >= 4/5 (`preference_judge.md` v1, judgments cached per case/recipe/prompt version).
+
+**Results** (`eval/reports/search_20260926-2255.md`):
+
+| Variant | hit@5 | MRR | judge | allergen violations | p50 latency |
+|---|---|---|---|---|---|
+| coverage only (Phase 3) | 74% | 0.60 | 2.94 | 0 | 0.17 s |
+| + semantic | 82% | 0.74 | 3.39 | 0 | 0.22 s |
+| + semantic + diversity | 82% | 0.74 | 3.39 | 0 | 0.25 s |
+| + semantic + rerank | 90% | 0.86 | 3.86 | 0 | 3.19 s |
+| + semantic + diversity + rerank | 90% | 0.87 | 3.84 | 0 | 2.66 s |
+
+Rerank results were stable across three runs (MRR 0.86–0.88).
+
+**Semantic search:** `BAAI/bge-small-en-v1.5` (local, free) on name + description + useful
+tags, stored in Chroma (231,635 vectors, 428 MB, ~17 min on an M-series GPU). The pool is the
+top 1,000 recipes by coverage PLUS recipes among the 2,000 nearest to the wish that pass the
+filters, so a recipe that fits the wish is not lost just because it ranks low on coverage.
+final = 0.7 × ingredient score + 0.3 × semantic (cosine rescaled 0..1 within the pool).
+Weights were not tuned on the eval set (to avoid overfitting to it).
+
+**Diversity (MMR) gives no measurable benefit and is off by default.** It reorders positions
+3–5 in 16/50 cases but leaves hit@5, MRR and top-5 similarity unchanged (0.787 → 0.784;
+λ = 0.5 gave 0.781). Reason: recipes that match one wish all have similar bge-small vectors
+(cosine ≈ 0.75–0.85), so the similarity penalty barely differs between candidates. Kept in the
+code as an option; the rerank prompt already asks for variety.
+
+**LLM rerank is the biggest single gain** (+8 pts hit@5, +0.12 MRR) at a cost of ~3 s and one
+API call per search. It can only choose among verified candidates, so it cannot break safety.
+Recommended pipeline: semantic + rerank. In the CLI, semantic is automatic when `--pref` is
+given; rerank is opt-in (`--rerank`).
+
+**Known bias:** the reranker and the judge are the same model (gpt-5.4-mini), which may favor
+its own picks. The blind human review below measures how far the judge can be trusted.
+
+**Remaining misses point to exact-name matching:** "carbonara" and "garlic butter shrimp
+pasta" (recipes say "spaghetti"/"linguine", pantry says "pasta"), "chinese fried rice"
+(recipes say "cooked rice"). This is the Phase 5a ingredient matcher's job and the next
+expected gain.
+
+**Judge calibration (pending, owner):** 40 verdicts (8 per score) in
+`eval/reports/judge_calibration.csv`, blind: the judge's scores are in a git-ignored key file.
+Score with `uv run python eval/judge_calibration.py score`.

@@ -6,7 +6,7 @@ A multi-agent recipe assistant. Tell it what you have at home ("eggs, milk, toas
 it returns safe, suitable recipes you can actually make, checked against your allergies
 and diet, plus an optional matching YouTube video.
 
-**Status:** v0.05, a working search without any LLM (Phase 3). See the plan for what comes next. See
+**Status:** search engine measured and improved (Phase 4). See the plan for what comes next. See
 [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for the design and build order.
 
 ## Setup
@@ -29,6 +29,12 @@ uv run python scripts/build_db.py --limit 1000   # quick development build
 uv run python scripts/inspect_data.py        # data quality report
 ```
 
+Build the recipe embeddings for semantic search (local model, about 17 minutes once):
+
+```bash
+uv run python scripts/build_embeddings.py
+```
+
 Then add ingredient knowledge (needs `OPENAI_API_KEY` in `.env`; labels are cached in
 `data/processed/ingredient_labels.json`, so reruns are free):
 
@@ -42,6 +48,8 @@ Data files are never committed.
 ## Find recipes (terminal)
 
 ```bash
+uv run python -m pantry_chef.search.cli --have "eggs,milk,bread" --pref "sweet breakfast"
+uv run python -m pantry_chef.search.cli --have "eggs,milk,bread" --pref "savory lunch" --rerank
 uv run python -m pantry_chef.search.cli --have "eggs,milk,bread" --max-minutes 30
 uv run python -m pantry_chef.search.cli --have "eggs,milk,flour,butter" \
     --allergy "peanuts,tree nuts" --diet vegetarian --show-failed
@@ -60,6 +68,20 @@ Pantry: bread, egg, milk
 
 Allergens and diets are enforced twice: by SQL filters before ranking and by a
 deterministic verifier afterwards.
+
+## Results: search quality
+
+50 evaluation cases; a result is good when it passes the hard rules (checked by code) and an
+LLM judge rates its fit to the wish at least 4/5. Report: `eval/reports/search_20260926-2255.md`.
+
+| Pipeline | hit@5 | MRR | allergen violations | median latency |
+|---|---|---|---|---|
+| Ingredient coverage only | 74% | 0.60 | 0 | 0.17 s |
+| + semantic match (local embeddings) | 82% | 0.74 | 0 | 0.22 s |
+| + LLM rerank | **90%** | **0.86** | 0 | 3.19 s |
+
+Diversity (MMR) was also tested and changed nothing measurable; see `docs/decisions.md`.
+Reproduce: `uv run python eval/run_eval.py --suite search`.
 
 ## Development
 
