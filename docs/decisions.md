@@ -48,35 +48,26 @@ Observation for Phase 2: a naive `LIKE '%egg%'` also matches "eggplant", "eggnog
 "egg roll wrappers", which is why allergen labels must come from ingredient-level rules,
 not substring search.
 
-## 2026-09-26 — Quantity source: irkaal counts for counted ingredients only
-Inspected `irkaal/foodcom-recipes-and-reviews` (522,517 recipes, same ids as Food.com).
+## 2026-09-26 — Quantity source: LLM estimates only (irkaal dropped)
+Inspected `irkaal/foodcom-recipes-and-reviews` (522,517 recipes, same ids as Food.com)
+as a source of ingredient quantities.
 
 | Check | Result |
 |---|---|
 | Our recipes found in irkaal | 99.9% |
 | Units on quantities | none ("4" blueberries = 4 cups) |
-| Quantity count = our ingredient count | 86% of recipes |
 | Name list and quantity list same length | 23% (the name list drops items) |
 | Positions swapped even when all lists have equal length | ~8% (salt/pepper, butter/margarine) |
 | Servings present | 64% |
 
-**Decision:** keep Food.com `RAW_recipes.csv` as the main source. From irkaal, import
-`servings` and quantities only for *counted* ingredients (`db/quantities.py`:
-eggs, egg yolks/whites, garlic cloves, lemons, limes, avocados, bananas, bay leaves,
-green onions, scallions, celery ribs, tortillas, english muffins, chicken thighs), stored
-with `unit='count'`, `quantity_source='dataset'`.
+Without units, only counted ingredients (eggs, garlic cloves, lemons...) have meaningful
+numbers, and only when the ingredient name confirms the match: 27,356 counts in 23,795
+recipes (~10%). This was built (PR #4) and then reverted.
 
-A quantity is trusted only when (1) the irkaal name and quantity lists have the same length,
-(2) the name appears in our recipe's ingredients, and (3) the count is in (0, 24]. Ranges
-("1 -2") use the lower bound, the least the recipe needs. Ingredients were picked from the
-value distribution: onion, carrot, tomatoes and potatoes are excluded because many values
-are really cups, cans or pounds.
-
-**Alternatives:** use irkaal numbers only as hints for the Phase 8 LLM estimator (more
-coverage, but everything becomes an estimate); ignore irkaal (throws away real egg counts);
-replace Food.com with irkaal (no units and misaligned lists make it worse, not better).
-
-**Result on the full build:** servings for 149,420 recipes; 27,356 counted quantities in
-23,795 recipes; 24% of egg rows have a count (mean 3.1 for "eggs", 1.0 for "egg"). All 4.58M
-irkaal quantity strings parse. Remaining quantities still come from Phase 8 LLM estimates,
-which should prefer a dataset count when one exists.
+**Decision:** do not use irkaal. All quantities (and servings) come from the Phase 8 LLM
+estimator, cached and marked as estimates.
+**Why:** ~10% coverage means the estimator is needed anyway; one quantity source keeps the
+pipeline, the verifier and the setup (one dataset download instead of two) simpler.
+**Trade-off accepted:** no ready-made ground truth for measuring the estimator; Phase 8
+needs a small hand-labeled set instead. If that turns out costly, the irkaal counts can be
+revisited as evaluation data (see the reverted PR #4 for the parser and alignment rules).

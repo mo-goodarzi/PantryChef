@@ -54,10 +54,8 @@ description, ingredients, n_ingredients`.
 - `nutrition` = `[calories, total_fat_PDV, sugar_PDV, sodium_PDV, protein_PDV,
   sat_fat_PDV, carbs_PDV]`.
 - `minutes` has outliers (0 and extremely large values).
-- **No ingredient quantities.** Decided in Phase 1 (see `docs/decisions.md`): counts for
-  counted ingredients (eggs, garlic cloves, ...) and servings come from the irkaal dataset
-  (`quantity_source='dataset'`); all other quantities are estimated on demand in Phase 8,
-  cached, and always marked as estimates.
+- **No ingredient quantities or servings.** Quantities for key ingredients are estimated on
+  demand (Phase 8) and cached; they are always marked as estimates.
 - Some names/descriptions are empty.
 
 **Download:** manual from Kaggle, or `kaggle datasets download -d
@@ -65,10 +63,9 @@ shuyangli94/food-com-recipes-and-user-interactions -f RAW_recipes.csv -p data/ra
 (requires the user's Kaggle API key). The user does this step; code must never
 hard-code credentials.
 
-**Decided in Phase 1:** the Kaggle dataset `irkaal/foodcom-recipes-and-reviews`
-(~500k recipes) includes ingredient quantities. Inspect a sample; if its quantities are
-usable, consider it as an additional or replacement source. This is the first task of
-Phase 1. Record the decision in `docs/decisions.md`.
+**Decided in Phase 1:** the Kaggle dataset `irkaal/foodcom-recipes-and-reviews` was
+inspected as a quantity source and not used (quantities have no units; see
+`docs/decisions.md`).
 
 ---
 
@@ -202,10 +199,8 @@ Acceptance criteria
 **Goal:** a clean SQLite database of Food.com recipes.
 
 Tasks
-1. **First: decide the quantity source.** Inspect the alternative `irkaal` dataset (see
-   §1). If its ingredient quantities are usable, it becomes an additional or replacement
-   source and the quantity check works without LLM estimates. This decision changes the
-   schema, so make it before writing `schema.sql`. Record it in `docs/decisions.md`.
+1. ~~Decide the quantity source~~ Done: LLM estimates in Phase 8 (irkaal dataset
+   inspected and dropped, see `docs/decisions.md`).
 2. `config.py` with pydantic-settings.
 3. `db/schema.sql` as above; `db/connection.py`.
 4. `scripts/build_db.py`:
@@ -467,11 +462,11 @@ ingredients.
    + description). Score = overlap of the recipe's key ingredients mentioned + LLM judge
    ("same dish? yes/no + evidence"). Pick the best video above threshold; if none, return
    a YouTube search link and say no verified match was found.
-3. **Quantity estimation** (`agents/quantity_estimator.py`; for ingredients without a
-   dataset count, see Phase 1 decision): for candidate recipes only,
+3. **Quantity estimation** (`agents/quantity_estimator.py`): for candidate recipes only,
    LLM estimates amounts of key ingredients for the recipe's default servings (from name,
    steps, description); store in `recipe_ingredients` with `quantity_source='llm_estimate'`.
-   The verifier treats estimates with tolerance (e.g. ±25%).
+   The verifier treats estimates with tolerance (e.g. ±25%). Also estimate servings
+   (needed for scaling). Evaluate on a small hand-labeled set of recipes.
 
 Evaluation: 40 recipes with manually confirmed correct/incorrect videos → report
 precision of "verified" videos, and with vs. without transcript check.
