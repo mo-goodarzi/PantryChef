@@ -138,7 +138,10 @@ pantry-chef/
 - Before every commit: run `uv run ruff check .`, `uv run ruff format .`, `uv run pytest -q`.
 - At the end of a phase: push the branch and open a pull request with `gh pr create`
   using a description with: summary, what changed, how it was tested, open questions.
-  Do not merge the PR yourself; the owner reviews and merges it.
+  Merge the PR yourself once CI passes (`gh pr merge <n> --merge --delete-branch`), then
+  update local `main`. The owner reviews merged work afterwards. Never merge with failing
+  CI, and never delete a branch that another open PR uses as its base (stack PRs on
+  `main` instead, or merge them in order).
 - Never commit: `data/raw/`, `data/processed/`, `*.db`, `chroma/`, `.env`, API keys,
   model weights, large eval outputs. Check `git status` before committing.
 - If a secret is ever committed by mistake, stop and tell the owner immediately
