@@ -6,10 +6,12 @@ Phase 3 version (no LLM). Semantic match, diversity and rerank are added in Phas
 import sqlite3
 from dataclasses import dataclass
 
+from pantry_chef.agents.verifier import verify
 from pantry_chef.db.repository import load_recipe_ingredients
 from pantry_chef.ingredients.normalize import normalize
 from pantry_chef.models.query import RecipeQuery
 from pantry_chef.models.recipe import Candidate, RecipeIngredient
+from pantry_chef.models.verification import VerificationStatus
 from pantry_chef.observability import span
 from pantry_chef.search.coverage import rank_by_coverage
 from pantry_chef.search.filters import filter_conditions
@@ -66,3 +68,24 @@ def search(conn: sqlite3.Connection, query: RecipeQuery, limit: int = 20) -> Sea
         for row in rows
     ]
     return SearchResult(candidates=candidates, matched_recipes=matched)
+
+
+@dataclass(frozen=True)
+class SearchOptions:
+    """Which pipeline steps run (each one is measured separately in eval)."""
+
+    pool_size: int = 50  # candidates to verify
+    top_k: int = 5
+
+
+def find_recipes(
+    conn: sqlite3.Connection, query: RecipeQuery, options: SearchOptions | None = None
+) -> list[Candidate]:
+    """Full pipeline: search -> verify -> top k verified recipes."""
+    options = options or SearchOptions()
+    result = search(conn, query, limit=options.pool_size)
+    with span("search.verify", candidates=len(result.candidates)):
+        verified = [
+            c for c in result.candidates if verify(c, query).status is VerificationStatus.PASS
+        ]
+    return verified[: options.top_k]
