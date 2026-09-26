@@ -31,6 +31,12 @@ class Settings(BaseSettings):
     langfuse_secret_key: SecretStr | None = None
     langfuse_host: str = "https://cloud.langfuse.com"
 
+    # Search
+    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    semantic_weight: float = 0.3  # final = (1 - w) * ingredient + w * semantic
+    coverage_pool: int = 1000  # top recipes by coverage that get a semantic score
+    semantic_neighbors: int = 2000  # nearest recipes to the wish, added to the pool
+
     log_level: str = "INFO"
 
 

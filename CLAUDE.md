@@ -95,7 +95,8 @@ pantry-chef/
 - Label ingredients (LLM, cached): `uv run python scripts/label_ingredients.py`
 - Apply labels, allergens, diet flags, relations: `uv run python scripts/enrich_db.py`
 - Draft relation seed (LLM, then review): `uv run python scripts/draft_relations.py`
-- Search from the terminal: `uv run python -m pantry_chef.search.cli --have "eggs,milk,bread" --allergy peanuts`
+- Search from the terminal: `uv run python -m pantry_chef.search.cli --have "eggs,milk,bread" --pref "sweet breakfast" --allergy peanuts [--rerank]`
+- Judge calibration: `uv run python eval/judge_calibration.py export --results eval/reports/<run>.json`, then `... score`
 - Build embeddings: `uv run python scripts/build_embeddings.py`
 - API: `uv run uvicorn pantry_chef.api.main:app --reload`
 - UI: `uv run streamlit run ui/streamlit_app.py`

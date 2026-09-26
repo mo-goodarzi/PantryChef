@@ -1,0 +1,731 @@
+[
+ {
+  "id": "b01",
+  "group": "breakfast",
+  "pantry": [
+   "egg",
+   "milk",
+   "bread"
+  ],
+  "preferences": "something sweet for breakfast",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "b02",
+  "group": "breakfast",
+  "pantry": [
+   "egg",
+   "cheddar cheese",
+   "onion",
+   "green pepper",
+   "potato"
+  ],
+  "preferences": "a hearty savory breakfast",
+  "max_minutes": 45,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "b03",
+  "group": "breakfast",
+  "pantry": [
+   "banana",
+   "egg",
+   "flour",
+   "milk",
+   "butter"
+  ],
+  "preferences": "pancakes or waffles for a weekend brunch",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "b04",
+  "group": "breakfast",
+  "pantry": [
+   "rolled oat",
+   "milk",
+   "banana",
+   "apple"
+  ],
+  "preferences": "a healthy warm breakfast",
+  "max_minutes": 20,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "b05",
+  "group": "breakfast",
+  "pantry": [
+   "egg",
+   "bacon",
+   "bread",
+   "cheddar cheese"
+  ],
+  "preferences": "a quick breakfast sandwich",
+  "max_minutes": 15,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "b06",
+  "group": "breakfast",
+  "pantry": [
+   "plain yogurt",
+   "strawberry",
+   "banana",
+   "blueberry"
+  ],
+  "preferences": "a cold breakfast smoothie",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "d01",
+  "group": "dinner",
+  "pantry": [
+   "chicken breast",
+   "garlic",
+   "lemon",
+   "rosemary",
+   "potato"
+  ],
+  "preferences": "a simple roast chicken dinner",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "d02",
+  "group": "dinner",
+  "pantry": [
+   "ground beef",
+   "onion",
+   "tomato",
+   "spaghetti",
+   "garlic"
+  ],
+  "preferences": "classic italian pasta with meat sauce",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "d03",
+  "group": "dinner",
+  "pantry": [
+   "chicken breast",
+   "rice",
+   "onion",
+   "garlic",
+   "ginger"
+  ],
+  "preferences": "something spicy and asian for a weeknight",
+  "max_minutes": 40,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "d04",
+  "group": "dinner",
+  "pantry": [
+   "salmon fillet",
+   "lemon",
+   "dill",
+   "asparagus"
+  ],
+  "preferences": "a light healthy fish dinner",
+  "max_minutes": 30,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "d05",
+  "group": "dinner",
+  "pantry": [
+   "ground beef",
+   "flour tortilla",
+   "cheddar cheese",
+   "onion",
+   "tomato",
+   "lettuce"
+  ],
+  "preferences": "mexican tacos or burritos",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "d06",
+  "group": "dinner",
+  "pantry": [
+   "pork chop",
+   "apple",
+   "onion"
+  ],
+  "preferences": "comfort food for a cold evening",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "d07",
+  "group": "dinner",
+  "pantry": [
+   "shrimp",
+   "garlic",
+   "butter",
+   "pasta",
+   "parsley"
+  ],
+  "preferences": "garlic butter seafood pasta",
+  "max_minutes": 30,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "d08",
+  "group": "dinner",
+  "pantry": [
+   "chicken thigh",
+   "coconut milk",
+   "onion",
+   "garlic",
+   "ginger"
+  ],
+  "preferences": "a creamy curry",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "d09",
+  "group": "dinner",
+  "pantry": [
+   "potato",
+   "onion",
+   "carrot",
+   "celery",
+   "ground beef"
+  ],
+  "preferences": "a filling casserole for the family",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "d10",
+  "group": "dinner",
+  "pantry": [
+   "eggplant",
+   "tomato",
+   "mozzarella cheese",
+   "parmesan cheese",
+   "garlic"
+  ],
+  "preferences": "vegetarian italian main dish",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [
+   "vegetarian"
+  ]
+ },
+ {
+  "id": "d11",
+  "group": "dinner",
+  "pantry": [
+   "black bean",
+   "corn",
+   "onion",
+   "rice",
+   "bell pepper"
+  ],
+  "preferences": "a vegan dinner bowl",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [
+   "vegan"
+  ]
+ },
+ {
+  "id": "d12",
+  "group": "dinner",
+  "pantry": [
+   "chicken breast",
+   "broccoli",
+   "garlic",
+   "ginger",
+   "rice"
+  ],
+  "preferences": "stir fry in under 30 minutes",
+  "max_minutes": 30,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "l01",
+  "group": "lunch",
+  "pantry": [
+   "bread",
+   "ham",
+   "swiss cheese",
+   "egg"
+  ],
+  "preferences": "a hot sandwich for lunch",
+  "max_minutes": 20,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "l02",
+  "group": "soup",
+  "pantry": [
+   "chicken",
+   "carrot",
+   "celery",
+   "onion"
+  ],
+  "preferences": "a comforting chicken soup",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "l03",
+  "group": "soup",
+  "pantry": [
+   "tomato",
+   "onion",
+   "garlic",
+   "basil"
+  ],
+  "preferences": "a light vegetarian tomato soup",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [
+   "vegetarian"
+  ]
+ },
+ {
+  "id": "l04",
+  "group": "soup",
+  "pantry": [
+   "potato",
+   "leek",
+   "onion",
+   "milk"
+  ],
+  "preferences": "creamy potato soup",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "l05",
+  "group": "salad",
+  "pantry": [
+   "lettuce",
+   "cucumber",
+   "tomato",
+   "feta cheese",
+   "olive"
+  ],
+  "preferences": "a fresh greek salad",
+  "max_minutes": 15,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "l06",
+  "group": "salad",
+  "pantry": [
+   "chickpea",
+   "cucumber",
+   "tomato",
+   "red onion",
+   "parsley"
+  ],
+  "preferences": "a filling salad without cooking",
+  "max_minutes": 20,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "l07",
+  "group": "side",
+  "pantry": [
+   "broccoli",
+   "garlic",
+   "parmesan cheese"
+  ],
+  "preferences": "an easy vegetable side dish",
+  "max_minutes": 30,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "l08",
+  "group": "side",
+  "pantry": [
+   "sweet potato",
+   "butter",
+   "pecan"
+  ],
+  "preferences": "a side dish for thanksgiving",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "l09",
+  "group": "lunch",
+  "pantry": [
+   "cooked chicken",
+   "celery",
+   "mayonnaise",
+   "grape"
+  ],
+  "preferences": "chicken salad for lunch",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "s01",
+  "group": "dessert",
+  "pantry": [
+   "egg",
+   "flour",
+   "butter",
+   "milk"
+  ],
+  "preferences": "a chocolate dessert",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "s02",
+  "group": "dessert",
+  "pantry": [
+   "apple",
+   "flour",
+   "butter",
+   "cinnamon"
+  ],
+  "preferences": "an apple dessert for autumn",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "s03",
+  "group": "dessert",
+  "pantry": [
+   "banana",
+   "flour",
+   "egg",
+   "butter",
+   "walnut"
+  ],
+  "preferences": "banana bread",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "s04",
+  "group": "dessert",
+  "pantry": [
+   "strawberry",
+   "cream cheese",
+   "heavy cream"
+  ],
+  "preferences": "a no-bake summer dessert",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "s05",
+  "group": "dessert",
+  "pantry": [
+   "peanut butter",
+   "egg",
+   "flour"
+  ],
+  "preferences": "cookies for kids",
+  "max_minutes": null,
+  "allergies": [
+   "peanuts"
+  ],
+  "diets": []
+ },
+ {
+  "id": "s06",
+  "group": "dessert",
+  "pantry": [
+   "flour",
+   "butter",
+   "egg",
+   "milk"
+  ],
+  "preferences": "cookies without nuts",
+  "max_minutes": null,
+  "allergies": [
+   "tree nuts",
+   "peanuts"
+  ],
+  "diets": []
+ },
+ {
+  "id": "s07",
+  "group": "dessert",
+  "pantry": [
+   "lemon",
+   "egg",
+   "butter",
+   "flour"
+  ],
+  "preferences": "something tangy and sweet",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "a01",
+  "group": "appetizer",
+  "pantry": [
+   "avocado",
+   "tomato",
+   "onion",
+   "lime",
+   "cilantro"
+  ],
+  "preferences": "a dip for a party",
+  "max_minutes": 15,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "a02",
+  "group": "appetizer",
+  "pantry": [
+   "cream cheese",
+   "jalapeno pepper",
+   "bacon",
+   "cheddar cheese"
+  ],
+  "preferences": "game day snacks",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "a03",
+  "group": "appetizer",
+  "pantry": [
+   "mushroom",
+   "cream cheese",
+   "garlic",
+   "parmesan cheese"
+  ],
+  "preferences": "a vegetarian finger food",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [
+   "vegetarian"
+  ]
+ },
+ {
+  "id": "a04",
+  "group": "drink",
+  "pantry": [
+   "strawberry",
+   "banana",
+   "orange",
+   "plain yogurt"
+  ],
+  "preferences": "a fruity drink",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "a05",
+  "group": "drink",
+  "pantry": [
+   "lemon",
+   "mint",
+   "sugar"
+  ],
+  "preferences": "a refreshing summer drink",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "c01",
+  "group": "cuisine",
+  "pantry": [
+   "chicken breast",
+   "plain yogurt",
+   "onion",
+   "garlic",
+   "ginger",
+   "tomato"
+  ],
+  "preferences": "indian food",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "c02",
+  "group": "cuisine",
+  "pantry": [
+   "rice",
+   "egg",
+   "green onion",
+   "frozen pea",
+   "carrot"
+  ],
+  "preferences": "chinese fried rice",
+  "max_minutes": 30,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "c03",
+  "group": "cuisine",
+  "pantry": [
+   "ground beef",
+   "potato",
+   "onion",
+   "carrot"
+  ],
+  "preferences": "irish or british comfort food",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "c04",
+  "group": "cuisine",
+  "pantry": [
+   "pasta",
+   "egg",
+   "bacon",
+   "parmesan cheese"
+  ],
+  "preferences": "authentic italian carbonara",
+  "max_minutes": 30,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "c05",
+  "group": "cuisine",
+  "pantry": [
+   "chicken thigh",
+   "lime",
+   "garlic",
+   "cilantro",
+   "jalapeno"
+  ],
+  "preferences": "thai or vietnamese flavors",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "r01",
+  "group": "restriction",
+  "pantry": [
+   "flour",
+   "egg",
+   "milk",
+   "butter",
+   "sugar"
+  ],
+  "preferences": "a birthday cake",
+  "max_minutes": null,
+  "allergies": [
+   "milk"
+  ],
+  "diets": []
+ },
+ {
+  "id": "r02",
+  "group": "restriction",
+  "pantry": [
+   "shrimp",
+   "rice",
+   "garlic",
+   "onion"
+  ],
+  "preferences": "dinner that avoids shellfish",
+  "max_minutes": null,
+  "allergies": [
+   "shellfish"
+  ],
+  "diets": []
+ },
+ {
+  "id": "r03",
+  "group": "restriction",
+  "pantry": [
+   "rice",
+   "chicken breast",
+   "broccoli",
+   "soy sauce"
+  ],
+  "preferences": "gluten-free dinner",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [
+   "gluten_free"
+  ]
+ },
+ {
+  "id": "v01",
+  "group": "vague",
+  "pantry": [
+   "egg"
+  ],
+  "preferences": "anything",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "v02",
+  "group": "vague",
+  "pantry": [
+   "potato",
+   "cheddar cheese"
+  ],
+  "preferences": "something tasty",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "v03",
+  "group": "vague",
+  "pantry": [
+   "chicken breast",
+   "spinach",
+   "mushroom",
+   "cream"
+  ],
+  "preferences": "surprise me with something fancy",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ }
+]

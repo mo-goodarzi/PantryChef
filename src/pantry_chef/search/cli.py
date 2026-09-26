@@ -1,9 +1,13 @@
-"""Find recipes from the terminal (Phase 3: filters + coverage + verifier, no LLM).
+"""Find recipes from the terminal.
+
+Pipeline: filters + coverage -> semantic match to --pref (local, free) -> verifier
+-> optional LLM rerank (--rerank; needs OPENAI_API_KEY, adds ~3 s).
 
 Usage:
     uv run python -m pantry_chef.search.cli --have "egg,milk,flour,butter"
+    uv run python -m pantry_chef.search.cli --have "egg,milk,bread" --pref "sweet breakfast"
     uv run python -m pantry_chef.search.cli --have "egg,milk,bread" --allergy peanuts \\
-        --diet vegetarian --max-minutes 30 --show-failed
+        --diet vegetarian --max-minutes 30 --pref "something savory" --rerank --show-failed
 """
 
 import argparse
@@ -19,7 +23,7 @@ from pantry_chef.models.query import Diet, RecipeQuery
 from pantry_chef.models.recipe import Candidate
 from pantry_chef.models.verification import VerificationResult, VerificationStatus
 from pantry_chef.observability import configure_logging
-from pantry_chef.search.engine import pantry_names, search
+from pantry_chef.search.engine import pantry_names, search, semantic_from_settings
 
 
 def split_list(text: str | None) -> list[str]:
@@ -32,6 +36,7 @@ def build_query(args: argparse.Namespace) -> RecipeQuery:
         allergens |= parse_user_allergy(allergy)
     return RecipeQuery(
         ingredients=split_list(args.have),
+        preferences_text=args.pref or "",
         max_minutes=args.max_minutes,
         meal_type=args.meal_type,
         cuisine=args.cuisine,
@@ -53,6 +58,8 @@ def describe(candidate: Candidate, pantry: set[str]) -> list[str]:
         f"{candidate.avg_rating:.1f}* ({candidate.n_ratings})" if candidate.n_ratings else "unrated"
     )
     lines = [f"{candidate.name}  | {candidate.minutes} min | {rating} | id {candidate.recipe_id}"]
+    if candidate.rerank_reason:
+        lines.append(f"     why: {candidate.rerank_reason}")
     lines.append(f"     uses: {', '.join(uses) or '-'}")
     if staples:
         lines.append(f"     staples: {', '.join(staples)}")
@@ -65,6 +72,9 @@ def main() -> None:
     settings = get_settings()
     parser = argparse.ArgumentParser(description="Find recipes you can make.")
     parser.add_argument("--have", required=True, help="comma-separated pantry ingredients")
+    parser.add_argument("--pref", help='what you feel like, e.g. "quick spicy dinner"')
+    parser.add_argument("--no-semantic", action="store_true", help="ignore --pref wording")
+    parser.add_argument("--rerank", action="store_true", help="let the LLM pick the final top")
     parser.add_argument("--allergy", help="comma-separated, e.g. peanuts,milk,shellfish")
     parser.add_argument("--diet", help="comma-separated: vegetarian, vegan, gluten-free")
     parser.add_argument("--exclude", help="comma-separated ingredients to avoid")
@@ -84,19 +94,27 @@ def main() -> None:
         sys.exit(f"error: {error}")
 
     conn = connect(args.db)
+    use_semantic = bool(args.pref) and not args.no_semantic and settings.chroma_path.exists()
+    semantic = semantic_from_settings(settings) if use_semantic else None
     start = time.perf_counter()
-    result = search(conn, query, limit=args.candidates)
+    result = search(conn, query, limit=args.candidates, semantic=semantic)
     verified: list[tuple[Candidate, VerificationResult]] = [
         (c, verify(c, query)) for c in result.candidates
     ]
+    passed = [c for c, v in verified if v.status is VerificationStatus.PASS]
+    n_passed = len(passed)
+    if args.rerank and passed:
+        from pantry_chef.llm.factory import create_llm
+        from pantry_chef.search.rerank import LLMReranker
+
+        passed = LLMReranker(create_llm(settings), conn).rerank(query, passed[:20], args.top)
     elapsed = time.perf_counter() - start
 
     pantry = set(pantry_names(query))
-    passed = [c for c, v in verified if v.status is VerificationStatus.PASS]
     print(
         f"Pantry: {', '.join(sorted(pantry))}\n"
         f"{result.matched_recipes:,} recipes use your ingredients and pass the filters; "
-        f"{len(passed)} of the top {len(verified)} pass verification ({elapsed:.2f}s)\n"
+        f"{n_passed} of the top {len(verified)} pass verification ({elapsed:.2f}s)\n"
     )
     for number, candidate in enumerate(passed[: args.top], start=1):
         lines = describe(candidate, pantry)

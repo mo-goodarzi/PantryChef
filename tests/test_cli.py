@@ -43,6 +43,7 @@ def test_cli_rejects_unknown_allergy(monkeypatch, capsys, db_path):
 def test_build_query_parses_lists_and_aliases():
     args = cli.argparse.Namespace(
         have="eggs, milk,,bread",
+        pref="sweet breakfast",
         allergy="shellfish, Peanut",
         diet="gluten-free",
         exclude="mushrooms",
@@ -54,3 +55,4 @@ def test_build_query_parses_lists_and_aliases():
     assert query.ingredients == ["eggs", "milk", "bread"]
     assert {a.value for a in query.required_allergen_free} == {"crustaceans", "molluscs", "peanuts"}
     assert [d.value for d in query.diets] == ["gluten_free"]
+    assert query.preferences_text == "sweet breakfast"
