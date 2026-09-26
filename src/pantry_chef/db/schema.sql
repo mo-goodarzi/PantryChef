@@ -20,9 +20,12 @@ CREATE TABLE ingredients (
   id INTEGER PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,         -- as in dataset, lowercased/trimmed
   canonical_name TEXT NOT NULL,      -- after normalization; equals name until Phase 2
-  category TEXT,
+  category TEXT,                     -- NULL until labeled (Phase 2)
   is_staple INTEGER DEFAULT 0,
-  quantity_matters INTEGER DEFAULT 0
+  quantity_matters INTEGER DEFAULT 0,
+  contains_meat INTEGER,             -- meat/poultry or made from it (broth, gelatin)
+  contains_fish INTEGER,             -- fish/seafood or made from it (fish sauce)
+  animal_product INTEGER             -- any animal-derived ingredient (for vegan)
 );
 
 CREATE TABLE recipe_ingredients (
