@@ -34,4 +34,6 @@ class Candidate(BaseModel):
     avg_rating: float | None = None
     n_ratings: int = 0
     ingredient_score: float
+    semantic_score: float | None = None
     final_score: float
+    rerank_reason: str | None = None

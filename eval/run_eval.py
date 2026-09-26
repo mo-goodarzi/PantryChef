@@ -15,11 +15,12 @@ from pantry_chef.evaluation.judge import CachedJudge
 from pantry_chef.evaluation.search_eval import evaluate_variant, summarize, write_report
 from pantry_chef.llm.factory import create_llm
 from pantry_chef.observability import configure_logging
-from pantry_chef.search.engine import SearchOptions, find_recipes
+from pantry_chef.search.engine import SearchOptions, find_recipes, semantic_from_settings
 
 ROOT = Path(__file__).parent
 VARIANTS = {
     "coverage": SearchOptions(),
+    "semantic": SearchOptions(use_semantic=True),
 }
 
 
@@ -40,12 +41,19 @@ def main() -> None:
     conn = connect(args.db)
     cases = load_cases(args.cases)[: args.limit]
     judge = CachedJudge(create_llm(settings), args.judge_cache)
+    variants = args.variants.split(",")
+    needs_semantic = any(VARIANTS[v].use_semantic for v in variants)
+    semantic = semantic_from_settings(settings) if needs_semantic else None
 
     all_results = {}
-    for variant in args.variants.split(","):
+    for variant in variants:
         options = VARIANTS[variant]
         all_results[variant] = evaluate_variant(
-            conn, cases, variant, lambda q, o=options: find_recipes(conn, q, o), judge
+            conn,
+            cases,
+            variant,
+            lambda q, o=options: find_recipes(conn, q, o, semantic=semantic),
+            judge,
         )
         s = summarize(all_results[variant])
         print(

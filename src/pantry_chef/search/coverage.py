@@ -28,6 +28,12 @@ class CoverageRow:
     n_ratings: int
     ingredient_score: float
     weighted_rating: float
+    semantic_score: float | None = None  # set by the semantic step (0..1 within the pool)
+    final_score: float | None = None  # set by the semantic step; else = ingredient_score
+
+    def sort_key(self) -> tuple:
+        final = self.final_score if self.final_score is not None else self.ingredient_score
+        return (-final, -self.have_key, -self.weighted_rating, self.recipe_id)
 
 
 def ingredient_score(have_key: int, total_key: int) -> float:
@@ -67,9 +73,9 @@ def rank_by_coverage(
     pantry: list[str],
     conditions: list[str],
     params: dict[str, object],
-    limit: int,
+    limit: int | None = None,
 ) -> tuple[list[CoverageRow], int]:
-    """Top `limit` recipes by coverage, and how many recipes passed the filters.
+    """Recipes sorted by coverage (the first `limit`, or all), and how many passed filters.
 
     `pantry` must already be canonical names.
     """
@@ -94,5 +100,5 @@ def rank_by_coverage(
         )
         for row in rows
     ]
-    ranked.sort(key=lambda r: (-r.ingredient_score, -r.have_key, -r.weighted_rating, r.recipe_id))
+    ranked.sort(key=CoverageRow.sort_key)
     return ranked[:limit], len(rows)
