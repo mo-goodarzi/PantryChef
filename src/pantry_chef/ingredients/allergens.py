@@ -81,6 +81,7 @@ RULES: dict[Allergen, AllergenRule] = {
             "alfredo",
             "bechamel",
             "white chocolate",
+            "creamer",
         ),
         exceptions=(
             "peanut butter",
@@ -107,7 +108,9 @@ RULES: dict[Allergen, AllergenRule] = {
             "coconut yogurt",
             "cream soda",
         ),
-        free_from=("dairy-free", "dairy free", "non-dairy", "nondairy", "milk-free", "vegan"),
+        # "non-dairy" is NOT a free-from label: US non-dairy creamers and whipped toppings
+        # usually contain casein (a milk protein).
+        free_from=("dairy-free", "dairy free", "milk-free", "vegan"),
     ),
     Allergen.EGGS: AllergenRule(
         keywords=(

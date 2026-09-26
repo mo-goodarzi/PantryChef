@@ -15,6 +15,8 @@ from pantry_chef.ingredients.diet import detect_meat
         "boneless skinless chicken breasts",
         "italian sausage",
         "beef bouillon cubes",
+        "miniature marshmallows",
+        "gummy bears",
     ],
 )
 def test_meat(name):
@@ -35,6 +37,8 @@ def test_meat(name):
         "steak sauce",
         "soy chorizo",
         "vegetable broth",
+        "marshmallow creme",
+        "vegan marshmallows",
     ],
 )
 def test_not_meat(name):

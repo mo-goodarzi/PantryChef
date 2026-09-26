@@ -93,6 +93,10 @@ def test_no_missed_allergens_in_most_common_ingredients(name, expected):
         ("gluten-free flour", set()),
         ("gluten free all-purpose flour", set()),
         ("dairy-free margarine", set()),
+        # "non-dairy" creamers and toppings usually contain casein
+        ("non-dairy powdered coffee creamer", {M}),
+        ("non-dairy whipped topping", {M}),
+        ("french vanilla coffee creamer", {M}),
         ("vegan mayonnaise", set()),
         ("egg replacer", set()),
         # qualifiers kept on the original name
