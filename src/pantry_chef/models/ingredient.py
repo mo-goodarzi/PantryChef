@@ -23,9 +23,6 @@ class Category(StrEnum):
 class IngredientLabel(BaseModel):
     name: str = Field(description="The ingredient name exactly as given in the input.")
     category: Category
-    quantity_matters: bool = Field(
-        description="True if the amount on hand decides whether the dish can be made."
-    )
     allergens: list[Allergen] = Field(
         description="EU allergens the ingredient typically contains, including hidden ones."
     )
@@ -36,6 +33,18 @@ class IngredientLabel(BaseModel):
 
 class IngredientLabelBatch(BaseModel):
     labels: list[IngredientLabel]
+
+
+class QuantityLabel(BaseModel):
+    name: str = Field(description="The ingredient name exactly as given in the input.")
+    quantity_matters: bool = Field(
+        description="True if people often have too little of it for a recipe, so it is "
+        "worth asking the user how much they have."
+    )
+
+
+class QuantityLabelBatch(BaseModel):
+    labels: list[QuantityLabel]
 
 
 class Substitute(BaseModel):

@@ -6,23 +6,24 @@ from pantry_chef.db.connection import connect
 from pantry_chef.db.loader import build_database
 from pantry_chef.ingredients.allergens import Allergen
 from pantry_chef.ingredients.enrich import combine, enrich_database
-from pantry_chef.models.ingredient import Category, IngredientLabel
+from pantry_chef.models.ingredient import Category, IngredientLabel, QuantityLabel
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
-def label(
-    name, category=Category.PRODUCE, allergens=(), meat=False, fish=False, animal=False, qty=True
-):
+def label(name, category=Category.PRODUCE, allergens=(), meat=False, fish=False, animal=False):
     return IngredientLabel(
         name=name,
         category=category,
-        quantity_matters=qty,
         allergens=list(allergens),
         contains_meat=meat,
         contains_fish=fish,
         animal_product=animal,
     )
+
+
+def qty(name, matters=True):
+    return QuantityLabel(name=name, quantity_matters=matters)
 
 
 # --- combine(): one ingredient -------------------------------------------------------
@@ -61,8 +62,17 @@ def test_seafood_allergen_means_contains_fish():
 
 
 def test_staples_are_never_key_and_quantity_never_matters():
-    facts = combine("salt", label("salt", Category.SPICE, qty=True))
+    facts = combine("salt", label("salt", Category.SPICE), qty("salt", True))
     assert facts.is_staple and not facts.is_key and not facts.quantity_matters
+
+
+def test_quantity_matters_comes_from_the_quantity_label():
+    assert combine("eggs", label("eggs"), qty("eggs", True)).quantity_matters
+    assert not combine("flour", label("flour"), qty("flour", False)).quantity_matters
+
+
+def test_quantity_does_not_matter_without_a_quantity_label():
+    assert not combine("eggs", label("eggs"), None).quantity_matters
 
 
 def test_flour_is_key_not_staple():
@@ -150,6 +160,17 @@ def test_chicken_recipe_is_not_vegetarian(conn):
         "SELECT is_vegetarian FROM recipes WHERE name = 'thai coconut chicken soup'"
     ).fetchone()
     assert soups["is_vegetarian"] == 0
+
+
+def test_quantity_labels_are_written_to_ingredients(conn):
+    counts = enrich_database(conn, all_labels(conn), {"eggs": qty("eggs"), "salt": qty("salt")})
+    rows = dict(
+        conn.execute(
+            "SELECT name, quantity_matters FROM ingredients WHERE name IN ('eggs', 'salt', 'milk')"
+        ).fetchall()
+    )
+    assert rows == {"eggs": 1, "salt": 0, "milk": 0}  # salt is a staple
+    assert counts["quantity_matters"] == 1
 
 
 def test_key_ingredients_and_staples(conn):

@@ -1,6 +1,6 @@
 ---
 name: ingredient_labeling
-version: 1
+version: 2
 ---
 You label cooking ingredients for a recipe assistant that must keep users with food
 allergies safe. For EACH ingredient in the input list, return one label. Copy the
@@ -17,12 +17,6 @@ ingredient name exactly as given, including spelling and punctuation.
 - sweetener: sugars, honey, syrups, molasses, sweeteners, chocolate chips
 - liquid: water, juices, alcohol, coffee, tea, soda
 - other: anything else (baking powder, yeast, gelatin, food coloring, ice)
-
-## quantity_matters
-true when the amount on hand decides whether the dish can be made: eggs, meat, fish,
-pasta, rice, flour, butter, milk, cheese, main vegetables and fruit.
-false for seasonings, spices, dried herbs, condiments, small flavorings, garnishes,
-cooking oil, water, ice, leavening.
 
 ## allergens (EU list of 14; use only these codes)
 gluten, crustaceans, eggs, fish, peanuts, soy, milk, tree_nuts, celery, mustard,

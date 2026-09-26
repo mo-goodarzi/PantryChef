@@ -16,7 +16,7 @@ from pantry_chef.ingredients.diet import detect_meat
 from pantry_chef.ingredients.normalize import normalize
 from pantry_chef.ingredients.relations import load_seed
 from pantry_chef.ingredients.staples import is_staple
-from pantry_chef.models.ingredient import Category, IngredientLabel
+from pantry_chef.models.ingredient import Category, IngredientLabel, QuantityLabel
 
 # Ingredients in these categories are "key": missing one means the recipe can't be made.
 KEY_CATEGORIES = frozenset({Category.PROTEIN, Category.DAIRY, Category.GRAIN, Category.PRODUCE})
@@ -37,8 +37,10 @@ class IngredientFacts:
     animal_product: bool
 
 
-def combine(name: str, label: IngredientLabel | None) -> IngredientFacts:
-    """Final facts for one ingredient from its rules and (optional) LLM label."""
+def combine(
+    name: str, label: IngredientLabel | None, quantity_label: QuantityLabel | None = None
+) -> IngredientFacts:
+    """Final facts for one ingredient from its rules and (optional) LLM labels."""
     rule_allergens = detect_allergens(name)
     llm_allergens = set(label.allergens) if label else set()
     allergen_sources = {a: "rule" for a in rule_allergens}
@@ -62,7 +64,7 @@ def combine(name: str, label: IngredientLabel | None) -> IngredientFacts:
         canonical_name=normalize(name),
         category=category,
         is_staple=staple,
-        quantity_matters=bool(label and label.quantity_matters) and not staple,
+        quantity_matters=bool(quantity_label and quantity_label.quantity_matters) and not staple,
         is_key=is_key,
         allergen_sources=allergen_sources,
         contains_meat=contains_meat,
@@ -180,12 +182,17 @@ def write_relations(conn: sqlite3.Connection, seed: dict[str, dict]) -> int:
 def enrich_database(
     conn: sqlite3.Connection,
     labels: dict[str, IngredientLabel],
+    quantity_labels: dict[str, QuantityLabel] | None = None,
     relation_seed: dict[str, dict] | None = None,
 ) -> dict:
     """Apply rules + labels to every ingredient, then derive recipe data. Returns counts."""
     seed = load_seed() if relation_seed is None else relation_seed
     rows = conn.execute("SELECT id, name FROM ingredients").fetchall()
-    facts = {row["id"]: combine(row["name"], labels.get(row["name"])) for row in rows}
+    quantity_labels = quantity_labels or {}
+    facts = {
+        row["id"]: combine(row["name"], labels.get(row["name"]), quantity_labels.get(row["name"]))
+        for row in rows
+    }
     with conn:
         write_ingredient_facts(conn, facts)
         derive_recipe_data(conn)
@@ -195,6 +202,7 @@ def enrich_database(
         "ingredients": len(facts),
         "labeled": sum(f.category is not None for f in facts.values()),
         "staples": sum(f.is_staple for f in facts.values()),
+        "quantity_matters": sum(f.quantity_matters for f in facts.values()),
         "with_allergens": sum(bool(f.allergen_sources) for f in facts.values()),
         "llm_only_allergens": sum(
             source == "llm" for f in facts.values() for source in f.allergen_sources.values()
