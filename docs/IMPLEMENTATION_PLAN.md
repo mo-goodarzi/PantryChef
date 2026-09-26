@@ -54,9 +54,10 @@ description, ingredients, n_ingredients`.
 - `nutrition` = `[calories, total_fat_PDV, sugar_PDV, sodium_PDV, protein_PDV,
   sat_fat_PDV, carbs_PDV]`.
 - `minutes` has outliers (0 and extremely large values).
-- **No ingredient quantities.** Quantities for key ingredients are estimated on demand
-  (Phase 8, only if no quantity source is found in Phase 1) and cached; they are always
-  marked as estimates.
+- **No ingredient quantities.** Decided in Phase 1 (see `docs/decisions.md`): counts for
+  counted ingredients (eggs, garlic cloves, ...) and servings come from the irkaal dataset
+  (`quantity_source='dataset'`); all other quantities are estimated on demand in Phase 8,
+  cached, and always marked as estimates.
 - Some names/descriptions are empty.
 
 **Download:** manual from Kaggle, or `kaggle datasets download -d
@@ -64,7 +65,7 @@ shuyangli94/food-com-recipes-and-user-interactions -f RAW_recipes.csv -p data/ra
 (requires the user's Kaggle API key). The user does this step; code must never
 hard-code credentials.
 
-**Decision to make first in Phase 1:** the Kaggle dataset `irkaal/foodcom-recipes-and-reviews`
+**Decided in Phase 1:** the Kaggle dataset `irkaal/foodcom-recipes-and-reviews`
 (~500k recipes) includes ingredient quantities. Inspect a sample; if its quantities are
 usable, consider it as an additional or replacement source. This is the first task of
 Phase 1. Record the decision in `docs/decisions.md`.
@@ -466,8 +467,8 @@ ingredients.
    + description). Score = overlap of the recipe's key ingredients mentioned + LLM judge
    ("same dish? yes/no + evidence"). Pick the best video above threshold; if none, return
    a YouTube search link and say no verified match was found.
-3. **Quantity estimation** (`agents/quantity_estimator.py`; only if Phase 1 kept Food.com
-   without quantities): for candidate recipes only,
+3. **Quantity estimation** (`agents/quantity_estimator.py`; for ingredients without a
+   dataset count, see Phase 1 decision): for candidate recipes only,
    LLM estimates amounts of key ingredients for the recipe's default servings (from name,
    steps, description); store in `recipe_ingredients` with `quantity_source='llm_estimate'`.
    The verifier treats estimates with tolerance (e.g. ±25%).
