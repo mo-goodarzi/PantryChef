@@ -6,7 +6,7 @@ A multi-agent recipe assistant. Tell it what you have at home ("eggs, milk, toas
 it returns safe, suitable recipes you can actually make, checked against your allergies
 and diet, plus an optional matching YouTube video.
 
-**Status:** early development (Phase 0: project setup). See
+**Status:** early development (Phase 1: data ingestion). See
 [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for the design and build order.
 
 ## Setup
@@ -21,7 +21,15 @@ cp .env.example .env   # fill in keys when needed
 
 Download the Kaggle dataset
 [Food.com Recipes and Interactions](https://www.kaggle.com/datasets/shuyangli94/food-com-recipes-and-user-interactions)
-into `data/raw/`. Data files are never committed.
+into `data/raw/`, then build the database (about 30 s):
+
+```bash
+uv run python scripts/build_db.py            # full build -> data/processed/pantry.db
+uv run python scripts/build_db.py --limit 1000   # quick development build
+uv run python scripts/inspect_data.py        # data quality report
+```
+
+Data files are never committed.
 
 ## Development
 

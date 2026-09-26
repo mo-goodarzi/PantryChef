@@ -6,7 +6,9 @@ repos:
         args: ["--maxkb=1000"]
       - id: detect-private-key
       - id: end-of-file-fixer
+        exclude: ^tests/fixtures/
       - id: trailing-whitespace
+        exclude: ^tests/fixtures/
       - id: check-yaml
       - id: check-toml
   - repo: https://github.com/astral-sh/ruff-pre-commit
