@@ -2,7 +2,9 @@
 
 1. Export a sample of judge verdicts from an eval run (spread across scores 1-5):
        uv run python eval/judge_calibration.py export --results eval/reports/search_<stamp>.json
-2. Fill in `human_score` (1-5, same rubric as the judge) in the CSV.
+2. Fill in `human_score` (1-5, rubric in src/pantry_chef/llm/prompts/preference_judge.md)
+   in the CSV. The judge's scores are hidden in judge_calibration_key.json; do not open it
+   before you finish.
 3. Score agreement:
        uv run python eval/judge_calibration.py score
 """

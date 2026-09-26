@@ -1,6 +1,11 @@
-"""Check the LLM judge against a human: export a sample, then score agreement."""
+"""Check the LLM judge against a human: export a blind sample, then score agreement.
+
+The reviewer's CSV does not show the judge's score or reason (so they cannot anchor on
+it); those are kept in a separate key file and joined back by row number.
+"""
 
 import csv
+import json
 import random
 import sqlite3
 from collections import defaultdict
@@ -11,6 +16,7 @@ from pantry_chef.evaluation.cases import SearchCase
 from pantry_chef.evaluation.metrics import GOOD_SCORE
 
 COLUMNS = [
+    "row",
     "case_id",
     "wish",
     "pantry",
@@ -20,11 +26,14 @@ COLUMNS = [
     "cuisine",
     "description",
     "ingredients",
-    "judge_score",
-    "judge_reason",
     "human_score",
     "notes",
 ]
+
+
+def key_path(csv_path: Path) -> Path:
+    """Where the hidden judge scores for a review CSV are stored."""
+    return csv_path.with_name(csv_path.stem + "_key.json")
 
 
 def sample_judgments(results: dict, per_score: int, seed: int = 42) -> list[dict]:
@@ -49,14 +58,18 @@ def sample_judgments(results: dict, per_score: int, seed: int = 42) -> list[dict
 def export_sample(
     conn: sqlite3.Connection, results: dict, cases: list[SearchCase], out: Path, per_score: int
 ) -> int:
+    """Write the blind review CSV and its key file. Returns the number of rows."""
     by_id = {case.id: case for case in cases}
     sample = sample_judgments(results, per_score)
+    random.Random(0).shuffle(sample)  # rows must not be grouped by judge score
     summaries = recipe_summaries(conn, [s["recipe_id"] for s in sample])
-    rows = []
-    for item in sample:
+
+    rows, key = [], {}
+    for number, item in enumerate(sample, start=1):
         case, summary = by_id[item["case_id"]], summaries[item["recipe_id"]]
         rows.append(
             {
+                "row": number,
                 "case_id": case.id,
                 "wish": case.preferences,
                 "pantry": ", ".join(case.pantry),
@@ -66,28 +79,31 @@ def export_sample(
                 "cuisine": summary["cuisine"],
                 "description": summary["description"][:200],
                 "ingredients": ", ".join(summary["ingredients"]),
-                "judge_score": item["judge_score"],
-                "judge_reason": item["judge_reason"],
                 "human_score": "",
                 "notes": "",
             }
         )
-    rng = random.Random(0)
-    rng.shuffle(rows)  # so the reviewer does not see judge scores in order
+        key[str(number)] = {
+            "judge_score": item["judge_score"],
+            "judge_reason": item["judge_reason"],
+        }
+
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=COLUMNS)
         writer.writeheader()
         writer.writerows(rows)
+    key_path(out).write_text(json.dumps(key, indent=1) + "\n")
     return len(rows)
 
 
 def agreement(path: Path) -> dict:
     """Agreement between judge and human on rows where the human filled in a score."""
+    key = json.loads(key_path(path).read_text())
     rows = [r for r in csv.DictReader(path.open()) if r["human_score"].strip()]
     if not rows:
         return {"rated": 0}
-    pairs = [(int(r["judge_score"]), int(r["human_score"])) for r in rows]
+    pairs = [(int(key[r["row"]]["judge_score"]), int(r["human_score"])) for r in rows]
     good = [(j >= GOOD_SCORE) == (h >= GOOD_SCORE) for j, h in pairs]
     return {
         "rated": len(pairs),
