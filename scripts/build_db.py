@@ -23,6 +23,9 @@ def print_summary(summary: BuildSummary) -> None:
     print(f"  unique tags           {summary.n_tags:>10,}")
     print(f"  recipe-tags           {summary.n_recipe_tags:>10,}")
     print(f"  recipes with reviews  {summary.n_recipes_with_stats:>10,}")
+    print(f"  recipes with servings {summary.n_recipes_with_servings:>10,}")
+    print(f"  counted quantities    {summary.n_counted_quantities:>10,}")
+    print(f"  recipes with counts   {summary.n_recipes_with_counts:>10,}")
     m = summary.minutes
     print(
         f"  minutes: p10={m['p10']:.0f} median={m['median']:.0f} p90={m['p90']:.0f} "
@@ -36,6 +39,8 @@ def main() -> None:
     parser.add_argument("--csv", type=Path, default=settings.raw_recipes_csv)
     parser.add_argument("--interactions", type=Path, default=settings.raw_interactions_csv)
     parser.add_argument("--no-interactions", action="store_true", help="skip recipe_stats")
+    parser.add_argument("--irkaal", type=Path, default=settings.irkaal_recipes_parquet)
+    parser.add_argument("--no-irkaal", action="store_true", help="skip servings and counts")
     parser.add_argument("--db", type=Path, default=settings.db_path)
     parser.add_argument("--limit", type=int, default=None, help="only load the first N rows")
     args = parser.parse_args()
@@ -46,6 +51,7 @@ def main() -> None:
             recipes_csv=args.csv,
             db_path=args.db,
             interactions_csv=None if args.no_interactions else args.interactions,
+            irkaal_parquet=None if args.no_irkaal else args.irkaal,
             limit=args.limit,
         )
     print_summary(summary)

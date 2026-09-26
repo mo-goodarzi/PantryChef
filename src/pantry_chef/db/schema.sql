@@ -7,6 +7,7 @@ CREATE TABLE recipes (
   minutes INTEGER,                   -- raw value; outliers (0, > 24h) are filtered at search time
   n_steps INTEGER,
   n_ingredients INTEGER,
+  servings REAL,                     -- from irkaal dataset; NULL when unknown
   steps_json TEXT NOT NULL,          -- JSON array of strings
   submitted TEXT,
   calories REAL, total_fat_pdv REAL, sugar_pdv REAL, sodium_pdv REAL,
@@ -32,8 +33,8 @@ CREATE TABLE recipe_ingredients (
   is_key INTEGER,
   is_optional INTEGER DEFAULT 0,
   quantity REAL,
-  unit TEXT,
-  quantity_source TEXT,              -- NULL | 'dataset' | 'llm_estimate'
+  unit TEXT,                         -- 'count' for dataset quantities
+  quantity_source TEXT,              -- NULL | 'dataset' (irkaal counts) | 'llm_estimate'
   PRIMARY KEY (recipe_id, ingredient_id)
 );
 
