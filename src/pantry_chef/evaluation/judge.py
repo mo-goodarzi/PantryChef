@@ -12,29 +12,9 @@ from pydantic import BaseModel, Field
 from pantry_chef.evaluation.cases import SearchCase
 from pantry_chef.llm.factory import StructuredLLM
 from pantry_chef.llm.prompt_loader import load_prompt
+from pantry_chef.search.text import useful_tags
 
 PROMPT_NAME = "preference_judge"
-
-# Tags that describe the site's taxonomy, not the dish; removed to keep prompts short.
-GENERIC_TAGS = frozenset(
-    {
-        "time-to-make",
-        "course",
-        "preparation",
-        "main-ingredient",
-        "cuisine",
-        "occasion",
-        "dietary",
-        "equipment",
-        "number-of-servings",
-        "taste-mood",
-        "low-in-something",
-        "high-in-something",
-        "free-of-something",
-        "3-steps-or-less",
-        "5-ingredients-or-less",
-    }
-)
 
 
 class Judgment(BaseModel):
@@ -55,15 +35,16 @@ def recipe_summaries(conn: sqlite3.Connection, recipe_ids: list[int]) -> dict[in
             "SELECT name, minutes, meal_type, cuisine, description FROM recipes WHERE id = ?",
             (recipe_id,),
         ).fetchone()
-        tags = [
-            r["name"]
-            for r in conn.execute(
-                "SELECT t.name FROM recipe_tags rt JOIN tags t ON t.id = rt.tag_id "
-                "WHERE rt.recipe_id = ?",
-                (recipe_id,),
-            )
-            if r["name"] not in GENERIC_TAGS
-        ]
+        tags = useful_tags(
+            [
+                r["name"]
+                for r in conn.execute(
+                    "SELECT t.name FROM recipe_tags rt JOIN tags t ON t.id = rt.tag_id "
+                    "WHERE rt.recipe_id = ?",
+                    (recipe_id,),
+                )
+            ]
+        )
         ingredients = [
             r["name"]
             for r in conn.execute(
