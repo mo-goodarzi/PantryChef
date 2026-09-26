@@ -243,8 +243,8 @@ Tasks
 2. `ingredients/staples.py`: configurable staples list (salt, pepper, water, oil,
    olive oil, sugar, flour? — decide and document; default: salt, black pepper, water,
    vegetable oil, olive oil, sugar).
-3. `scripts/label_ingredients.py`: rules and `ingr_map.pkl` first; label only the
-   remaining ingredients with an LLM in batches
+3. `scripts/label_ingredients.py`: label every ingredient with an LLM in batches
+   (category, quantity_matters and diet fields cannot come from rules)
    (structured output): canonical_name, category, quantity_matters, allergens.
    - Process by frequency; cache results to a JSON file so reruns are free.
    - Rule-based allergen keywords run first (milk, cheese, butter, cream → milk;
@@ -347,7 +347,8 @@ Acceptance criteria
    - `check_diet`: diet flags + ingredient categories
    - `check_preferences`: LLM judge on time/cuisine/taste; soft (affects notes, can fail
      only on explicit constraints like max time)
-   - `suggest_substitutions`: from `ingredient_relation` for missing non-key items
+   - `suggest_substitutions`: from `ingredient_relation` for missing non-key items;
+     every substitute is re-checked for allergens and diet (substitutes can change them)
 3. **Decision logic:** combine checks → `pass | adapt | fail`, with `FailureReason`s.
 4. **Feedback builder:** turn failures into `RecipeQuery` updates for the finder
    (exclude ingredients, exclude recipe ids, stricter filters).
