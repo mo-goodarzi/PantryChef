@@ -49,3 +49,16 @@ def percentile(values: list[float], p: float) -> float:
     ordered = sorted(values)
     index = max(0, min(len(ordered) - 1, round(p / 100 * len(ordered) + 0.5) - 1))
     return ordered[index]
+
+
+def intra_list_similarity(vectors: list) -> float | None:
+    """Mean pairwise cosine similarity of a result list (unit vectors); lower = more varied.
+
+    None when fewer than two results have a vector.
+    """
+    pairs = [
+        float(sum(a * b for a, b in zip(u, v, strict=True)))
+        for i, u in enumerate(vectors)
+        for v in vectors[i + 1 :]
+    ]
+    return sum(pairs) / len(pairs) if pairs else None

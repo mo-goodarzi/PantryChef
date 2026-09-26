@@ -100,3 +100,11 @@ def test_repository_eval_cases_are_valid():
     assert len(cases) == 50
     for case in cases:
         case.to_query()  # allergy words must all be known
+
+
+def test_intra_list_similarity():
+    from pantry_chef.evaluation.metrics import intra_list_similarity
+
+    assert intra_list_similarity([[1.0, 0.0], [1.0, 0.0]]) == 1.0
+    assert intra_list_similarity([[1.0, 0.0], [0.0, 1.0], [1.0, 0.0]]) == pytest.approx(1 / 3)
+    assert intra_list_similarity([[1.0, 0.0]]) is None

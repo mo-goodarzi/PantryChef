@@ -23,6 +23,7 @@ VARIANTS = {
     "coverage": SearchOptions(),
     "semantic": SearchOptions(use_semantic=True),
     "semantic+diversity": SearchOptions(use_semantic=True, use_diversity=True),
+    "semantic+rerank": SearchOptions(use_semantic=True, use_rerank=True),
     "semantic+diversity+rerank": SearchOptions(
         use_semantic=True, use_diversity=True, use_rerank=True
     ),
@@ -60,11 +61,13 @@ def main() -> None:
             variant,
             lambda q, o=options: find_recipes(conn, q, o, semantic=semantic, reranker=reranker),
             judge,
+            vectors=semantic.store.get_vectors if semantic else None,
         )
         s = summarize(all_results[variant])
         print(
             f"{variant:>10}: hit@5 {s['hit_at_5']:.0%}  MRR {s['mrr']:.2f}  "
-            f"judge {s['mean_judge_score']:.2f}  allergen violations {s['allergen_violations']}"
+            f"judge {s['mean_judge_score']:.2f}  allergen violations {s['allergen_violations']}  "
+            f"similarity {s['intra_list_similarity'] or 0:.3f}"
         )
 
     meta = {

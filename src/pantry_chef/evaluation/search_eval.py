@@ -15,6 +15,7 @@ from pantry_chef.evaluation.metrics import (
     hard_rule_failures,
     has_allergen_violation,
     hit_at_k,
+    intra_list_similarity,
     percentile,
     reciprocal_rank,
 )
@@ -25,6 +26,7 @@ from pantry_chef.observability import get_logger
 log = get_logger("evaluation.search")
 
 FindFn = Callable[[RecipeQuery], list[Candidate]]
+VectorsFn = Callable[[list[int]], dict]  # recipe ids -> {id: unit vector}
 K = 5
 
 
@@ -37,6 +39,7 @@ class CaseResult:
     relevant: list[bool] = field(default_factory=list)
     allergen_violations: int = 0
     latency_s: float = 0.0
+    similarity: float | None = None  # intra-list similarity of the top k
 
     @property
     def hit(self) -> float:
@@ -53,6 +56,7 @@ def evaluate_variant(
     variant: str,
     find: FindFn,
     judge: CachedJudge,
+    vectors: VectorsFn | None = None,
 ) -> list[CaseResult]:
     results = []
     for case in cases:
@@ -79,6 +83,11 @@ def evaluate_variant(
             )
             result.relevant.append(not failures and score >= GOOD_SCORE)
             result.allergen_violations += has_allergen_violation(candidate, query)
+        if vectors is not None:
+            found = vectors([c.recipe_id for c in candidates])
+            result.similarity = intra_list_similarity(
+                [found[c.recipe_id] for c in candidates if c.recipe_id in found]
+            )
         results.append(result)
         log.info("eval.case", variant=variant, case=case.id, hit=result.hit, rr=result.rr)
     return results
@@ -88,6 +97,7 @@ def summarize(results: list[CaseResult]) -> dict:
     n = len(results)
     scores = [r["judge_score"] for res in results for r in res.recipes]
     latencies = [r.latency_s for r in results]
+    similarities = [r.similarity for r in results if r.similarity is not None]
     return {
         "cases": n,
         "hit_at_5": sum(r.hit for r in results) / n,
@@ -99,6 +109,7 @@ def summarize(results: list[CaseResult]) -> dict:
             else 0.0
         ),
         "allergen_violations": sum(r.allergen_violations for r in results),
+        "intra_list_similarity": sum(similarities) / len(similarities) if similarities else None,
         "cases_without_results": sum(not r.recipes for r in results),
         "latency_p50_s": percentile(latencies, 50),
         "latency_p95_s": percentile(latencies, 95),
@@ -130,13 +141,16 @@ def write_report(
         f"good = hard rules pass AND judge score >= {GOOD_SCORE}",
         "",
         "| Variant | hit@5 | MRR | mean judge score | hard-rule pass | allergen violations "
-        "| no results | p50 s | p95 s |",
-        "|---|---|---|---|---|---|---|---|---|",
+        "| top-5 similarity (lower = more varied) | no results | p50 s | p95 s |",
+        "|---|---|---|---|---|---|---|---|---|---|",
     ]
     for variant, s in summaries.items():
+        ils = s["intra_list_similarity"]
+        similarity = f"{ils:.3f}" if ils is not None else "-"
         lines.append(
             f"| {variant} | {s['hit_at_5']:.0%} | {s['mrr']:.2f} | {s['mean_judge_score']:.2f} "
             f"| {s['hard_rule_pass_rate']:.0%} | {s['allergen_violations']} "
+            f"| {similarity} "
             f"| {s['cases_without_results']} | {s['latency_p50_s']:.2f} "
             f"| {s['latency_p95_s']:.2f} |"
         )
