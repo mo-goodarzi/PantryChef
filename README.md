@@ -1,1 +1,35 @@
 # PantryChef
+
+[![CI](https://github.com/mo-goodarzi/PantryChef/actions/workflows/ci.yml/badge.svg)](https://github.com/mo-goodarzi/PantryChef/actions/workflows/ci.yml)
+
+A multi-agent recipe assistant. Tell it what you have at home ("eggs, milk, toast") and
+it returns safe, suitable recipes you can actually make, checked against your allergies
+and diet, plus an optional matching YouTube video.
+
+**Status:** early development (Phase 0: project setup). See
+[docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for the design and build order.
+
+## Setup
+
+Requires [uv](https://docs.astral.sh/uv/).
+
+```bash
+uv sync
+uv run pre-commit install
+cp .env.example .env   # fill in keys when needed
+```
+
+Download the Kaggle dataset
+[Food.com Recipes and Interactions](https://www.kaggle.com/datasets/shuyangli94/food-com-recipes-and-user-interactions)
+into `data/raw/`. Data files are never committed.
+
+## Development
+
+```bash
+uv run pytest -q
+uv run ruff check . && uv run ruff format .
+uv run mypy src
+```
+
+Not medical advice: PantryChef turns health conditions into diet restrictions you
+confirm; it never claims a recipe is medically safe.

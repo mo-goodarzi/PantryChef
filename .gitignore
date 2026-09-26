@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Data (never committed)
+data/raw/
+data/processed/
+*.db
+*.sqlite
+*.sqlite3
+chroma/
+*.pkl
+
+# Model weights
+models/
+*.safetensors
+*.bin
+*.pt
+*.onnx
+
+# Eval outputs
+eval/reports/*.json
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
