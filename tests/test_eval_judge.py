@@ -70,3 +70,20 @@ def test_evaluate_variant_end_to_end_on_fixture(enriched_conn, tmp_path):
     assert result.recipes and result.hit == 1.0
     summary = summarize(results)
     assert summary["allergen_violations"] == 0 and summary["hit_at_5"] == 1.0
+
+
+def test_a_failing_case_is_recorded_and_the_run_continues(enriched_conn, tmp_path):
+    judge = CachedJudge(FakeJudgeLLM(), tmp_path / "j.json")
+    other = CASE.model_copy(update={"id": "ok"})
+
+    def find(query):
+        if query.preferences_text == "boom":
+            raise ConnectionError("network down")
+        return find_recipes(enriched_conn, query, SearchOptions())
+
+    failing = CASE.model_copy(update={"id": "bad", "preferences": "boom"})
+    results = evaluate_variant(enriched_conn, [failing, other], "v", find, judge)
+    assert results[0].error == "ConnectionError: network down" and results[0].hit == 0
+    assert results[1].hit == 1.0
+    summary = summarize(results)
+    assert summary["errors"] == 1 and summary["hit_at_5"] == 0.5

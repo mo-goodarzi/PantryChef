@@ -40,6 +40,7 @@ class CaseResult:
     allergen_violations: int = 0
     latency_s: float = 0.0
     similarity: float | None = None  # intra-list similarity of the top k
+    error: str | None = None  # the case could not run (e.g. network); counted as a miss
 
     @property
     def hit(self) -> float:
@@ -62,10 +63,21 @@ def evaluate_variant(
     for case in cases:
         query = case.to_query()
         start = time.perf_counter()
-        candidates = find(query)[:K]
-        latency = time.perf_counter() - start
-
-        judgments = judge.judge(conn, case, [c.recipe_id for c in candidates])
+        try:
+            candidates = find(query)[:K]
+            latency = time.perf_counter() - start
+            judgments = judge.judge(conn, case, [c.recipe_id for c in candidates])
+        except Exception as error:  # one failed API call must not lose the whole run
+            log.warning("eval.case_error", variant=variant, case=case.id, error=str(error))
+            results.append(
+                CaseResult(
+                    case_id=case.id,
+                    group=case.group,
+                    variant=variant,
+                    error=f"{type(error).__name__}: {error}",
+                )
+            )
+            continue
         result = CaseResult(case_id=case.id, group=case.group, variant=variant, latency_s=latency)
         for candidate in candidates:
             judgment = judgments.get(candidate.recipe_id)
@@ -96,7 +108,7 @@ def evaluate_variant(
 def summarize(results: list[CaseResult]) -> dict:
     n = len(results)
     scores = [r["judge_score"] for res in results for r in res.recipes]
-    latencies = [r.latency_s for r in results]
+    latencies = [r.latency_s for r in results if not r.error] or [0.0]
     similarities = [r.similarity for r in results if r.similarity is not None]
     return {
         "cases": n,
@@ -110,7 +122,8 @@ def summarize(results: list[CaseResult]) -> dict:
         ),
         "allergen_violations": sum(r.allergen_violations for r in results),
         "intra_list_similarity": sum(similarities) / len(similarities) if similarities else None,
-        "cases_without_results": sum(not r.recipes for r in results),
+        "cases_without_results": sum(not r.recipes and not r.error for r in results),
+        "errors": sum(bool(r.error) for r in results),
         "latency_p50_s": percentile(latencies, 50),
         "latency_p95_s": percentile(latencies, 95),
     }
@@ -141,8 +154,8 @@ def write_report(
         f"good = hard rules pass AND judge score >= {GOOD_SCORE}",
         "",
         "| Variant | hit@5 | MRR | mean judge score | hard-rule pass | allergen violations "
-        "| top-5 similarity (lower = more varied) | no results | p50 s | p95 s |",
-        "|---|---|---|---|---|---|---|---|---|---|",
+        "| top-5 similarity (lower = more varied) | no results | errors | p50 s | p95 s |",
+        "|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for variant, s in summaries.items():
         ils = s["intra_list_similarity"]
@@ -151,7 +164,7 @@ def write_report(
             f"| {variant} | {s['hit_at_5']:.0%} | {s['mrr']:.2f} | {s['mean_judge_score']:.2f} "
             f"| {s['hard_rule_pass_rate']:.0%} | {s['allergen_violations']} "
             f"| {similarity} "
-            f"| {s['cases_without_results']} | {s['latency_p50_s']:.2f} "
+            f"| {s['cases_without_results']} | {s['errors']} | {s['latency_p50_s']:.2f} "
             f"| {s['latency_p95_s']:.2f} |"
         )
     groups = sorted({g for r in all_results.values() for g in by_group(r)})
