@@ -243,6 +243,23 @@ pasta" (recipes say "spaghetti"/"linguine", pantry says "pasta"), "chinese fried
 (recipes say "cooked rice"). This is the Phase 5a ingredient matcher's job and the next
 expected gain.
 
-**Judge calibration (pending, owner):** 40 verdicts (8 per score) in
-`eval/reports/judge_calibration.csv`, blind: the judge's scores are in a git-ignored key file.
-Score with `uv run python eval/judge_calibration.py score`.
+**Judge calibration (2026-09-27, owner reviewed 33 of 40 verdicts blind):**
+
+| Subset | n | good/not-good agreement | within 1 point | judge more generous / stricter |
+|---|---|---|---|---|
+| all rated | 33 | 52% | 64% | 5 / 11 |
+| without rows the reviewer scored on pantry fit | 30 | 57% | 67% | 2 / 11 |
+| also without sauce/condiment rows | 25 | 56% | 80% | 2 / 9 |
+
+Three reviewer scores judged pantry fit ("no cranberry juice"), which the rubric leaves to
+code; five rows gave 3–4 to a sauce or dressing for a dish wish ("feta cheese dressing" for
+"a fresh greek salad"), which the rubric scores 1 and which we keep. After removing those,
+agreement is still only ~56%, and the judge is clearly **stricter** than the owner (9 vs 2):
+it penalizes loose cuisine matches (Australian skewers for "asian") and unmet adjectives
+("not creamy", "not filling").
+
+Consequences: (1) the reported hit@5 values are conservative for this reviewer; (2) the judge
+is not reliable as an absolute measure, but variant comparisons remain valid because the
+same judge scored every variant; (3) the threshold is not changed after seeing the human
+scores (that would tune the metric to the answer). A stronger or differently prompted judge
+is a possible later improvement; any change will be re-calibrated the same way.
