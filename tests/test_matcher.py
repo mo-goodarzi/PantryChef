@@ -172,3 +172,17 @@ def test_results_keep_recipe_order_including_duplicates(composite):
     matcher, _, _ = composite
     results = matcher.match(["egg"], ["egg", "milk", "egg"])
     assert [r.recipe_term for r in results] == ["egg", "milk", "egg"]
+
+
+def test_cache_entries_from_an_older_prompt_version_are_ignored(enriched_conn):
+    old = MatchCache(enriched_conn, source="llm:ingredient_match:v1")
+    old.put_many([("egg", "egg noodle", MatchLabel.CONTAINS)])
+    assert old.get("egg", "egg noodle") is MatchLabel.CONTAINS
+    new = MatchCache(enriched_conn, source="llm:ingredient_match:v2")
+    assert new.get("egg", "egg noodle") is None
+
+
+def test_llm_cache_source_includes_the_prompt_version():
+    from pantry_chef.ingredients.matcher import llm_cache_source
+
+    assert llm_cache_source(LLMMatcher(FakeMatchLLM())) == "llm:ingredient_match:v2"

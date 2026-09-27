@@ -96,25 +96,30 @@ def parents_from_seed(seed: dict[str, dict]) -> dict[str, set[str]]:
 
 
 class MatchCache:
-    """Pair labels in the match_cache table of pantry.db."""
+    """Pair labels in the match_cache table of pantry.db.
 
-    def __init__(self, conn: sqlite3.Connection):
+    Entries are tagged with their source (e.g. "llm:v2"); only entries from the current
+    source are used, so changing the prompt version invalidates old answers.
+    """
+
+    def __init__(self, conn: sqlite3.Connection, source: str = "llm"):
         self.conn = conn
+        self.source = source
 
     def get(self, user_term: str, recipe_term: str) -> MatchLabel | None:
         row = self.conn.execute(
-            "SELECT label FROM match_cache WHERE user_term = ? AND recipe_term = ?",
-            (user_term, recipe_term),
+            "SELECT label FROM match_cache WHERE user_term = ? AND recipe_term = ? AND source = ?",
+            (user_term, recipe_term, self.source),
         ).fetchone()
         return MatchLabel(row["label"]) if row else None
 
-    def put_many(self, pairs: list[tuple[str, str, MatchLabel]], source: str) -> None:
+    def put_many(self, pairs: list[tuple[str, str, MatchLabel]]) -> None:
         now = datetime.now(UTC).isoformat(timespec="seconds")
         with self.conn:
             self.conn.executemany(
                 "INSERT OR REPLACE INTO match_cache "
                 "(user_term, recipe_term, label, source, created_at) VALUES (?, ?, ?, ?, ?)",
-                [(u, r, label.value, source, now) for u, r, label in pairs],
+                [(u, r, label.value, self.source, now) for u, r, label in pairs],
             )
 
 
@@ -174,6 +179,11 @@ class LLMMatcher:
 
 
 # --- composite -----------------------------------------------------------------------
+
+
+def llm_cache_source(llm: "LLMMatcher") -> str:
+    """Cache tag for answers from this LLM matcher's prompt version."""
+    return f"llm:{llm.prompt.name}:v{llm.prompt.version}"
 
 
 class CompositeMatcher:
@@ -241,9 +251,15 @@ class CompositeMatcher:
             for u in users
         ]
         if self.cache is not None:
-            self.cache.put_many(pairs, source="llm")
+            self.cache.put_many(pairs)
         if self.log_path is not None:
             self.log_path.parent.mkdir(parents=True, exist_ok=True)
             with self.log_path.open("a") as log:
+                version = self.llm.prompt.version if self.llm is not None else None
                 for r in results:
-                    log.write(json.dumps({"user_terms": users, **r.model_dump(mode="json")}) + "\n")
+                    entry = {
+                        "user_terms": users,
+                        "prompt_version": version,
+                        **r.model_dump(mode="json"),
+                    }
+                    log.write(json.dumps(entry) + "\n")
