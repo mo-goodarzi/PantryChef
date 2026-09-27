@@ -25,3 +25,19 @@ class RecipeQuery(BaseModel):
     exclude_recipe_ids: list[int] = Field(default_factory=list)
     required_allergen_free: list[Allergen] = Field(default_factory=list)
     diets: list[Diet] = Field(default_factory=list)
+
+
+class AmountStatus(StrEnum):
+    KNOWN = "known"  # the user gave an amount
+    UNKNOWN = "unknown"  # "I don't know"
+    PLENTY = "plenty"  # "plenty" / "a lot"
+
+
+class PantryItem(BaseModel):
+    """One thing the user has, with an amount when the quantity question asked for it."""
+
+    name: str
+    canonical_name: str
+    quantity: float | None = Field(default=None, ge=0)
+    unit: str | None = None  # None = a count ("3 eggs")
+    amount_status: AmountStatus = AmountStatus.UNKNOWN
