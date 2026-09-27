@@ -22,7 +22,7 @@ from pantry_chef.agents.verifier import (
     suggest_substitutions,
     verify,
 )
-from pantry_chef.db.repository import SubstituteOption
+from pantry_chef.db.repository import IngredientOption
 from pantry_chef.ingredients.allergens import Allergen
 from pantry_chef.ingredients.quantities import Amount, available_ratio
 from pantry_chef.models.matching import MatchLabel, MatchResult
@@ -249,7 +249,7 @@ def test_time_limit():
 
 
 def sub(name, allergens=(), meat=False, animal=False):
-    return SubstituteOption(
+    return IngredientOption(
         name=name,
         note="1:1",
         allergens=list(allergens),
@@ -399,3 +399,49 @@ def test_feedback_excludes_failed_recipes_and_problem_ingredients():
     # flour twice, walnut once (not in the pantry either)
     assert feedback.reason_counts == {"missing_ingredient": 3, "allergen": 1}
     assert feedback.query.required_allergen_free == [Allergen.TREE_NUTS]
+
+
+# --- pantry items standing in for another ingredient ---------------------------------
+
+
+def test_milk_standing_in_for_oat_milk_fails_for_a_milk_allergy():
+    recipe = cand(ing("oat milk"))
+    context = VerificationContext(
+        pantry={"milk"},
+        matches={"oat milk": match("oat milk", "milk", "substitute")},
+        pantry_facts={"milk": sub("milk", [Allergen.MILK], animal=True)},
+    )
+    query = RecipeQuery(ingredients=["milk"], required_allergen_free=[Allergen.MILK])
+    result = verify(recipe, query, context)
+    assert result.status is VerificationStatus.FAIL
+    assert "your 'milk' (for oat milk) contains milk" in result.reasons[0].detail
+
+
+def test_chicken_standing_in_for_tofu_breaks_vegetarian():
+    recipe = cand(ing("tofu"))
+    context = VerificationContext(
+        pantry={"chicken"},
+        matches={"tofu": match("tofu", "chicken", "substitute")},
+        pantry_facts={"chicken": sub("chicken", meat=True, animal=True)},
+    )
+    query = RecipeQuery(ingredients=["chicken"], diets=[Diet.VEGETARIAN])
+    assert verify(recipe, query, context).reasons[0].code is FailureCode.DIET_VIOLATION
+
+
+def test_same_ingredient_is_not_rechecked_twice():
+    recipe = cand(ing("milk", allergens=[Allergen.MILK]))
+    context = VerificationContext(
+        pantry={"milk"}, pantry_facts={"milk": sub("milk", [Allergen.MILK])}
+    )
+    query = RecipeQuery(ingredients=["milk"], required_allergen_free=[Allergen.MILK])
+    reasons = verify(recipe, query, context).reasons
+    assert [str(r) for r in reasons] == ["allergen: milk"]  # only the recipe's own milk
+
+
+def test_load_canonical_facts_merges_raw_names(enriched_conn):
+    from pantry_chef.db.repository import load_canonical_facts
+
+    facts = load_canonical_facts(enriched_conn, ["egg", "chicken breast", "nothing"])
+    assert facts["egg"].allergens == [Allergen.EGGS]
+    assert facts["chicken breast"].contains_meat
+    assert "nothing" not in facts

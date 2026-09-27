@@ -13,7 +13,7 @@ import sqlite3
 from dataclasses import dataclass, field
 
 from pantry_chef.agents.hidden_allergens import HiddenAllergenChecker, is_compound
-from pantry_chef.db.repository import SubstituteOption, load_substitutes
+from pantry_chef.db.repository import IngredientOption, load_canonical_facts, load_substitutes
 from pantry_chef.ingredients.allergens import Allergen
 from pantry_chef.ingredients.matcher import ExactMatcher, Matcher
 from pantry_chef.ingredients.normalize import normalize
@@ -40,7 +40,8 @@ class VerificationContext:
     matches: dict[str, MatchResult] = field(default_factory=dict)  # by recipe canonical
     pantry_items: dict[str, PantryItem] = field(default_factory=dict)  # by canonical
     hidden: dict[str, set[Allergen]] = field(default_factory=dict)  # by ingredient name
-    substitutes: dict[str, list[SubstituteOption]] = field(default_factory=dict)
+    substitutes: dict[str, list[IngredientOption]] = field(default_factory=dict)
+    pantry_facts: dict[str, IngredientOption] = field(default_factory=dict)  # by canonical
 
 
 def needs_match(ingredient: RecipeIngredient) -> bool:
@@ -71,11 +72,18 @@ def match_for(ingredient: RecipeIngredient, context: VerificationContext) -> Mat
 
 
 def check_ingredients(
-    candidate: Candidate, pantry: set[str], context: VerificationContext | None = None
+    candidate: Candidate,
+    pantry: set[str],
+    context: VerificationContext | None = None,
+    query: RecipeQuery | None = None,
 ) -> CheckResult:
     """Fail on every key ingredient the pantry cannot cover (staples are always there);
-    a covering substitute is an adaptation."""
+    a covering substitute is an adaptation. A pantry item standing in for a DIFFERENT
+    recipe ingredient is re-checked: it must not bring in the user's allergens or break
+    their diet (milk instead of oat milk for a milk allergy)."""
     context = context or VerificationContext(pantry=pantry)
+    allergens = set(query.required_allergen_free) if query else set()
+    diets = set(query.diets) if query else set()
     reasons, adaptations = [], []
     for ingredient in candidate.ingredients:
         if not needs_match(ingredient):
@@ -89,8 +97,30 @@ def check_ingredients(
                     detail=f"recipe needs {ingredient.name!r}, not in pantry",
                 )
             )
-        elif match.label is MatchLabel.SUBSTITUTE:
-            adaptations.append(f"use your {match.user_term} instead of {ingredient.name}")
+        else:
+            stand_in = context.pantry_facts.get(match.user_term or "")
+            if match.user_term != ingredient.canonical_name and stand_in is not None:
+                for allergen in sorted(set(stand_in.allergens) & allergens):
+                    reasons.append(
+                        FailureReason(
+                            code=FailureCode.ALLERGEN,
+                            item=match.user_term,
+                            detail=f"your {match.user_term!r} (for {ingredient.name}) contains "
+                            f"{allergen.value}",
+                        )
+                    )
+                for diet in sorted(diets):
+                    if breaks_diet(stand_in, diet):
+                        reasons.append(
+                            FailureReason(
+                                code=FailureCode.DIET_VIOLATION,
+                                item=match.user_term,
+                                detail=f"your {match.user_term!r} (for {ingredient.name}) is not "
+                                f"{diet.value.replace('_', '-')}",
+                            )
+                        )
+            if match.label is MatchLabel.SUBSTITUTE:
+                adaptations.append(f"use your {match.user_term} instead of {ingredient.name}")
     return CheckResult(
         check="ingredients", passed=not reasons, reasons=reasons, adaptations=adaptations
     )
@@ -174,7 +204,7 @@ def check_hidden_allergens(
     return CheckResult(check="hidden_allergens", passed=not reasons, reasons=reasons)
 
 
-def breaks_diet(ingredient: RecipeIngredient | SubstituteOption, diet: Diet) -> bool:
+def breaks_diet(ingredient: RecipeIngredient | IngredientOption, diet: Diet) -> bool:
     if diet is Diet.VEGETARIAN:
         return ingredient.contains_meat or ingredient.contains_fish
     if diet is Diet.VEGAN:
@@ -269,7 +299,7 @@ def verify(
         context = VerificationContext(pantry={normalize(n) for n in query.ingredients})
     allergens = set(query.required_allergen_free)
     checks = [
-        check_ingredients(candidate, context.pantry, context),
+        check_ingredients(candidate, context.pantry, context, query),
         check_quantities(candidate, context),
         check_allergens(candidate, allergens),
         check_hidden_allergens(candidate, allergens, context),
@@ -339,6 +369,7 @@ class Verifier:
             pantry_items=items,
             hidden=hidden,
             substitutes=load_substitutes(self.conn, missing_extra),
+            pantry_facts=load_canonical_facts(self.conn, sorted(pantry)),
         )
 
     def verify_all(

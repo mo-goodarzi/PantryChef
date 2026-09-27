@@ -108,8 +108,10 @@ def recipe_summaries(conn: sqlite3.Connection, recipe_ids: list[int]) -> dict[in
     return summaries
 
 
-class SubstituteOption(BaseModel):
-    """A reviewed substitute (ingredient_relation) with the facts needed to re-check it."""
+class IngredientOption(BaseModel):
+    """An ingredient (canonical name) with the facts needed to re-check allergens and
+    diet: used for suggested substitutes and for pantry items standing in for a recipe
+    ingredient."""
 
     name: str  # canonical name
     note: str | None
@@ -121,7 +123,7 @@ class SubstituteOption(BaseModel):
 
 def load_substitutes(
     conn: sqlite3.Connection, canonical_names: list[str]
-) -> dict[str, list[SubstituteOption]]:
+) -> dict[str, list[IngredientOption]]:
     """Substitutes for each canonical name, with their allergens and diet facts."""
     rows = conn.execute(
         """
@@ -143,11 +145,11 @@ def load_substitutes(
     ):
         allergens[row["ingredient_id"]].add(Allergen(row["allergen"]))
 
-    options: dict[str, dict[str, SubstituteOption]] = defaultdict(dict)
+    options: dict[str, dict[str, IngredientOption]] = defaultdict(dict)
     for row in rows:
         option = options[row["original"]].get(row["name"])
         merged = allergens[row["id"]] | set(option.allergens if option else [])
-        options[row["original"]][row["name"]] = SubstituteOption(
+        options[row["original"]][row["name"]] = IngredientOption(
             name=row["name"],
             note=row["note"],
             allergens=sorted(merged),
@@ -156,3 +158,33 @@ def load_substitutes(
             animal_product=bool(row["animal_product"]) or bool(option and option.animal_product),
         )
     return {k: list(v.values()) for k, v in options.items()}
+
+
+def load_canonical_facts(
+    conn: sqlite3.Connection, canonical_names: list[str]
+) -> dict[str, IngredientOption]:
+    """Allergens and diet facts per canonical name, merged over all raw names that share
+    it (conservative: any raw name with an allergen gives the canonical name that
+    allergen)."""
+    facts: dict[str, IngredientOption] = {}
+    rows = conn.execute(
+        """
+        SELECT i.canonical_name AS name, MAX(i.contains_meat) AS meat,
+               MAX(i.contains_fish) AS fish, MAX(i.animal_product) AS animal,
+               GROUP_CONCAT(DISTINCT ia.allergen) AS allergens
+        FROM ingredients i LEFT JOIN ingredient_allergens ia ON ia.ingredient_id = i.id
+        WHERE i.canonical_name IN (SELECT value FROM json_each(:names))
+        GROUP BY i.canonical_name
+        """,
+        {"names": json.dumps(canonical_names)},
+    )
+    for row in rows:
+        facts[row["name"]] = IngredientOption(
+            name=row["name"],
+            note=None,
+            allergens=sorted(Allergen(a) for a in (row["allergens"] or "").split(",") if a),
+            contains_meat=bool(row["meat"]),
+            contains_fish=bool(row["fish"]),
+            animal_product=bool(row["animal"]),
+        )
+    return facts
