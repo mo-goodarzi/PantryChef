@@ -4,6 +4,8 @@ import json
 import sqlite3
 from collections import defaultdict
 
+from pydantic import BaseModel
+
 from pantry_chef.ingredients.allergens import Allergen
 from pantry_chef.models.recipe import RecipeIngredient
 from pantry_chef.search.text import useful_tags
@@ -104,3 +106,53 @@ def recipe_summaries(conn: sqlite3.Connection, recipe_ids: list[int]) -> dict[in
             "ingredients": ingredients,
         }
     return summaries
+
+
+class SubstituteOption(BaseModel):
+    """A reviewed substitute (ingredient_relation) with the facts needed to re-check it."""
+
+    name: str  # canonical name
+    note: str | None
+    allergens: list[Allergen]
+    contains_meat: bool
+    contains_fish: bool
+    animal_product: bool
+
+
+def load_substitutes(
+    conn: sqlite3.Connection, canonical_names: list[str]
+) -> dict[str, list[SubstituteOption]]:
+    """Substitutes for each canonical name, with their allergens and diet facts."""
+    rows = conn.execute(
+        """
+        SELECT DISTINCT a.canonical_name AS original, b.id, b.canonical_name AS name,
+               rel.note, b.contains_meat, b.contains_fish, b.animal_product
+        FROM ingredient_relation rel
+        JOIN ingredients a ON a.id = rel.a_id
+        JOIN ingredients b ON b.id = rel.b_id
+        WHERE rel.relation = 'substitute'
+          AND a.canonical_name IN (SELECT value FROM json_each(:names))
+        """,
+        {"names": json.dumps(canonical_names)},
+    ).fetchall()
+    allergens: dict[int, set[Allergen]] = defaultdict(set)
+    for row in conn.execute(
+        "SELECT ingredient_id, allergen FROM ingredient_allergens "
+        "WHERE ingredient_id IN (SELECT value FROM json_each(:ids))",
+        {"ids": json.dumps([r["id"] for r in rows])},
+    ):
+        allergens[row["ingredient_id"]].add(Allergen(row["allergen"]))
+
+    options: dict[str, dict[str, SubstituteOption]] = defaultdict(dict)
+    for row in rows:
+        option = options[row["original"]].get(row["name"])
+        merged = allergens[row["id"]] | set(option.allergens if option else [])
+        options[row["original"]][row["name"]] = SubstituteOption(
+            name=row["name"],
+            note=row["note"],
+            allergens=sorted(merged),
+            contains_meat=bool(row["contains_meat"]) or bool(option and option.contains_meat),
+            contains_fish=bool(row["contains_fish"]) or bool(option and option.contains_fish),
+            animal_product=bool(row["animal_product"]) or bool(option and option.animal_product),
+        )
+    return {k: list(v.values()) for k, v in options.items()}

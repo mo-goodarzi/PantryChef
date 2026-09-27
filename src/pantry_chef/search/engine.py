@@ -7,7 +7,7 @@ find_recipes():  search -> verify -> (diversity) -> (LLM rerank) -> top k
 import sqlite3
 from dataclasses import dataclass, replace
 
-from pantry_chef.agents.verifier import verify
+from pantry_chef.agents.verifier import Verifier
 from pantry_chef.config import Settings
 from pantry_chef.db.repository import load_recipe_ingredients
 from pantry_chef.ingredients.normalize import normalize
@@ -153,8 +153,12 @@ def find_recipes(
     options: SearchOptions | None = None,
     semantic: SemanticSearch | None = None,
     reranker: Reranker | None = None,
+    verifier: Verifier | None = None,
 ) -> list[Candidate]:
-    """Full pipeline: search -> verify -> (diversity) -> (rerank) -> top k verified."""
+    """Full pipeline: search -> verify -> (diversity) -> (rerank) -> top k verified.
+
+    Candidates with status pass or adapt are kept (adapt = works with a substitute or a
+    smaller batch)."""
     options = options or SearchOptions()
     if (options.use_semantic or options.use_diversity) and semantic is None:
         raise ValueError("use_semantic / use_diversity need a SemanticSearch")
@@ -163,9 +167,13 @@ def find_recipes(
     result = search(
         conn, query, limit=options.pool_size, semantic=semantic if options.use_semantic else None
     )
+    verifier = verifier or Verifier(conn)
     with span("search.verify", candidates=len(result.candidates)):
+        results = verifier.verify_all(result.candidates, query)
         verified = [
-            c for c in result.candidates if verify(c, query).status is VerificationStatus.PASS
+            c
+            for c, v in zip(result.candidates, results, strict=True)
+            if v.status is not VerificationStatus.FAIL
         ]
     shortlist = verified[: options.shortlist_size]
 
