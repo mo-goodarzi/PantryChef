@@ -201,3 +201,35 @@ def find_recipes(
         with span("search.rerank", candidates=len(shortlist)):
             return reranker.rerank(query, shortlist, options.top_k)
     return shortlist[: options.top_k]
+
+
+def matching_from_settings(
+    settings: Settings, conn: sqlite3.Connection, embedder: Embedder
+) -> tuple[PantryExpander, Verifier]:
+    """Pantry expansion and a verifier that share one CompositeMatcher (and its cache)."""
+    from pathlib import Path
+
+    from pantry_chef.agents.hidden_allergens import HiddenAllergenChecker
+    from pantry_chef.ingredients.matcher import (
+        CompositeMatcher,
+        ExactMatcher,
+        LLMMatcher,
+        MatchCache,
+        llm_cache_source,
+        parents_from_seed,
+    )
+    from pantry_chef.ingredients.relations import load_seed
+    from pantry_chef.llm.factory import create_llm
+    from pantry_chef.search.semantic import ChromaNameIndex
+
+    llm = create_llm(settings)
+    llm_matcher = LLMMatcher(llm)
+    matcher = CompositeMatcher(
+        ExactMatcher(parents_from_seed(load_seed())),
+        MatchCache(conn, llm_cache_source(llm_matcher)),
+        llm_matcher,
+        log_path=Path("data/processed/match_log.jsonl"),
+    )
+    expander = PantryExpander(embedder, ChromaNameIndex(settings.chroma_path), matcher)
+    hidden = HiddenAllergenChecker(llm, Path("data/processed/hidden_allergens.json"))
+    return expander, Verifier(conn, matcher, hidden)
