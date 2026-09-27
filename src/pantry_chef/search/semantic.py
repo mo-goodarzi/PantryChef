@@ -91,3 +91,25 @@ def min_max(values: dict[int, float]) -> dict[int, float]:
 def semantic_scores(query_vector: np.ndarray, vectors: dict[int, np.ndarray]) -> dict[int, float]:
     """Cosine similarity (vectors are unit length), rescaled to 0..1 within the pool."""
     return min_max({rid: float(np.dot(query_vector, v)) for rid, v in vectors.items()})
+
+
+class ChromaNameIndex:
+    """Nearest ingredient names (canonical) by embedding, for pantry expansion."""
+
+    def __init__(self, path: Path, collection: str = "ingredients"):
+        import chromadb
+
+        client = chromadb.PersistentClient(path=str(path))
+        self.collection = client.get_or_create_collection(
+            collection, metadata={"hnsw:space": "cosine"}
+        )
+
+    def add(self, names: list[str], vectors: np.ndarray) -> None:
+        self.collection.upsert(ids=names, embeddings=vectors.tolist())
+
+    def existing(self) -> set[str]:
+        return set(self.collection.get(include=[])["ids"])
+
+    def nearest(self, vector: np.ndarray, n: int) -> list[str]:
+        result = self.collection.query(query_embeddings=[vector.tolist()], n_results=n, include=[])
+        return list(result["ids"][0])

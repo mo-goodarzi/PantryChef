@@ -1,10 +1,10 @@
-"""Embed every recipe (name + description + tags) into the Chroma collection.
+"""Embed recipes (name + description + tags) and ingredient names into Chroma.
 
-Resumable: recipes already in the collection are skipped.
+Resumable: items already in a collection are skipped.
 
 Usage:
-    uv run python scripts/build_embeddings.py
-    uv run python scripts/build_embeddings.py --limit 2000     # quick test
+    uv run python scripts/build_embeddings.py                  # recipes + ingredient names
+    uv run python scripts/build_embeddings.py --limit 2000     # quick test (recipes)
 """
 
 import argparse
@@ -14,7 +14,11 @@ from pathlib import Path
 
 from pantry_chef.config import get_settings
 from pantry_chef.db.connection import connect
-from pantry_chef.search.semantic import ChromaRecipeStore, SentenceTransformerEmbedder
+from pantry_chef.search.semantic import (
+    ChromaNameIndex,
+    ChromaRecipeStore,
+    SentenceTransformerEmbedder,
+)
 from pantry_chef.search.text import recipe_text
 
 BATCH = 2000
@@ -50,6 +54,19 @@ def main() -> None:
         done_now = i + len(batch)
         rate = done_now / (time.perf_counter() - start)
         print(f"  {done_now:,}/{len(todo):,}  ({rate:.0f}/s)", flush=True)
+
+    names = sorted(
+        {
+            r["canonical_name"]
+            for r in conn.execute("SELECT DISTINCT canonical_name FROM ingredients")
+        }
+    )
+    index = ChromaNameIndex(args.chroma)
+    todo_names = sorted(set(names) - index.existing())
+    print(f"{len(names):,} ingredient names, {len(todo_names):,} to embed")
+    for i in range(0, len(todo_names), BATCH):
+        batch = todo_names[i : i + BATCH]
+        index.add(batch, embedder.embed_documents(batch))
 
 
 if __name__ == "__main__":

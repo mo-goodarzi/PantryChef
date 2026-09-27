@@ -28,6 +28,9 @@ class CheckResult(BaseModel):
     check: str
     passed: bool
     reasons: list[FailureReason] = Field(default_factory=list)
+    # Changes that make the recipe work (scale it, use a substitute): status "adapt".
+    adaptations: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
 
 
 class VerificationStatus(StrEnum):
@@ -42,6 +45,8 @@ class VerificationResult(BaseModel):
     checks: list[CheckResult]
     adaptations: list[str] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
+    # ingredient name -> staple | available | substitute | optional | missing | extra
+    ingredient_status: dict[str, str] = Field(default_factory=dict)
 
     @property
     def reasons(self) -> list[FailureReason]:

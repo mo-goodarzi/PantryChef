@@ -243,6 +243,85 @@ pasta" (recipes say "spaghetti"/"linguine", pantry says "pasta"), "chinese fried
 (recipes say "cooked rice"). This is the Phase 5a ingredient matcher's job and the next
 expected gain.
 
-**Judge calibration (pending, owner):** 40 verdicts (8 per score) in
-`eval/reports/judge_calibration.csv`, blind: the judge's scores are in a git-ignored key file.
-Score with `uv run python eval/judge_calibration.py score`.
+**Judge calibration (2026-09-27, owner reviewed 33 of 40 verdicts blind):**
+
+| Subset | n | good/not-good agreement | within 1 point | judge more generous / stricter |
+|---|---|---|---|---|
+| all rated | 33 | 52% | 64% | 5 / 11 |
+| without rows the reviewer scored on pantry fit | 30 | 57% | 67% | 2 / 11 |
+| also without sauce/condiment rows | 25 | 56% | 80% | 2 / 9 |
+
+Three reviewer scores judged pantry fit ("no cranberry juice"), which the rubric leaves to
+code; five rows gave 3–4 to a sauce or dressing for a dish wish ("feta cheese dressing" for
+"a fresh greek salad"), which the rubric scores 1 and which we keep. After removing those,
+agreement is still only ~56%, and the judge is clearly **stricter** than the owner (9 vs 2):
+it penalizes loose cuisine matches (Australian skewers for "asian") and unmet adjectives
+("not creamy", "not filling").
+
+Consequences: (1) the reported hit@5 values are conservative for this reviewer; (2) the judge
+is not reliable as an absolute measure, but variant comparisons remain valid because the
+same judge scored every variant; (3) the threshold is not changed after seeing the human
+scores (that would tune the metric to the answer). A stronger or differently prompted judge
+is a possible later improvement; any change will be re-calibrated the same way.
+
+## 2026-09-27 — Phase 5a: ingredient matcher and full verifier
+
+**Matcher** (`ingredients/matcher.py`), labels describe the USER's item relative to the
+RECIPE ingredient (direction matters: eggs cover egg whites, egg whites do not cover eggs):
+same | contains | substitute | different. Layers, cheapest first: exact names and the reviewed
+parent hierarchy → `match_cache` → one batched LLM call (`ingredient_match.md`). Every LLM
+answer is cached for all (user, recipe) pairs and appended to `match_log.jsonl` (2,626 entries
+so far: training data for the Phase 9 pair classifier). Cache entries are tagged with the
+prompt version, so a prompt change invalidates old answers.
+
+Prompt v1 over-used "contains" (eggs → egg noodles, egg bread, "egg tomato"), which would
+have made recipes look makeable when they are not. v2 limits "contains" to one simple home
+step (separate, juice, cook, crumble) and names the counter-examples.
+
+**Safety fix found while testing:** a pantry item standing in for a different recipe
+ingredient ("use your milk instead of oat milk") could bring in the user's allergen. The
+verifier now re-checks every stand-in item's own allergens and diet facts.
+
+**Pantry expansion in search (beyond the plan, measured):** the Phase 4 misses came from exact
+names ("pasta" vs "spaghetti", "rice" vs "cooked rice") before verification. Each pantry item
+gets its 15 nearest ingredient names (bge-small, Chroma collection of 13,296 canonical names);
+the matcher keeps the ones it can cover, and coverage search uses them.
+
+**Verifier** (`agents/verifier.py`): pure checks over a context prepared once per search
+(one matcher call, one hidden-allergen call, one substitutes query):
+ingredients (staple / available / substitute / optional / missing), quantities (pint; ≥ 100% ok,
+50–99% → adapt "make N% of the recipe", < 50% → fail; unknown/plenty ok; weight vs volume is
+not guessed), allergens, hidden allergens (LLM second look at compound ingredients, cached per
+name, can only add failures), diet, time, and substitutions for missing non-key items that the
+user has AND that pass their allergens and diets. Decision: any failure → fail; else any
+adaptation → adapt; else pass. `agents/feedback.py` turns failures into a stricter query
+(exclude failed recipes, unsafe ingredients, and ingredients missing in ≥ 2 candidates).
+
+Deviation from the plan: no LLM `check_preferences`. Fit to the wish is already scored by the
+reranker (and measured by the judge); a third LLM call per candidate adds cost without a
+measurable benefit. The deterministic part (max time → `too_long`) is kept.
+Recipe quantities do not exist yet (Phase 8), so `check_quantities` returns notes on real data
+until then; it is fully tested with given amounts.
+
+**Results** (`eval/reports/search_20260927-1942.md`, 0 errors, 0 allergen violations):
+
+| Pipeline | hit@5 | MRR | judge | p50 |
+|---|---|---|---|---|
+| semantic | 82% | 0.74 | 3.39 | 0.26 s |
+| semantic + matcher | 90% | 0.74 | 3.60 | 0.43 s |
+| semantic + rerank | 90% | 0.87 | 3.82 | 2.25 s |
+| semantic + matcher + rerank | 94% | 0.83 | 4.21 | 2.30 s |
+
+The matcher alone matches rerank's hit@5 at a fifth of the latency (after the cache is warm).
+MRR differences between the two rerank variants are within run-to-run noise (0.86–0.88 seen in
+Phase 4).
+
+**Known eval bias against the matcher:** the eval's hard rule still uses exact names (at most
+1 missing key ingredient), so ingredients the matcher covers count as missing there. This is
+deliberate (the metric stays independent of the system under test) and makes matcher numbers
+conservative; e.g. d11's first result "super black beans and rice" is judged 5/5 but fails the
+exact-name rule.
+
+**Next ranking problem (not changed here):** coverage favors tiny recipes that use one pantry
+item at 100% coverage (zabaglione, parmesan crisps for a carbonara pantry). A "share of the
+pantry used" term is the obvious fix; it changes the scoring and gets its own before/after run.

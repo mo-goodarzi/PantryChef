@@ -2,6 +2,8 @@
 
 Pipeline: filters + coverage -> semantic match to --pref (local, free) -> verifier
 -> optional LLM rerank (--rerank; needs OPENAI_API_KEY, adds ~3 s).
+--match adds pantry expansion and the ingredient matcher ("pasta" also finds "spaghetti";
+LLM answers are cached, so repeated searches get faster).
 
 Usage:
     uv run python -m pantry_chef.search.cli --have "egg,milk,flour,butter"
@@ -15,15 +17,20 @@ import sys
 import time
 from pathlib import Path
 
-from pantry_chef.agents.verifier import verify
+from pantry_chef.agents.verifier import Verifier
 from pantry_chef.config import get_settings
 from pantry_chef.db.connection import connect
 from pantry_chef.ingredients.allergens import Allergen, parse_user_allergy
 from pantry_chef.models.query import Diet, RecipeQuery
-from pantry_chef.models.recipe import Candidate
+from pantry_chef.models.recipe import Candidate, RecipeIngredient
 from pantry_chef.models.verification import VerificationResult, VerificationStatus
 from pantry_chef.observability import configure_logging
-from pantry_chef.search.engine import pantry_names, search, semantic_from_settings
+from pantry_chef.search.engine import (
+    matching_from_settings,
+    pantry_names,
+    search,
+    semantic_from_settings,
+)
 
 
 def split_list(text: str | None) -> list[str]:
@@ -46,13 +53,22 @@ def build_query(args: argparse.Namespace) -> RecipeQuery:
     )
 
 
-def describe(candidate: Candidate, pantry: set[str]) -> list[str]:
-    uses = [i.name for i in candidate.ingredients if i.canonical_name in pantry]
+def describe(
+    candidate: Candidate, pantry: set[str], verification: VerificationResult | None = None
+) -> list[str]:
+    """Lines for one recipe. Uses the verifier's per-ingredient status when available, so
+    matched ingredients (eggs for egg yolks, pasta for spaghetti) show as used."""
+    status = verification.ingredient_status if verification else {}
+
+    def is_used(i: RecipeIngredient) -> bool:
+        if status:
+            return status.get(i.name) in {"available", "substitute"}
+        return i.canonical_name in pantry
+
+    uses = [i.name for i in candidate.ingredients if is_used(i) and not i.is_staple]
     staples = [i.name for i in candidate.ingredients if i.is_staple]
     extra = [
-        i.name
-        for i in candidate.ingredients
-        if not i.is_key and not i.is_staple and i.canonical_name not in pantry
+        i.name for i in candidate.ingredients if not i.is_key and not i.is_staple and not is_used(i)
     ]
     rating = (
         f"{candidate.avg_rating:.1f}* ({candidate.n_ratings})" if candidate.n_ratings else "unrated"
@@ -61,6 +77,8 @@ def describe(candidate: Candidate, pantry: set[str]) -> list[str]:
     if candidate.rerank_reason:
         lines.append(f"     why: {candidate.rerank_reason}")
     lines.append(f"     uses: {', '.join(uses) or '-'}")
+    if verification is not None and verification.adaptations:
+        lines.append(f"     adapt: {'; '.join(verification.adaptations)}")
     if staples:
         lines.append(f"     staples: {', '.join(staples)}")
     if extra:
@@ -75,6 +93,7 @@ def main() -> None:
     parser.add_argument("--pref", help='what you feel like, e.g. "quick spicy dinner"')
     parser.add_argument("--no-semantic", action="store_true", help="ignore --pref wording")
     parser.add_argument("--rerank", action="store_true", help="let the LLM pick the final top")
+    parser.add_argument("--match", action="store_true", help="smarter ingredient matching (LLM)")
     parser.add_argument("--allergy", help="comma-separated, e.g. peanuts,milk,shellfish")
     parser.add_argument("--diet", help="comma-separated: vegetarian, vegan, gluten-free")
     parser.add_argument("--exclude", help="comma-separated ingredients to avoid")
@@ -95,13 +114,24 @@ def main() -> None:
 
     conn = connect(args.db)
     use_semantic = bool(args.pref) and not args.no_semantic and settings.chroma_path.exists()
-    semantic = semantic_from_settings(settings) if use_semantic else None
+    semantic = semantic_from_settings(settings) if use_semantic or args.match else None
+    expander, verifier = None, Verifier(conn)
+    if args.match and semantic is not None:
+        expander, verifier = matching_from_settings(settings, conn, semantic.embedder)
+
     start = time.perf_counter()
-    result = search(conn, query, limit=args.candidates, semantic=semantic)
-    verified: list[tuple[Candidate, VerificationResult]] = [
-        (c, verify(c, query)) for c in result.candidates
-    ]
-    passed = [c for c, v in verified if v.status is VerificationStatus.PASS]
+    result = search(
+        conn,
+        query,
+        limit=args.candidates,
+        semantic=semantic if use_semantic else None,
+        expander=expander,
+    )
+    verified: list[tuple[Candidate, VerificationResult]] = list(
+        zip(result.candidates, verifier.verify_all(result.candidates, query), strict=True)
+    )
+    by_id = {c.recipe_id: v for c, v in verified}
+    passed = [c for c, v in verified if v.status is not VerificationStatus.FAIL]
     n_passed = len(passed)
     if args.rerank and passed:
         from pantry_chef.llm.factory import create_llm
@@ -117,7 +147,7 @@ def main() -> None:
         f"{n_passed} of the top {len(verified)} pass verification ({elapsed:.2f}s)\n"
     )
     for number, candidate in enumerate(passed[: args.top], start=1):
-        lines = describe(candidate, pantry)
+        lines = describe(candidate, pantry, by_id.get(candidate.recipe_id))
         print(f"{number:>2}. " + "\n".join(lines) + "\n")
     if not passed:
         print("No recipe passed verification. Try --show-failed to see what is missing.\n")

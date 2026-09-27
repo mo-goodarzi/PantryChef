@@ -7,7 +7,7 @@ find_recipes():  search -> verify -> (diversity) -> (LLM rerank) -> top k
 import sqlite3
 from dataclasses import dataclass, replace
 
-from pantry_chef.agents.verifier import verify
+from pantry_chef.agents.verifier import Verifier
 from pantry_chef.config import Settings
 from pantry_chef.db.repository import load_recipe_ingredients
 from pantry_chef.ingredients.normalize import normalize
@@ -17,6 +17,7 @@ from pantry_chef.models.verification import VerificationStatus
 from pantry_chef.observability import span
 from pantry_chef.search.coverage import CoverageRow, rank_by_coverage
 from pantry_chef.search.diversity import mmr
+from pantry_chef.search.expansion import PantryExpander
 from pantry_chef.search.filters import filter_conditions
 from pantry_chef.search.rerank import Reranker
 from pantry_chef.search.semantic import Embedder, RecipeVectorStore, semantic_scores
@@ -99,12 +100,19 @@ def search(
     query: RecipeQuery,
     limit: int = 20,
     semantic: SemanticSearch | None = None,
+    expander: PantryExpander | None = None,
 ) -> SearchResult:
     pantry = pantry_names(query)
     conditions, params = filter_conditions(query)
 
-    with span("search.coverage", pantry_size=len(pantry), filters=len(conditions)):
-        rows, matched = rank_by_coverage(conn, pantry, conditions, params)
+    # Names the pantry covers: the pantry itself plus matched names ("pasta" -> "spaghetti").
+    covered = set(pantry)
+    if expander is not None:
+        with span("search.expand_pantry", pantry_size=len(pantry)):
+            covered |= set(expander.expand(pantry))
+
+    with span("search.coverage", pantry_size=len(covered), filters=len(conditions)):
+        rows, matched = rank_by_coverage(conn, sorted(covered), conditions, params)
     if semantic is not None and query.preferences_text.strip():
         with span("search.semantic", pool=min(len(rows), semantic.coverage_pool)):
             rows = rescore_with_semantics(rows, query.preferences_text, semantic)
@@ -121,7 +129,7 @@ def search(
             ingredients=ingredients.get(row.recipe_id, []),
             have_key=row.have_key,
             total_key=row.total_key,
-            missing_key=missing_key_names(ingredients.get(row.recipe_id, []), set(pantry)),
+            missing_key=missing_key_names(ingredients.get(row.recipe_id, []), covered),
             coverage=row.have_key / row.total_key if row.total_key else 1.0,
             avg_rating=row.avg_rating,
             n_ratings=row.n_ratings,
@@ -143,6 +151,7 @@ class SearchOptions:
     use_semantic: bool = False
     use_diversity: bool = False  # needs semantic (recipe vectors)
     use_rerank: bool = False
+    use_matcher: bool = False  # pantry expansion + matcher-based verification
     shortlist_size: int = 20  # verified recipes passed to diversity / rerank
     mmr_lambda: float = 0.7
 
@@ -153,19 +162,34 @@ def find_recipes(
     options: SearchOptions | None = None,
     semantic: SemanticSearch | None = None,
     reranker: Reranker | None = None,
+    verifier: Verifier | None = None,
+    expander: PantryExpander | None = None,
 ) -> list[Candidate]:
-    """Full pipeline: search -> verify -> (diversity) -> (rerank) -> top k verified."""
+    """Full pipeline: search -> verify -> (diversity) -> (rerank) -> top k verified.
+
+    Candidates with status pass or adapt are kept (adapt = works with a substitute or a
+    smaller batch)."""
     options = options or SearchOptions()
     if (options.use_semantic or options.use_diversity) and semantic is None:
         raise ValueError("use_semantic / use_diversity need a SemanticSearch")
     if options.use_rerank and reranker is None:
         raise ValueError("use_rerank=True needs a Reranker")
+    if options.use_matcher and (expander is None or verifier is None):
+        raise ValueError("use_matcher=True needs a PantryExpander and a matcher Verifier")
     result = search(
-        conn, query, limit=options.pool_size, semantic=semantic if options.use_semantic else None
+        conn,
+        query,
+        limit=options.pool_size,
+        semantic=semantic if options.use_semantic else None,
+        expander=expander if options.use_matcher else None,
     )
+    verifier = verifier if options.use_matcher and verifier else Verifier(conn)
     with span("search.verify", candidates=len(result.candidates)):
+        results = verifier.verify_all(result.candidates, query)
         verified = [
-            c for c in result.candidates if verify(c, query).status is VerificationStatus.PASS
+            c
+            for c, v in zip(result.candidates, results, strict=True)
+            if v.status is not VerificationStatus.FAIL
         ]
     shortlist = verified[: options.shortlist_size]
 
@@ -177,3 +201,35 @@ def find_recipes(
         with span("search.rerank", candidates=len(shortlist)):
             return reranker.rerank(query, shortlist, options.top_k)
     return shortlist[: options.top_k]
+
+
+def matching_from_settings(
+    settings: Settings, conn: sqlite3.Connection, embedder: Embedder
+) -> tuple[PantryExpander, Verifier]:
+    """Pantry expansion and a verifier that share one CompositeMatcher (and its cache)."""
+    from pathlib import Path
+
+    from pantry_chef.agents.hidden_allergens import HiddenAllergenChecker
+    from pantry_chef.ingredients.matcher import (
+        CompositeMatcher,
+        ExactMatcher,
+        LLMMatcher,
+        MatchCache,
+        llm_cache_source,
+        parents_from_seed,
+    )
+    from pantry_chef.ingredients.relations import load_seed
+    from pantry_chef.llm.factory import create_llm
+    from pantry_chef.search.semantic import ChromaNameIndex
+
+    llm = create_llm(settings)
+    llm_matcher = LLMMatcher(llm)
+    matcher = CompositeMatcher(
+        ExactMatcher(parents_from_seed(load_seed())),
+        MatchCache(conn, llm_cache_source(llm_matcher)),
+        llm_matcher,
+        log_path=Path("data/processed/match_log.jsonl"),
+    )
+    expander = PantryExpander(embedder, ChromaNameIndex(settings.chroma_path), matcher)
+    hidden = HiddenAllergenChecker(llm, Path("data/processed/hidden_allergens.json"))
+    return expander, Verifier(conn, matcher, hidden)

@@ -1,17 +1,25 @@
-"""Deterministic verifier (second safety layer).
+"""Verifier (second safety layer): pass / adapt / fail with machine-readable reasons.
 
-Each check is a pure function returning a CheckResult with machine-readable reasons.
-The allergen and diet checks use ingredient-level data (including allergens inherited
-from parent and contained ingredients), independent of the SQL filter, so a mistake in
-one layer is caught by the other.
+Every check is a pure function over the candidate and a VerificationContext. The slow
+parts (ingredient matching, hidden-allergen lookup, substitutes) are computed ONCE per
+search for all candidates by Verifier.prepare(), then each candidate is checked.
 
-Phase 3 checks: ingredients, allergens, diet. Quantities, hidden allergens (LLM),
-preferences and substitutions are added in Phase 5a.
+Allergen and diet checks use ingredient-level data (own + inherited allergens), independent
+of the SQL filter; the hidden-allergen check can only add failures. Decision: any failed
+check -> fail; otherwise any adaptation (substitute, scaling) -> adapt; otherwise pass.
 """
 
+import sqlite3
+from dataclasses import dataclass, field
+
+from pantry_chef.agents.hidden_allergens import HiddenAllergenChecker, is_compound
+from pantry_chef.db.repository import IngredientOption, load_canonical_facts, load_substitutes
 from pantry_chef.ingredients.allergens import Allergen
+from pantry_chef.ingredients.matcher import ExactMatcher, Matcher
 from pantry_chef.ingredients.normalize import normalize
-from pantry_chef.models.query import Diet, RecipeQuery
+from pantry_chef.ingredients.quantities import Amount, available_ratio
+from pantry_chef.models.matching import MatchLabel, MatchResult
+from pantry_chef.models.query import AmountStatus, Diet, PantryItem, RecipeQuery
 from pantry_chef.models.recipe import Candidate, RecipeIngredient
 from pantry_chef.models.verification import (
     CheckResult,
@@ -21,22 +29,147 @@ from pantry_chef.models.verification import (
     VerificationStatus,
 )
 
+SCALE_DOWN_LIMIT = 0.5  # with at least half of an ingredient, scale the recipe down
 
-def check_ingredients(candidate: Candidate, pantry: set[str]) -> CheckResult:
-    """Fail on every key ingredient the user does not have (staples are always available)."""
-    reasons = [
-        FailureReason(
-            code=FailureCode.MISSING_INGREDIENT,
-            item=ingredient.canonical_name,
-            detail=f"recipe needs {ingredient.name!r}, not in pantry",
+
+@dataclass
+class VerificationContext:
+    """Precomputed facts shared by all candidates of one search."""
+
+    pantry: set[str]  # canonical names
+    matches: dict[str, MatchResult] = field(default_factory=dict)  # by recipe canonical
+    pantry_items: dict[str, PantryItem] = field(default_factory=dict)  # by canonical
+    hidden: dict[str, set[Allergen]] = field(default_factory=dict)  # by ingredient name
+    substitutes: dict[str, list[IngredientOption]] = field(default_factory=dict)
+    pantry_facts: dict[str, IngredientOption] = field(default_factory=dict)  # by canonical
+
+
+def needs_match(ingredient: RecipeIngredient) -> bool:
+    return ingredient.is_key and not ingredient.is_staple and not ingredient.is_optional
+
+
+def match_for(ingredient: RecipeIngredient, context: VerificationContext) -> MatchResult:
+    """The match for a key ingredient; exact pantry membership if nothing was prepared."""
+    found = context.matches.get(ingredient.canonical_name)
+    if found is not None:
+        return found
+    if ingredient.canonical_name in context.pantry:
+        return MatchResult(
+            recipe_term=ingredient.canonical_name,
+            user_term=ingredient.canonical_name,
+            label=MatchLabel.SAME,
+            source="exact",
         )
-        for ingredient in candidate.ingredients
-        if ingredient.is_key
-        and not ingredient.is_staple
-        and not ingredient.is_optional
-        and ingredient.canonical_name not in pantry
-    ]
-    return CheckResult(check="ingredients", passed=not reasons, reasons=reasons)
+    return MatchResult(
+        recipe_term=ingredient.canonical_name,
+        user_term=None,
+        label=MatchLabel.DIFFERENT,
+        source="none",
+    )
+
+
+# --- checks --------------------------------------------------------------------------
+
+
+def check_ingredients(
+    candidate: Candidate,
+    pantry: set[str],
+    context: VerificationContext | None = None,
+    query: RecipeQuery | None = None,
+) -> CheckResult:
+    """Fail on every key ingredient the pantry cannot cover (staples are always there);
+    a covering substitute is an adaptation. A pantry item standing in for a DIFFERENT
+    recipe ingredient is re-checked: it must not bring in the user's allergens or break
+    their diet (milk instead of oat milk for a milk allergy)."""
+    context = context or VerificationContext(pantry=pantry)
+    allergens = set(query.required_allergen_free) if query else set()
+    diets = set(query.diets) if query else set()
+    reasons, adaptations = [], []
+    for ingredient in candidate.ingredients:
+        if not needs_match(ingredient):
+            continue
+        match = match_for(ingredient, context)
+        if match.label is MatchLabel.DIFFERENT:
+            reasons.append(
+                FailureReason(
+                    code=FailureCode.MISSING_INGREDIENT,
+                    item=ingredient.canonical_name,
+                    detail=f"recipe needs {ingredient.name!r}, not in pantry",
+                )
+            )
+        else:
+            stand_in = context.pantry_facts.get(match.user_term or "")
+            if match.user_term != ingredient.canonical_name and stand_in is not None:
+                for allergen in sorted(set(stand_in.allergens) & allergens):
+                    reasons.append(
+                        FailureReason(
+                            code=FailureCode.ALLERGEN,
+                            item=match.user_term,
+                            detail=f"your {match.user_term!r} (for {ingredient.name}) contains "
+                            f"{allergen.value}",
+                        )
+                    )
+                for diet in sorted(diets):
+                    if breaks_diet(stand_in, diet):
+                        reasons.append(
+                            FailureReason(
+                                code=FailureCode.DIET_VIOLATION,
+                                item=match.user_term,
+                                detail=f"your {match.user_term!r} (for {ingredient.name}) is not "
+                                f"{diet.value.replace('_', '-')}",
+                            )
+                        )
+            if match.label is MatchLabel.SUBSTITUTE:
+                adaptations.append(f"use your {match.user_term} instead of {ingredient.name}")
+    return CheckResult(
+        check="ingredients", passed=not reasons, reasons=reasons, adaptations=adaptations
+    )
+
+
+def check_quantities(candidate: Candidate, context: VerificationContext) -> CheckResult:
+    """Only key ingredients whose quantity matters and where both amounts are known.
+    Unknown or "plenty" is fine; >= 50% available -> scale the recipe down; less -> fail."""
+    reasons, notes, ratios = [], [], []
+    for ingredient in candidate.ingredients:
+        if not (needs_match(ingredient) and ingredient.quantity_matters):
+            continue
+        match = match_for(ingredient, context)
+        item = context.pantry_items.get(match.user_term or "")
+        if item is None or item.amount_status is not AmountStatus.KNOWN or item.quantity is None:
+            continue
+        if ingredient.quantity is None:
+            notes.append(f"recipe amount of {ingredient.name} unknown")
+            continue
+        ratio = available_ratio(
+            Amount(item.quantity, item.unit), Amount(ingredient.quantity, ingredient.unit)
+        )
+        if ratio is None:
+            notes.append(
+                f"cannot compare {item.unit or 'count'} with "
+                f"{ingredient.unit or 'count'} for {ingredient.name}"
+            )
+        elif ratio < SCALE_DOWN_LIMIT:
+            reasons.append(
+                FailureReason(
+                    code=FailureCode.INSUFFICIENT_QUANTITY,
+                    item=ingredient.canonical_name,
+                    detail=f"have {item.quantity:g} {item.unit or ''}, recipe needs "
+                    f"{ingredient.quantity:g} {ingredient.unit or ''}".replace("  ", " "),
+                )
+            )
+        elif ratio < 1:
+            ratios.append((ratio, ingredient.name))
+    adaptations = []
+    if ratios and not reasons:
+        ratio, name = min(ratios)
+        adaptations.append(f"make {ratio:.0%} of the recipe (limited by {name})")
+    return CheckResult(
+        check="quantities",
+        passed=not reasons,
+        reasons=reasons,
+        adaptations=adaptations,
+        notes=notes,
+    )
 
 
 def check_allergens(candidate: Candidate, allergens: set[Allergen]) -> CheckResult:
@@ -53,7 +186,25 @@ def check_allergens(candidate: Candidate, allergens: set[Allergen]) -> CheckResu
     return CheckResult(check="allergens", passed=not reasons, reasons=reasons)
 
 
-def breaks_diet(ingredient: RecipeIngredient, diet: Diet) -> bool:
+def check_hidden_allergens(
+    candidate: Candidate, allergens: set[Allergen], context: VerificationContext
+) -> CheckResult:
+    """Allergens the second look found in compound ingredients that the labels missed."""
+    reasons = [
+        FailureReason(
+            code=FailureCode.HIDDEN_ALLERGEN,
+            item=ingredient.canonical_name,
+            detail=f"{ingredient.name!r} may contain {allergen.value}",
+        )
+        for ingredient in candidate.ingredients
+        for allergen in sorted(
+            (context.hidden.get(ingredient.name, set()) & allergens) - set(ingredient.allergens)
+        )
+    ]
+    return CheckResult(check="hidden_allergens", passed=not reasons, reasons=reasons)
+
+
+def breaks_diet(ingredient: RecipeIngredient | IngredientOption, diet: Diet) -> bool:
     if diet is Diet.VEGETARIAN:
         return ingredient.contains_meat or ingredient.contains_fish
     if diet is Diet.VEGAN:
@@ -77,13 +228,155 @@ def check_diet(candidate: Candidate, diets: set[Diet]) -> CheckResult:
     return CheckResult(check="diet", passed=not reasons, reasons=reasons)
 
 
-def verify(candidate: Candidate, query: RecipeQuery) -> VerificationResult:
-    """Run all checks; the candidate passes only if every check passes."""
-    pantry = {normalize(name) for name in query.ingredients}
+def check_time(candidate: Candidate, max_minutes: int | None) -> CheckResult:
+    if max_minutes is None or candidate.minutes <= max_minutes:
+        return CheckResult(check="time", passed=True)
+    reason = FailureReason(
+        code=FailureCode.TOO_LONG,
+        item=str(candidate.minutes),
+        detail=f"takes {candidate.minutes} min, limit {max_minutes}",
+    )
+    return CheckResult(check="time", passed=False, reasons=[reason])
+
+
+def suggest_substitutions(
+    candidate: Candidate, query: RecipeQuery, context: VerificationContext
+) -> CheckResult:
+    """For missing non-key ingredients, suggest a substitute the user HAS, but only if it
+    passes the user's allergens and diets (a substitute can change them)."""
+    allergens, diets = set(query.required_allergen_free), set(query.diets)
+    adaptations, notes = [], []
+    for ingredient in candidate.ingredients:
+        missing = (
+            not ingredient.is_key
+            and not ingredient.is_staple
+            and ingredient.canonical_name not in context.pantry
+        )
+        if not missing:
+            continue
+        safe = [
+            option
+            for option in context.substitutes.get(ingredient.canonical_name, [])
+            if option.name in context.pantry
+            and not set(option.allergens) & allergens
+            and not any(breaks_diet(option, d) for d in diets)
+        ]
+        if safe:
+            note = f" ({safe[0].note})" if safe[0].note else ""
+            adaptations.append(f"use your {safe[0].name} instead of {ingredient.name}{note}")
+        else:
+            notes.append(f"also needs {ingredient.name}")
+    return CheckResult(check="substitutions", passed=True, adaptations=adaptations, notes=notes)
+
+
+# --- decision ------------------------------------------------------------------------
+
+
+def ingredient_status(candidate: Candidate, context: VerificationContext) -> dict[str, str]:
+    status = {}
+    for ingredient in candidate.ingredients:
+        if ingredient.is_staple:
+            status[ingredient.name] = "staple"
+        elif ingredient.is_optional:
+            status[ingredient.name] = "optional"
+        elif ingredient.is_key:
+            label = match_for(ingredient, context).label
+            status[ingredient.name] = {
+                MatchLabel.DIFFERENT: "missing",
+                MatchLabel.SUBSTITUTE: "substitute",
+            }.get(label, "available")
+        else:
+            available = ingredient.canonical_name in context.pantry
+            status[ingredient.name] = "available" if available else "extra"
+    return status
+
+
+def verify(
+    candidate: Candidate, query: RecipeQuery, context: VerificationContext | None = None
+) -> VerificationResult:
+    """Run every check; fail if any fails, adapt if any adaptation is needed, else pass."""
+    if context is None:
+        context = VerificationContext(pantry={normalize(n) for n in query.ingredients})
+    allergens = set(query.required_allergen_free)
     checks = [
-        check_ingredients(candidate, pantry),
-        check_allergens(candidate, set(query.required_allergen_free)),
+        check_ingredients(candidate, context.pantry, context, query),
+        check_quantities(candidate, context),
+        check_allergens(candidate, allergens),
+        check_hidden_allergens(candidate, allergens, context),
         check_diet(candidate, set(query.diets)),
+        check_time(candidate, query.max_minutes),
+        suggest_substitutions(candidate, query, context),
     ]
-    status = VerificationStatus.PASS if all(c.passed for c in checks) else VerificationStatus.FAIL
-    return VerificationResult(candidate_id=candidate.recipe_id, status=status, checks=checks)
+    adaptations = [a for c in checks for a in c.adaptations]
+    if not all(c.passed for c in checks):
+        status = VerificationStatus.FAIL
+    elif adaptations:
+        status = VerificationStatus.ADAPT
+    else:
+        status = VerificationStatus.PASS
+    return VerificationResult(
+        candidate_id=candidate.recipe_id,
+        status=status,
+        checks=checks,
+        adaptations=adaptations,
+        notes=[n for c in checks for n in c.notes],
+        ingredient_status=ingredient_status(candidate, context),
+    )
+
+
+class Verifier:
+    """Prepares the shared context for a batch of candidates (one matcher call, one
+    hidden-allergen call, one substitutes query), then verifies each one."""
+
+    def __init__(
+        self,
+        conn: sqlite3.Connection,
+        matcher: Matcher | None = None,
+        hidden_checker: HiddenAllergenChecker | None = None,
+    ):
+        self.conn = conn
+        self.matcher = matcher or ExactMatcher()
+        self.hidden_checker = hidden_checker
+
+    def prepare(
+        self,
+        candidates: list[Candidate],
+        query: RecipeQuery,
+        pantry_items: list[PantryItem] | None = None,
+    ) -> VerificationContext:
+        items = {item.canonical_name: item for item in pantry_items or []}
+        pantry = {normalize(n) for n in query.ingredients if n.strip()} | set(items)
+        ingredients = [i for c in candidates for i in c.ingredients]
+
+        key_terms = sorted({i.canonical_name for i in ingredients if needs_match(i)})
+        matches = {m.recipe_term: m for m in self.matcher.match(sorted(pantry), key_terms)}
+
+        hidden: dict[str, set[Allergen]] = {}
+        if self.hidden_checker is not None and query.required_allergen_free:
+            compound = sorted({i.name for i in ingredients if is_compound(i)})
+            hidden = self.hidden_checker.check(compound)
+
+        missing_extra = sorted(
+            {
+                i.canonical_name
+                for i in ingredients
+                if not i.is_key and not i.is_staple and i.canonical_name not in pantry
+            }
+        )
+        return VerificationContext(
+            pantry=pantry,
+            matches=matches,
+            pantry_items=items,
+            hidden=hidden,
+            substitutes=load_substitutes(self.conn, missing_extra),
+            pantry_facts=load_canonical_facts(self.conn, sorted(pantry)),
+        )
+
+    def verify_all(
+        self,
+        candidates: list[Candidate],
+        query: RecipeQuery,
+        pantry_items: list[PantryItem] | None = None,
+    ) -> list[VerificationResult]:
+        context = self.prepare(candidates, query, pantry_items)
+        return [verify(c, query, context) for c in candidates]

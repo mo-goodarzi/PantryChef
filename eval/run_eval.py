@@ -15,7 +15,12 @@ from pantry_chef.evaluation.judge import CachedJudge
 from pantry_chef.evaluation.search_eval import evaluate_variant, summarize, write_report
 from pantry_chef.llm.factory import create_llm
 from pantry_chef.observability import configure_logging
-from pantry_chef.search.engine import SearchOptions, find_recipes, semantic_from_settings
+from pantry_chef.search.engine import (
+    SearchOptions,
+    find_recipes,
+    matching_from_settings,
+    semantic_from_settings,
+)
 from pantry_chef.search.rerank import LLMReranker
 
 ROOT = Path(__file__).parent
@@ -27,6 +32,8 @@ VARIANTS = {
     "semantic+diversity+rerank": SearchOptions(
         use_semantic=True, use_diversity=True, use_rerank=True
     ),
+    "semantic+matcher": SearchOptions(use_semantic=True, use_matcher=True),
+    "semantic+matcher+rerank": SearchOptions(use_semantic=True, use_matcher=True, use_rerank=True),
 }
 
 
@@ -51,6 +58,9 @@ def main() -> None:
     needs_semantic = any(VARIANTS[v].use_semantic for v in variants)
     semantic = semantic_from_settings(settings) if needs_semantic else None
     reranker = LLMReranker(create_llm(settings), conn)
+    expander, verifier = (None, None)
+    if semantic is not None and any(VARIANTS[v].use_matcher for v in variants):
+        expander, verifier = matching_from_settings(settings, conn, semantic.embedder)
 
     all_results = {}
     for variant in variants:
@@ -59,7 +69,15 @@ def main() -> None:
             conn,
             cases,
             variant,
-            lambda q, o=options: find_recipes(conn, q, o, semantic=semantic, reranker=reranker),
+            lambda q, o=options: find_recipes(
+                conn,
+                q,
+                o,
+                semantic=semantic,
+                reranker=reranker,
+                verifier=verifier,
+                expander=expander,
+            ),
             judge,
             vectors=semantic.store.get_vectors if semantic else None,
         )
