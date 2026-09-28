@@ -37,3 +37,6 @@ class Candidate(BaseModel):
     semantic_score: float | None = None
     final_score: float
     rerank_reason: str | None = None
+    # Nutrition per serving as % of daily value (for low-sugar / low-salt checks).
+    sugar_pdv: float | None = None
+    sodium_pdv: float | None = None

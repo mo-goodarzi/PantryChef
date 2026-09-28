@@ -10,7 +10,7 @@ from dataclasses import dataclass, replace
 
 from pantry_chef.agents.verifier import Verifier
 from pantry_chef.config import Settings
-from pantry_chef.db.repository import load_recipe_ingredients
+from pantry_chef.db.repository import load_nutrition, load_recipe_ingredients
 from pantry_chef.ingredients.normalize import normalize
 from pantry_chef.ingredients.staples import is_staple
 from pantry_chef.models.query import RecipeQuery
@@ -127,6 +127,7 @@ def search(
 
     with span("search.load_ingredients", candidates=len(rows)):
         ingredients = load_recipe_ingredients(conn, [row.recipe_id for row in rows])
+        nutrition = load_nutrition(conn, [row.recipe_id for row in rows])
 
     candidates = [
         Candidate(
@@ -143,6 +144,8 @@ def search(
             ingredient_score=row.ingredient_score,
             semantic_score=row.semantic_score,
             final_score=row.final_score if row.final_score is not None else row.ingredient_score,
+            sugar_pdv=nutrition.get(row.recipe_id, {}).get("sugar_pdv"),
+            sodium_pdv=nutrition.get(row.recipe_id, {}).get("sodium_pdv"),
         )
         for row in rows
     ]

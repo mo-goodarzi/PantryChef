@@ -95,7 +95,9 @@ def main() -> None:
     parser.add_argument("--rerank", action="store_true", help="let the LLM pick the final top")
     parser.add_argument("--match", action="store_true", help="smarter ingredient matching (LLM)")
     parser.add_argument("--allergy", help="comma-separated, e.g. peanuts,milk,shellfish")
-    parser.add_argument("--diet", help="comma-separated: vegetarian, vegan, gluten-free")
+    parser.add_argument(
+        "--diet", help="comma-separated: vegetarian, vegan, gluten-free, low-sugar, low-salt"
+    )
     parser.add_argument("--exclude", help="comma-separated ingredients to avoid")
     parser.add_argument("--max-minutes", type=int)
     parser.add_argument("--meal-type", help="e.g. breakfast, main-dish, dessert")

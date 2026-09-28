@@ -150,6 +150,29 @@ def test_gluten_free_uses_the_gluten_allergen():
     assert not check_diet(recipe, {Diet.GLUTEN_FREE}).passed
 
 
+@pytest.mark.parametrize(
+    ("diet", "field", "value", "passed"),
+    [
+        (Diet.LOW_SUGAR, "sugar_pdv", 10.0, True),
+        (Diet.LOW_SUGAR, "sugar_pdv", 17.0, False),
+        (Diet.LOW_SUGAR, "sugar_pdv", None, False),  # unknown never passes
+        (Diet.LOW_SALT, "sodium_pdv", 6.0, True),
+        (Diet.LOW_SALT, "sodium_pdv", 13.0, False),
+    ],
+)
+def test_nutrition_diets_are_checked_per_recipe(diet, field, value, passed):
+    recipe = candidate(ing("eggs")).model_copy(update={field: value})
+    result = check_diet(recipe, {diet})
+    assert result.passed is passed
+    if not passed:
+        assert result.reasons[0].code is FailureCode.DIET_VIOLATION
+
+
+def test_nutrition_diets_do_not_make_ingredient_checks_fail():
+    recipe = candidate(ing("eggs")).model_copy(update={"sugar_pdv": 0.0})
+    assert check_diet(recipe, {Diet.LOW_SUGAR, Diet.VEGETARIAN}).passed
+
+
 # --- decision ------------------------------------------------------------------------
 
 

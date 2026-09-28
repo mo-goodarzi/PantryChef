@@ -74,6 +74,18 @@ def load_recipe_ingredients(
     return dict(result)
 
 
+def load_nutrition(
+    conn: sqlite3.Connection, recipe_ids: list[int]
+) -> dict[int, dict[str, float | None]]:
+    """Sugar and sodium per serving (% of daily value) for the nutrition diets."""
+    rows = conn.execute(
+        "SELECT id, sugar_pdv, sodium_pdv FROM recipes "
+        "WHERE id IN (SELECT value FROM json_each(:ids))",
+        {"ids": json.dumps(recipe_ids)},
+    )
+    return {r["id"]: {"sugar_pdv": r["sugar_pdv"], "sodium_pdv": r["sodium_pdv"]} for r in rows}
+
+
 def recipe_summaries(conn: sqlite3.Connection, recipe_ids: list[int]) -> dict[int, dict]:
     """What an LLM (judge or reranker) sees about each recipe."""
     summaries = {}

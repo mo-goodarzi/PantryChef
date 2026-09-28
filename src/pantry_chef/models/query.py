@@ -8,11 +8,29 @@ from pantry_chef.ingredients.allergens import Allergen
 
 
 class Diet(StrEnum):
-    """Diets backed by recipe flags in the database (see enrich.derive_recipe_data)."""
+    """Diets the filters and the verifier can enforce.
+
+    Ingredient diets use recipe flags derived from ingredient facts
+    (enrich.derive_recipe_data); nutrition diets use the recipe's nutrition per serving.
+    """
 
     VEGETARIAN = "vegetarian"
     VEGAN = "vegan"
     GLUTEN_FREE = "gluten_free"
+    LOW_SUGAR = "low_sugar"
+    LOW_SALT = "low_salt"
+
+
+INGREDIENT_DIETS = frozenset({Diet.VEGETARIAN, Diet.VEGAN, Diet.GLUTEN_FREE})
+
+# Nutrition diets: (recipe column, highest allowed % of daily value per serving).
+# Low salt follows the US FDA "low sodium" claim (<= 140 mg = 6% of 2,300 mg). There is
+# no official "low sugar" claim; 10% of the 50 g daily value is <= 5 g sugar per serving.
+# These are recipe filters, not medical advice (see docs/decisions.md).
+NUTRITION_LIMITS: dict[Diet, tuple[str, float]] = {
+    Diet.LOW_SUGAR: ("sugar_pdv", 10.0),
+    Diet.LOW_SALT: ("sodium_pdv", 6.0),
+}
 
 
 class RecipeQuery(BaseModel):
