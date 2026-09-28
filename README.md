@@ -6,8 +6,8 @@ A multi-agent recipe assistant. Tell it what you have at home ("eggs, milk, toas
 it returns safe, suitable recipes you can actually make, checked against your allergies
 and diet, plus an optional matching YouTube video.
 
-**Status:** the full conversation runs in the terminal (Phase 5b, `v0.1`): safety intake
-with consent, search with verification and retries, recipe choice and final answer. See
+**Status:** web UI and API (Phase 6): a Streamlit chat over a FastAPI backend, runnable
+with Docker Compose. The same conversation also runs in the terminal (Phase 5b). See
 [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for the design and build order.
 
 ## Setup
@@ -45,6 +45,30 @@ uv run python scripts/enrich_db.py           # rules + labels -> allergens, diet
 ```
 
 Data files are never committed.
+
+## Web app (Docker)
+
+Build the data first (see Setup), then:
+
+```bash
+docker compose up --build     # UI: http://localhost:8501   API: http://localhost:8000/docs
+```
+
+`./data` is mounted into the API container, not copied into the image: it must contain
+`processed/pantry.db` and `processed/chroma/`; `state.db` (profiles, conversations, caches)
+and the embedding model cache are written there too. Keys come from `.env`. The image uses
+a CPU-only torch (~2 GB instead of ~7 GB with CUDA).
+
+Without Docker, in two terminals:
+
+```bash
+uv run uvicorn pantry_chef.api.main:app            # API on :8000 (docs at /docs)
+uv run streamlit run ui/streamlit_app.py           # UI on :8501
+```
+
+The API: `POST /sessions`, `POST /sessions/{id}/messages`, `POST /sessions/{id}/resume`
+(answer the pending question), `GET /sessions/{id}`, `DELETE /sessions/{id}?forget=true`,
+`DELETE /users/{user}/profile` ("delete my data"), `GET /health`.
 
 ## Chat (terminal)
 

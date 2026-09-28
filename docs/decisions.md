@@ -454,3 +454,42 @@ cannot drop or change an ingredient on the last step, and the answer costs nothi
 **Chat requires the embeddings.** Without Chroma there is no matcher and therefore no
 hidden-allergen check, so the chat app refuses to start rather than run with a safety layer
 missing.
+
+## 2026-09-28 — Phase 6: API, web UI, Docker
+
+**FastAPI backend (owner decision)**, with the Streamlit UI as a pure HTTP client, so the
+UI and API can be deployed and scaled separately and the API is usable on its own.
+- The session id is the LangGraph thread id; checkpoints live in `state.db`, so
+  conversations survive API restarts (tested). The API keeps no session state in memory:
+  the UI sends the user name with each message.
+- Every interrupt is returned as `type` = question | candidates | final | message plus the
+  typed `Question`; an answer is validated against the pending question's reply model
+  (422 when it does not fit, 409 when nothing is pending).
+- **One request at a time.** FastAPI runs endpoints in worker threads, but the graph
+  shares SQLite connections, so graph calls run under a lock (connections opened with
+  `check_same_thread=False`). Enough for a demo; scaling out would mean one connection
+  per request and a server database for checkpoints.
+- **No authentication**: anyone who knows a user name can delete that profile. Acceptable
+  for a local portfolio demo (user accounts are out of scope for v1); rate limiting and a
+  spending cap come with the public deployment (Phase 11).
+- "Delete my data" deletes the stored profile and the current conversation (`forget`).
+
+**Streamlit UI**: renders each question kind as a form (safety text, confirm + consent,
+amounts with "don't know"/"plenty", recipe cards with "Cook this" / "Show me other
+recipes"), a sidebar with the profile and "Delete my data". If the API is down the UI says
+so instead of crashing. Tested with Streamlit's AppTest through the real API on the
+fixture database, and checked in a browser (Chromium) locally and in Docker.
+
+**Docker: data mounted, not baked in (owner decision).** One image for both services
+(different commands); compose mounts `./data` at `/app/data` for the API only. The API
+starts behind a healthcheck (it loads the embedding model) and exits with a clear message
+when `pantry.db` or the embeddings are missing. Runs as a non-root user (uid 1000).
+
+**CPU-only torch in the image.** `uv.lock` pins the CUDA build of torch, which brings ~5 GB
+of NVIDIA libraries the app never uses (it only runs bge-small on CPU); skipping those
+libraries alone does not work (the CUDA torch refuses to import). The Dockerfile installs
+every locked package except torch and its CUDA/triton dependencies, then the same torch
+version from the PyTorch CPU index: ~2 GB image instead of ~7 GB. The lock file and local
+installs are unchanged; `tests/test_docker.py` keeps the Dockerfile's torch version equal
+to the lock. Verified in the build sandbox without torch (the PyTorch index is blocked
+there); the CPU-torch step itself is only verified on a machine that can reach it.

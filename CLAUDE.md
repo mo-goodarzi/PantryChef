@@ -100,7 +100,8 @@ pantry-chef/
 - Build embeddings: `uv run python scripts/build_embeddings.py`
 - Chat (full graph, terminal): `uv run python scripts/chat_cli.py --user <name>`
 - API: `uv run uvicorn pantry_chef.api.main:app --reload`
-- UI: `uv run streamlit run ui/streamlit_app.py`
+- UI: `uv run streamlit run ui/streamlit_app.py` (talks to the API at `PANTRY_CHEF_API_URL`)
+- Docker (API + UI, `./data` mounted): `docker compose up --build`
 - Eval: `uv run python eval/run_eval.py --suite <name>`
 
 ## Working rules for Claude Code
