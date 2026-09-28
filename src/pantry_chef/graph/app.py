@@ -1,0 +1,78 @@
+"""Build the real conversation (models, databases, search pipeline) from Settings."""
+
+import sqlite3
+from dataclasses import dataclass, field
+
+from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.graph.state import CompiledStateGraph
+
+from pantry_chef.config import Settings
+from pantry_chef.db.connection import connect
+from pantry_chef.db.repository import load_steps
+from pantry_chef.db.state import ProfileStore, open_state_db
+from pantry_chef.graph.builder import build_graph
+from pantry_chef.graph.nodes import ChatDeps
+from pantry_chef.llm.factory import create_llm
+from pantry_chef.models.query import RecipeQuery
+from pantry_chef.observability import flush_tracing, tracing_from_settings
+from pantry_chef.search.engine import (
+    FindResult,
+    SearchOptions,
+    find_verified,
+    matching_from_settings,
+    semantic_from_settings,
+)
+from pantry_chef.search.rerank import LLMReranker
+
+
+@dataclass
+class ChatApp:
+    graph: CompiledStateGraph
+    connections: list[sqlite3.Connection] = field(default_factory=list)
+
+    def close(self) -> None:
+        flush_tracing()
+        for conn in self.connections:
+            conn.close()
+
+
+def chat_from_settings(settings: Settings) -> ChatApp:
+    """The measured best pipeline: semantic + matcher + pantry usage + LLM rerank."""
+    for path, how in [
+        (settings.db_path, "scripts/build_db.py and scripts/enrich_db.py"),
+        (settings.chroma_path, "scripts/build_embeddings.py"),
+    ]:
+        if not path.exists():
+            # Without embeddings there is no matcher, and so no hidden-allergen check:
+            # refuse rather than run with a safety layer missing.
+            raise FileNotFoundError(f"{path} is missing; build it with {how}")
+
+    tracing_from_settings(settings)
+    conn = connect(settings.db_path)
+    state = open_state_db(settings.state_db_path)
+    checkpoints = sqlite3.connect(settings.state_db_path, check_same_thread=False)
+
+    llm = create_llm(settings)
+    semantic = semantic_from_settings(settings)
+    expander, verifier = matching_from_settings(settings, conn, semantic.embedder, state)
+    reranker = LLMReranker(llm, conn)
+    options = SearchOptions(
+        use_semantic=True,
+        use_matcher=True,
+        use_rerank=True,
+        usage_weight=settings.usage_weight,
+    )
+
+    def find(query: RecipeQuery) -> FindResult:
+        return find_verified(conn, query, options, semantic, reranker, verifier, expander)
+
+    deps = ChatDeps(
+        llm=llm,
+        find=find,
+        reverify=verifier.verify_all,
+        steps=lambda recipe_id: load_steps(conn, recipe_id),
+        profiles=ProfileStore(state),
+        ask_quantities=settings.ask_quantities,
+    )
+    graph = build_graph(deps, SqliteSaver(checkpoints))
+    return ChatApp(graph=graph, connections=[conn, state, checkpoints])

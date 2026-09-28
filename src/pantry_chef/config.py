@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     semantic_neighbors: int = 2000  # nearest recipes to the wish, added to the pool
     usage_weight: float = 0.5  # ingredient score = (1 - w) * coverage + w * pantry usage
 
+    # Conversation
+    # The quantity question is built but off until recipes have amounts (Phase 8).
+    ask_quantities: bool = False
+
     log_level: str = "INFO"
 
 
