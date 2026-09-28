@@ -7,7 +7,10 @@ from pantry_chef.models.query import Diet
 
 
 class UserProfile(BaseModel):
-    allergens: list[Allergen] = Field(default_factory=list)
+    allergens: list[Allergen] = Field(default_factory=list)  # EU 14, checked twice in code
+    # Allergies outside the EU list ("kiwi"): excluded by ingredient name only, and the
+    # user is told to check ingredients themselves.
+    other_allergies: list[str] = Field(default_factory=list)
     diets: list[Diet] = Field(default_factory=list)
     # Diets the user confirmed because of a health condition (e.g. diabetes -> low sugar).
     # Only the restriction is kept, never the condition; it triggers the not-medical-advice
