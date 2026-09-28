@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     semantic_weight: float = 0.3  # final = (1 - w) * ingredient + w * semantic
     coverage_pool: int = 1000  # top recipes by coverage that get a semantic score
     semantic_neighbors: int = 2000  # nearest recipes to the wish, added to the pool
+    usage_weight: float = 0.5  # ingredient score = (1 - w) * coverage + w * pantry usage
 
     log_level: str = "INFO"
 

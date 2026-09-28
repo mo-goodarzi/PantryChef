@@ -126,6 +126,7 @@ def main() -> None:
         limit=args.candidates,
         semantic=semantic if use_semantic else None,
         expander=expander,
+        usage_weight=settings.usage_weight,
     )
     verified: list[tuple[Candidate, VerificationResult]] = list(
         zip(result.candidates, verifier.verify_all(result.candidates, query), strict=True)

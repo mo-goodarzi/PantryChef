@@ -102,7 +102,7 @@ def search(
     limit: int = 20,
     semantic: SemanticSearch | None = None,
     expander: PantryExpander | None = None,
-    usage_weight: float = 0.0,
+    usage_weight: float = 0.5,
 ) -> SearchResult:
     pantry = pantry_names(query)
     conditions, params = filter_conditions(query)
@@ -158,7 +158,7 @@ class SearchOptions:
     use_diversity: bool = False  # needs semantic (recipe vectors)
     use_rerank: bool = False
     use_matcher: bool = False  # pantry expansion + matcher-based verification
-    usage_weight: float = 0.0  # weight of pantry usage in the ingredient score
+    usage_weight: float = 0.5  # weight of pantry usage in the ingredient score (0 = off)
     shortlist_size: int = 20  # verified recipes passed to diversity / rerank
     mmr_lambda: float = 0.7
 

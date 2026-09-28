@@ -24,16 +24,29 @@ from pantry_chef.search.engine import (
 from pantry_chef.search.rerank import LLMReranker
 
 ROOT = Path(__file__).parent
+# Variants before the pantry-usage change keep usage_weight=0.0 so they reproduce earlier
+# reports; the "+usage" variants use the default (0.5).
+OFF = 0.0
 VARIANTS = {
-    "coverage": SearchOptions(),
-    "semantic": SearchOptions(use_semantic=True),
-    "semantic+diversity": SearchOptions(use_semantic=True, use_diversity=True),
-    "semantic+rerank": SearchOptions(use_semantic=True, use_rerank=True),
+    "coverage": SearchOptions(usage_weight=OFF),
+    "semantic": SearchOptions(use_semantic=True, usage_weight=OFF),
+    "semantic+diversity": SearchOptions(use_semantic=True, use_diversity=True, usage_weight=OFF),
+    "semantic+rerank": SearchOptions(use_semantic=True, use_rerank=True, usage_weight=OFF),
     "semantic+diversity+rerank": SearchOptions(
-        use_semantic=True, use_diversity=True, use_rerank=True
+        use_semantic=True, use_diversity=True, use_rerank=True, usage_weight=OFF
     ),
-    "semantic+matcher": SearchOptions(use_semantic=True, use_matcher=True),
-    "semantic+matcher+rerank": SearchOptions(use_semantic=True, use_matcher=True, use_rerank=True),
+    "semantic+matcher": SearchOptions(use_semantic=True, use_matcher=True, usage_weight=OFF),
+    "semantic+matcher+rerank": SearchOptions(
+        use_semantic=True, use_matcher=True, use_rerank=True, usage_weight=OFF
+    ),
+    "coverage+usage": SearchOptions(),
+    "semantic+matcher+usage": SearchOptions(use_semantic=True, use_matcher=True),
+    "semantic+matcher+usage@0.3": SearchOptions(
+        use_semantic=True, use_matcher=True, usage_weight=0.3
+    ),
+    "semantic+matcher+usage+rerank": SearchOptions(
+        use_semantic=True, use_matcher=True, use_rerank=True
+    ),
 }
 
 
