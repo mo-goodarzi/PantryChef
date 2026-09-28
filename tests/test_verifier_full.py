@@ -428,6 +428,74 @@ def test_chicken_standing_in_for_tofu_breaks_vegetarian():
     assert verify(recipe, query, context).reasons[0].code is FailureCode.DIET_VIOLATION
 
 
+class FixedMatcher:
+    """Returns the given matches; everything else is exact-or-different."""
+
+    def __init__(self, *matches):
+        self.matches = {m.recipe_term: m for m in matches}
+
+    def match(self, user_terms, recipe_terms):
+        return [
+            self.matches.get(r)
+            or match(r, r if r in user_terms else None, "same" if r in user_terms else "different")
+            for r in recipe_terms
+        ]
+
+
+def verify_with_stand_in(conn, recipe_ingredient, pantry_item, **query_fields):
+    matcher = FixedMatcher(match(recipe_ingredient.canonical_name, pantry_item, "substitute"))
+    query = RecipeQuery(ingredients=[pantry_item], **query_fields)
+    [result] = Verifier(conn, matcher).verify_all([cand(recipe_ingredient)], query)
+    return result
+
+
+def test_pantry_item_missing_from_the_database_is_checked_with_the_name_rules(enriched_conn):
+    # "homemade cashew milk" is not in the database; the rules still see the cashew.
+    result = verify_with_stand_in(
+        enriched_conn,
+        ing("milk", allergens=[Allergen.MILK]),
+        "homemade cashew milk",
+        required_allergen_free=[Allergen.TREE_NUTS],
+    )
+    assert result.status is VerificationStatus.FAIL
+    assert [str(r) for r in result.reasons] == ["allergen: homemade cashew milk"]
+    assert "contains tree_nuts" in result.reasons[0].detail
+
+
+def test_unknown_pantry_item_fails_closed_when_the_user_has_allergies(enriched_conn):
+    # No rule fires on "barista drink", but it could be dairy: it cannot stand in.
+    result = verify_with_stand_in(
+        enriched_conn, ing("oat milk"), "barista drink", required_allergen_free=[Allergen.MILK]
+    )
+    assert result.status is VerificationStatus.FAIL
+    assert result.reasons[0].code is FailureCode.ALLERGEN
+    assert "cannot be checked" in result.reasons[0].detail
+
+
+def test_unknown_pantry_item_fails_closed_for_a_diet(enriched_conn):
+    result = verify_with_stand_in(
+        enriched_conn, ing("tofu"), "mystery protein", diets=[Diet.VEGETARIAN]
+    )
+    assert result.status is VerificationStatus.FAIL
+    assert result.reasons[0].code is FailureCode.DIET_VIOLATION
+
+
+def test_unknown_pantry_item_is_fine_without_restrictions(enriched_conn):
+    result = verify_with_stand_in(enriched_conn, ing("oat milk"), "barista drink")
+    assert result.status is VerificationStatus.ADAPT
+    assert result.adaptations == ["use your barista drink instead of oat milk"]
+
+
+def test_pantry_facts_combine_database_and_rules(enriched_conn):
+    from pantry_chef.agents.verifier import load_pantry_facts
+
+    facts = load_pantry_facts(enriched_conn, {"salad dressing", "homemade cashew milk"})
+    assert facts["salad dressing"].known
+    assert facts["salad dressing"].allergens == [Allergen.EGGS, Allergen.MILK]
+    assert not facts["homemade cashew milk"].known
+    assert facts["homemade cashew milk"].allergens == [Allergen.TREE_NUTS]
+
+
 def test_same_ingredient_is_not_rechecked_twice():
     recipe = cand(ing("milk", allergens=[Allergen.MILK]))
     context = VerificationContext(

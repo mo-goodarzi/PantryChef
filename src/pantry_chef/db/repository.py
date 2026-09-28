@@ -124,6 +124,7 @@ class IngredientOption(BaseModel):
     contains_meat: bool
     contains_fish: bool
     animal_product: bool
+    known: bool = True  # False: not in the database, facts come from the name rules only
 
 
 def load_substitutes(
