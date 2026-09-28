@@ -185,6 +185,16 @@ def test_pesto_with_a_nut_allergy_fails_on_hidden_allergens():
     assert [str(r) for r in result.reasons] == ["hidden_allergen: pesto sauce"]
 
 
+def test_compound_ingredient_the_llm_did_not_answer_fails_closed():
+    pesto = cand(ing("pesto sauce", key=False, category="condiment"))
+    context = VerificationContext(pantry=set(), hidden_unchecked={"pesto sauce"})
+    result = check_hidden_allergens(pesto, {Allergen.TREE_NUTS}, context)
+    assert [str(r) for r in result.reasons] == ["hidden_allergen: pesto sauce"]
+    assert "could not be checked" in result.reasons[0].detail
+    # Without user allergens there is nothing to check.
+    assert check_hidden_allergens(pesto, set(), context).passed
+
+
 def test_hidden_check_only_reports_allergens_not_already_labeled():
     pesto = cand(ing("pesto sauce", key=False, allergens=[Allergen.TREE_NUTS]))
     context = VerificationContext(pantry=set(), hidden={"pesto sauce": {Allergen.TREE_NUTS}})
@@ -376,6 +386,34 @@ def test_verifier_only_asks_about_hidden_allergens_when_the_user_has_allergies(
         candidates, query.model_copy(update={"required_allergen_free": [Allergen.GLUTEN]})
     )
     assert llm.calls and "salad dressing" in llm.calls[0]
+
+
+class SilentHiddenLLM:
+    """Answers for no ingredient at all (e.g. a truncated or malformed answer)."""
+
+    def generate(self, prompt, schema, **variables):
+        return HiddenAllergenBatch(items=[])
+
+
+def test_verifier_fails_recipes_whose_compound_ingredients_were_not_checked(
+    enriched_conn, tmp_path
+):
+    from pantry_chef.search.engine import search
+
+    verifier = Verifier(
+        enriched_conn, None, HiddenAllergenChecker(SilentHiddenLLM(), tmp_path / "h.json")
+    )
+    query = RecipeQuery(ingredients=["tuna", "onion", "lettuce"])
+    candidates = [
+        c
+        for c in search(enriched_conn, query, limit=10).candidates
+        if any(i.name == "salad dressing" for i in c.ingredients)
+    ]
+    assert candidates
+    strict = query.model_copy(update={"required_allergen_free": [Allergen.PEANUTS]})
+    for result in verifier.verify_all(candidates, strict):
+        assert result.status is VerificationStatus.FAIL
+        assert "hidden_allergen: salad dressing" in [str(r) for r in result.reasons]
 
 
 # --- feedback ------------------------------------------------------------------------

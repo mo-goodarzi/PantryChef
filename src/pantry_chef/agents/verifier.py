@@ -5,7 +5,8 @@ parts (ingredient matching, hidden-allergen lookup, substitutes) are computed ON
 search for all candidates by Verifier.prepare(), then each candidate is checked.
 
 Allergen and diet checks use ingredient-level data (own + inherited allergens), independent
-of the SQL filter; the hidden-allergen check can only add failures. Decision: any failed
+of the SQL filter; the hidden-allergen check can only add failures, and a compound ingredient
+it got no answer for fails (never assumed clean). Decision: any failed
 check -> fail; otherwise any adaptation (substitute, scaling) -> adapt; otherwise pass.
 """
 
@@ -41,6 +42,8 @@ class VerificationContext:
     matches: dict[str, MatchResult] = field(default_factory=dict)  # by recipe canonical
     pantry_items: dict[str, PantryItem] = field(default_factory=dict)  # by canonical
     hidden: dict[str, set[Allergen]] = field(default_factory=dict)  # by ingredient name
+    # Compound ingredients the hidden-allergen check got no answer for (fail closed).
+    hidden_unchecked: set[str] = field(default_factory=set)  # ingredient names
     substitutes: dict[str, list[IngredientOption]] = field(default_factory=dict)
     pantry_facts: dict[str, IngredientOption] = field(default_factory=dict)  # by canonical
 
@@ -248,6 +251,16 @@ def check_hidden_allergens(
             (context.hidden.get(ingredient.name, set()) & allergens) - set(ingredient.allergens)
         )
     ]
+    if allergens:
+        reasons += [
+            FailureReason(
+                code=FailureCode.HIDDEN_ALLERGEN,
+                item=ingredient.canonical_name,
+                detail=f"{ingredient.name!r} could not be checked for hidden allergens",
+            )
+            for ingredient in candidate.ingredients
+            if ingredient.name in context.hidden_unchecked
+        ]
     return CheckResult(check="hidden_allergens", passed=not reasons, reasons=reasons)
 
 
@@ -399,9 +412,11 @@ class Verifier:
         matches = {m.recipe_term: m for m in self.matcher.match(sorted(pantry), key_terms)}
 
         hidden: dict[str, set[Allergen]] = {}
+        unchecked: set[str] = set()
         if self.hidden_checker is not None and query.required_allergen_free:
             compound = sorted({i.name for i in ingredients if is_compound(i)})
             hidden = self.hidden_checker.check(compound)
+            unchecked = set(compound) - set(hidden)  # not answered: never assume "clean"
 
         missing_extra = sorted(
             {
@@ -415,6 +430,7 @@ class Verifier:
             matches=matches,
             pantry_items=items,
             hidden=hidden,
+            hidden_unchecked=unchecked,
             substitutes=load_substitutes(self.conn, missing_extra),
             pantry_facts=load_pantry_facts(self.conn, pantry),
         )
