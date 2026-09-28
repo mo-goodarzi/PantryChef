@@ -57,11 +57,11 @@ class Conversation:
     def state(self) -> ChatState:
         return ChatState.model_validate(self.graph.get_state(self.config).values)
 
-    def close(self) -> None:
-        """End the conversation. Without consent, its saved state (which includes the
-        user's allergies) is deleted; only consented profiles are kept."""
+    def close(self, forget: bool = False) -> None:
+        """End the conversation. Without consent (or with forget=True, "delete my data"),
+        its saved state, which includes the user's allergies, is deleted."""
         profile = self.state().profile
-        if profile is None or not profile.consent_to_store:
+        if forget or profile is None or not profile.consent_to_store:
             checkpointer = self.graph.checkpointer
             if checkpointer is not None and hasattr(checkpointer, "delete_thread"):
                 checkpointer.delete_thread(self.thread_id)

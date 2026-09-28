@@ -28,6 +28,7 @@ from pantry_chef.search.rerank import LLMReranker
 @dataclass
 class ChatApp:
     graph: CompiledStateGraph
+    profiles: ProfileStore | None = None
     connections: list[sqlite3.Connection] = field(default_factory=list)
 
     def close(self) -> None:
@@ -36,8 +37,12 @@ class ChatApp:
             conn.close()
 
 
-def chat_from_settings(settings: Settings) -> ChatApp:
-    """The measured best pipeline: semantic + matcher + pantry usage + LLM rerank."""
+def chat_from_settings(settings: Settings, threaded: bool = False) -> ChatApp:
+    """The measured best pipeline: semantic + matcher + pantry usage + LLM rerank.
+
+    threaded=True (the API) opens connections that worker threads may share; the caller
+    must serialize graph calls.
+    """
     for path, how in [
         (settings.db_path, "scripts/build_db.py and scripts/enrich_db.py"),
         (settings.chroma_path, "scripts/build_embeddings.py"),
@@ -48,8 +53,8 @@ def chat_from_settings(settings: Settings) -> ChatApp:
             raise FileNotFoundError(f"{path} is missing; build it with {how}")
 
     tracing_from_settings(settings)
-    conn = connect(settings.db_path)
-    state = open_state_db(settings.state_db_path)
+    conn = connect(settings.db_path, check_same_thread=not threaded)
+    state = open_state_db(settings.state_db_path, check_same_thread=not threaded)
     checkpoints = sqlite3.connect(settings.state_db_path, check_same_thread=False)
 
     llm = create_llm(settings)
@@ -66,13 +71,14 @@ def chat_from_settings(settings: Settings) -> ChatApp:
     def find(query: RecipeQuery) -> FindResult:
         return find_verified(conn, query, options, semantic, reranker, verifier, expander)
 
+    profiles = ProfileStore(state)
     deps = ChatDeps(
         llm=llm,
         find=find,
         reverify=verifier.verify_all,
         steps=lambda recipe_id: load_steps(conn, recipe_id),
-        profiles=ProfileStore(state),
+        profiles=profiles,
         ask_quantities=settings.ask_quantities,
     )
     graph = build_graph(deps, SqliteSaver(checkpoints))
-    return ChatApp(graph=graph, connections=[conn, state, checkpoints])
+    return ChatApp(graph=graph, profiles=profiles, connections=[conn, state, checkpoints])
