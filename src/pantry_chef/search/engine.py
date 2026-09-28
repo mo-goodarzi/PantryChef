@@ -1,7 +1,8 @@
 """Search pipeline.
 
 search():        hard filters -> ingredient coverage -> (semantic re-scoring) -> candidates
-find_recipes():  search -> verify -> (diversity) -> (LLM rerank) -> top k
+find_verified(): search -> verify -> (diversity) -> (LLM rerank) -> top k, with the
+                 verification of every candidate (find_recipes(): candidates only)
 """
 
 import sqlite3
@@ -14,7 +15,7 @@ from pantry_chef.ingredients.normalize import normalize
 from pantry_chef.ingredients.staples import is_staple
 from pantry_chef.models.query import RecipeQuery
 from pantry_chef.models.recipe import Candidate, RecipeIngredient
-from pantry_chef.models.verification import VerificationStatus
+from pantry_chef.models.verification import VerificationResult, VerificationStatus
 from pantry_chef.observability import span
 from pantry_chef.search.coverage import CoverageRow, rank_by_coverage
 from pantry_chef.search.diversity import mmr
@@ -163,6 +164,28 @@ class SearchOptions:
     mmr_lambda: float = 0.7
 
 
+@dataclass
+class VerifiedCandidate:
+    candidate: Candidate
+    verification: VerificationResult
+
+
+@dataclass
+class FindResult:
+    top: list[VerifiedCandidate]  # the best pass/adapt recipes, at most top_k
+    checked: list[VerifiedCandidate]  # every verified candidate, failures included
+    matched_recipes: int  # recipes with >= 1 pantry key ingredient that passed the filters
+
+    @property
+    def approved(self) -> list[VerifiedCandidate]:
+        return [vc for vc in self.checked if vc.verification.status is not VerificationStatus.FAIL]
+
+    @property
+    def verifications(self) -> list[VerificationResult]:
+        """All verification results, for the finder's feedback on a retry."""
+        return [vc.verification for vc in self.checked]
+
+
 def find_recipes(
     conn: sqlite3.Connection,
     query: RecipeQuery,
@@ -172,10 +195,25 @@ def find_recipes(
     verifier: Verifier | None = None,
     expander: PantryExpander | None = None,
 ) -> list[Candidate]:
+    """The top verified candidates only (see find_verified for their verification)."""
+    result = find_verified(conn, query, options, semantic, reranker, verifier, expander)
+    return [vc.candidate for vc in result.top]
+
+
+def find_verified(
+    conn: sqlite3.Connection,
+    query: RecipeQuery,
+    options: SearchOptions | None = None,
+    semantic: SemanticSearch | None = None,
+    reranker: Reranker | None = None,
+    verifier: Verifier | None = None,
+    expander: PantryExpander | None = None,
+) -> FindResult:
     """Full pipeline: search -> verify -> (diversity) -> (rerank) -> top k verified.
 
     Candidates with status pass or adapt are kept (adapt = works with a substitute or a
-    smaller batch)."""
+    smaller batch). Every candidate keeps its VerificationResult, so callers can show
+    adaptations and turn failures into feedback."""
     options = options or SearchOptions()
     if (options.use_semantic or options.use_diversity) and semantic is None:
         raise ValueError("use_semantic / use_diversity need a SemanticSearch")
@@ -194,12 +232,13 @@ def find_recipes(
     verifier = verifier if options.use_matcher and verifier else Verifier(conn)
     with span("search.verify", candidates=len(result.candidates)):
         results = verifier.verify_all(result.candidates, query)
-        verified = [
-            c
-            for c, v in zip(result.candidates, results, strict=True)
-            if v.status is not VerificationStatus.FAIL
-        ]
-    shortlist = verified[: options.shortlist_size]
+    found = FindResult(
+        top=[],
+        checked=[VerifiedCandidate(c, v) for c, v in zip(result.candidates, results, strict=True)],
+        matched_recipes=result.matched_recipes,
+    )
+    verification = {vc.candidate.recipe_id: vc.verification for vc in found.checked}
+    shortlist = [vc.candidate for vc in found.approved[: options.shortlist_size]]
 
     if options.use_diversity and semantic is not None:
         with span("search.diversity", candidates=len(shortlist)):
@@ -207,8 +246,12 @@ def find_recipes(
             shortlist = mmr(shortlist, vectors, k=len(shortlist), lambda_=options.mmr_lambda)
     if options.use_rerank and reranker is not None:
         with span("search.rerank", candidates=len(shortlist)):
-            return reranker.rerank(query, shortlist, options.top_k)
-    return shortlist[: options.top_k]
+            shortlist = reranker.rerank(query, shortlist, options.top_k)
+    # The reranker returns copies (with rerank_reason); pair them with their verification.
+    found.top = [
+        VerifiedCandidate(c, verification[c.recipe_id]) for c in shortlist[: options.top_k]
+    ]
+    return found
 
 
 def matching_from_settings(

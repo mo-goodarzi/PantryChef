@@ -17,7 +17,6 @@ import sys
 import time
 from pathlib import Path
 
-from pantry_chef.agents.verifier import Verifier
 from pantry_chef.config import get_settings
 from pantry_chef.db.connection import connect
 from pantry_chef.ingredients.allergens import Allergen, parse_user_allergy
@@ -26,9 +25,10 @@ from pantry_chef.models.recipe import Candidate, RecipeIngredient
 from pantry_chef.models.verification import VerificationResult, VerificationStatus
 from pantry_chef.observability import configure_logging
 from pantry_chef.search.engine import (
+    SearchOptions,
+    find_verified,
     matching_from_settings,
     pantry_names,
-    search,
     semantic_from_settings,
 )
 
@@ -115,50 +115,47 @@ def main() -> None:
     conn = connect(args.db)
     use_semantic = bool(args.pref) and not args.no_semantic and settings.chroma_path.exists()
     semantic = semantic_from_settings(settings) if use_semantic or args.match else None
-    expander, verifier = None, Verifier(conn)
+    expander, verifier, reranker = None, None, None
     if args.match and semantic is not None:
         expander, verifier = matching_from_settings(settings, conn, semantic.embedder)
-
-    start = time.perf_counter()
-    result = search(
-        conn,
-        query,
-        limit=args.candidates,
-        semantic=semantic if use_semantic else None,
-        expander=expander,
-        usage_weight=settings.usage_weight,
-    )
-    verified: list[tuple[Candidate, VerificationResult]] = list(
-        zip(result.candidates, verifier.verify_all(result.candidates, query), strict=True)
-    )
-    by_id = {c.recipe_id: v for c, v in verified}
-    passed = [c for c, v in verified if v.status is not VerificationStatus.FAIL]
-    n_passed = len(passed)
-    if args.rerank and passed:
+    if args.rerank:
         from pantry_chef.llm.factory import create_llm
         from pantry_chef.search.rerank import LLMReranker
 
-        passed = LLMReranker(create_llm(settings), conn).rerank(query, passed[:20], args.top)
+        reranker = LLMReranker(create_llm(settings), conn)
+    options = SearchOptions(
+        pool_size=args.candidates,
+        top_k=args.top,
+        use_semantic=use_semantic,
+        use_rerank=args.rerank,
+        use_matcher=expander is not None,
+        usage_weight=settings.usage_weight,
+    )
+
+    start = time.perf_counter()
+    result = find_verified(conn, query, options, semantic, reranker, verifier, expander)
     elapsed = time.perf_counter() - start
 
     pantry = set(pantry_names(query))
     print(
         f"Pantry: {', '.join(sorted(pantry))}\n"
         f"{result.matched_recipes:,} recipes use your ingredients and pass the filters; "
-        f"{n_passed} of the top {len(verified)} pass verification ({elapsed:.2f}s)\n"
+        f"{len(result.approved)} of the top {len(result.checked)} pass verification "
+        f"({elapsed:.2f}s)\n"
     )
-    for number, candidate in enumerate(passed[: args.top], start=1):
-        lines = describe(candidate, pantry, by_id.get(candidate.recipe_id))
+    for number, found in enumerate(result.top, start=1):
+        lines = describe(found.candidate, pantry, found.verification)
         print(f"{number:>2}. " + "\n".join(lines) + "\n")
-    if not passed:
+    if not result.top:
         print("No recipe passed verification. Try --show-failed to see what is missing.\n")
 
     if args.show_failed:
         print("Failed verification:")
-        for candidate, verification in verified:
-            if verification.status is VerificationStatus.FAIL:
-                reasons = "; ".join(str(r) for r in verification.reasons)
-                print(f"  - {candidate.name} (id {candidate.recipe_id}): {reasons}")
+        for found in result.checked:
+            if found.verification.status is VerificationStatus.FAIL:
+                reasons = "; ".join(str(r) for r in found.verification.reasons)
+                name, recipe_id = found.candidate.name, found.candidate.recipe_id
+                print(f"  - {name} (id {recipe_id}): {reasons}")
 
 
 if __name__ == "__main__":
