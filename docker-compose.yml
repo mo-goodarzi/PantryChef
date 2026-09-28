@@ -1,0 +1,36 @@
+# docker compose up --build   ->  UI on http://localhost:8501, API on http://localhost:8000
+#
+# ./data is mounted, not copied into the image. It must contain the built data:
+#   data/processed/pantry.db   (scripts/build_db.py + scripts/enrich_db.py)
+#   data/processed/chroma/     (scripts/build_embeddings.py)
+# state.db (profiles, conversations, caches) and the embedding model cache
+# (data/hf-cache, downloaded on first start) are written there too.
+services:
+  api:
+    build: .
+    image: pantry-chef
+    env_file:
+      - path: .env  # OPENAI_API_KEY, optional LANGFUSE_* keys
+        required: false
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      start_period: 120s  # loads the embedding model and opens the databases
+      retries: 3
+
+  ui:
+    image: pantry-chef
+    command: ["streamlit", "run", "ui/streamlit_app.py", "--server.address=0.0.0.0",
+              "--server.port=8501", "--server.headless=true"]
+    environment:
+      PANTRY_CHEF_API_URL: http://api:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      api:
+        condition: service_healthy

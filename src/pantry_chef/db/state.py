@@ -14,10 +14,10 @@ from pantry_chef.models.profile import UserProfile
 from pantry_chef.observability import hash_user_id
 
 
-def open_state_db(path: Path) -> sqlite3.Connection:
+def open_state_db(path: Path, check_same_thread: bool = True) -> sqlite3.Connection:
     """Open (and create if needed) the state database."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    conn = connect(path)
+    conn = connect(path, check_same_thread=check_same_thread)
     conn.executescript(files("pantry_chef.db").joinpath("state_schema.sql").read_text())
     return conn
 

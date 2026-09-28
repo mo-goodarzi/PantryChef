@@ -62,6 +62,15 @@ class ChoiceReply(BaseModel):
     more: bool = False  # "show me other recipes"
 
 
+# The answer model for each kind of question.
+REPLY_MODELS: dict[QuestionKind, type[BaseModel]] = {
+    QuestionKind.SAFETY: SafetyReply,
+    QuestionKind.SAFETY_CONFIRM: ConfirmReply,
+    QuestionKind.QUANTITIES: QuantityReply,
+    QuestionKind.CHOICE: ChoiceReply,
+}
+
+
 class FinalAnswer(BaseModel):
     recipe_id: int
     name: str
