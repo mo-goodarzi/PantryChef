@@ -384,3 +384,73 @@ something it had not really checked. Each is now fail-closed and has a regressio
 
 Also: `find_verified()` returns each candidate with its verification result (adaptations
 for the answer, failures for the finder's feedback), which the Phase 5b retry loop needs.
+
+## 2026-09-28 — Phase 5b: agents, graph, tracing
+
+**Flow** (`graph/builder.py`): load_profile → safety intake (question, then confirm +
+consent) → parse_request → search (search + verify; retry with verifier feedback, max 3
+attempts) → [quantity_check] → present (choose, or "show me more") → respond. Every pause
+is a typed `Question`, every answer a typed reply model, so the terminal CLI and the
+Phase 6 UI only render them. `graph/runner.py` (`Conversation`) hides LangGraph from both.
+
+- **Interrupting nodes ask first, work after.** On resume LangGraph re-runs a node from the
+  top, so an LLM call before a question would run twice. The safety intake is two nodes
+  (question, confirm) for this reason; a test checks each LLM prompt runs once.
+- **Retry only when the feedback changes the query.** With fewer than 2 approved
+  recipes, the verifier's failures become a stricter query (excluded recipes and
+  ingredients). If nothing changed (e.g. no candidates at all), a retry would return the
+  same result, so the graph stops and says why ("the closest ones needed ingredients you
+  don't have"), using the failure reasons of the whole request.
+- **A last code check before anything is shown:** any result containing a user allergen is
+  dropped and counted as `allergen_violation` (expected 0; the SQL filter and the verifier
+  both check first).
+- **Quantity question: built and tested, off** (`ASK_QUANTITIES=false`, owner decision):
+  recipes have no amounts until Phase 8, so an answer could not change a result. It asks
+  at most once per request, about at most 5 key items whose amount matters, and accepts
+  "don't know" and "plenty".
+
+**Safety intake: the LLM reads, code decides.** Allergy words go through the same alias
+table as the CLI; the LLM's EU group can only add codes. Allergies outside the EU 14
+("kiwi") are excluded by ingredient name, and the user is told to check ingredients.
+Health conditions come back only as supported restrictions (low sugar, low salt, gluten
+free) — the model has no field for the condition itself — and the user confirms them
+before they apply. Allergies mentioned in a request apply to that request only.
+
+**Low-sugar and low-salt diets** (owner decision to add them), from nutrition per serving
+(% daily value), enforced in SQL and the verifier like the other diets; unknown nutrition
+never passes. Low salt ≤ 6% of the sodium DV (the US FDA "low sodium" claim, 140 mg of
+2,300 mg). There is no official "low sugar" claim; ≤ 10% of the 50 g DV (≤ 5 g per
+serving) was chosen as a strict, explainable limit. These are recipe filters, not medical
+advice; the answer says so whenever a health-based restriction was used.
+
+**State lives in `state.db`, not in the recipe database** (owner asked for what suits
+deployment). The recipe DB is a rebuildable, read-only artifact (can be baked into an
+image); `state.db` (profiles, match cache, LangGraph checkpoints) goes on a writable
+volume. Rebuilding recipes no longer deletes paid LLM match answers; existing rows are
+imported from an old `pantry.db` automatically.
+
+**Privacy.**
+- Profiles are stored only with consent, keyed by a hashed user id, and can be deleted.
+- Conversation checkpoints contain the user's allergies; without consent they are deleted
+  when the conversation closes (with consent they are kept, like the profile). A crashed
+  session can leave one behind; a cleanup job is a Phase 11 item.
+- Raw health text is never in the state: the free-text safety answer is read by the
+  safety agent and only the confirmed restrictions are kept.
+
+**Tracing: our helpers instead of the LangChain callback handler** (deviation from the
+plan). The callback handler sends every node's full input and output — the conversation
+state and the user's raw health answer — to Langfuse. Instead, `trace()` / `span()` /
+`score()` / `generation()` send only what we pass: one trace per user turn (grouped by
+session = thread id, user id hashed), a span per node and search stage with counts and
+reason codes, a generation per LLM call (model, prompt name + version, tokens). Prompts
+that carry health text (`safety_intake`, `request_parsing`) are marked `sensitive: true`
+and their input/output is masked. Log lines carry Langfuse's trace id. Without keys
+everything stays log-only (tests use an in-memory exporter).
+
+**Final answer built in code** (deviation: the plan listed a final-answer prompt). Steps and
+ingredients come straight from the database and "why it fits" from the reranker, so an LLM
+cannot drop or change an ingredient on the last step, and the answer costs nothing.
+
+**Chat requires the embeddings.** Without Chroma there is no matcher and therefore no
+hidden-allergen check, so the chat app refuses to start rather than run with a safety layer
+missing.
