@@ -73,7 +73,8 @@ deterministic verifier afterwards.
 
 50 evaluation cases; a result is good when it passes the hard rules (checked by code) and an
 LLM judge rates its fit to the wish at least 4/5. Reports: `eval/reports/search_20260926-2255.md`
-(Phase 4) and `eval/reports/search_20260927-1942.md` (Phase 5a). The judge agrees with a human
+(Phase 4), `eval/reports/search_20260927-1942.md` (Phase 5a) and
+`eval/reports/search_20260928-1121.md` (pantry-usage ranking). The judge agrees with a human
 reviewer on about 56% of good/not-good calls and is stricter, so these numbers are conservative
 (details in `docs/decisions.md`).
 
@@ -82,7 +83,8 @@ reviewer on about 56% of good/not-good calls and is stricter, so these numbers a
 | Ingredient coverage only | 74% | 0.60 | 0 | 0.17 s |
 | + semantic match (local embeddings) | 82% | 0.74 | 0 | 0.26 s |
 | + ingredient matcher ("pasta" finds "spaghetti") | 90% | 0.74 | 0 | 0.43 s |
-| + matcher + LLM rerank | **94%** | **0.83** | 0 | 2.30 s |
+| + matcher + pantry-usage ranking | 92% | 0.76 | 0 | 0.44 s |
+| + matcher + pantry usage + LLM rerank | **96%** | **0.86** | 0 | 3.26 s |
 
 Diversity (MMR) was also tested and changed nothing measurable; see `docs/decisions.md`.
 Reproduce: `uv run python eval/run_eval.py --suite search`.
