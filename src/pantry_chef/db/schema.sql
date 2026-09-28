@@ -37,7 +37,7 @@ CREATE TABLE recipe_ingredients (
   is_optional INTEGER DEFAULT 0,
   quantity REAL,
   unit TEXT,
-  quantity_source TEXT,              -- NULL | 'dataset' | 'llm_estimate'
+  quantity_source TEXT,              -- NULL | 'llm_estimate' (Phase 8)
   PRIMARY KEY (recipe_id, ingredient_id)
 );
 
