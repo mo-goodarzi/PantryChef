@@ -10,12 +10,16 @@ from dataclasses import dataclass, replace
 
 from pantry_chef.agents.verifier import Verifier
 from pantry_chef.config import Settings
-from pantry_chef.db.repository import load_recipe_ingredients
+from pantry_chef.db.repository import load_nutrition, load_recipe_ingredients
 from pantry_chef.ingredients.normalize import normalize
 from pantry_chef.ingredients.staples import is_staple
 from pantry_chef.models.query import RecipeQuery
 from pantry_chef.models.recipe import Candidate, RecipeIngredient
-from pantry_chef.models.verification import VerificationResult, VerificationStatus
+from pantry_chef.models.verification import (
+    VerificationResult,
+    VerificationStatus,
+    VerifiedCandidate,
+)
 from pantry_chef.observability import span
 from pantry_chef.search.coverage import CoverageRow, rank_by_coverage
 from pantry_chef.search.diversity import mmr
@@ -127,6 +131,7 @@ def search(
 
     with span("search.load_ingredients", candidates=len(rows)):
         ingredients = load_recipe_ingredients(conn, [row.recipe_id for row in rows])
+        nutrition = load_nutrition(conn, [row.recipe_id for row in rows])
 
     candidates = [
         Candidate(
@@ -143,6 +148,8 @@ def search(
             ingredient_score=row.ingredient_score,
             semantic_score=row.semantic_score,
             final_score=row.final_score if row.final_score is not None else row.ingredient_score,
+            sugar_pdv=nutrition.get(row.recipe_id, {}).get("sugar_pdv"),
+            sodium_pdv=nutrition.get(row.recipe_id, {}).get("sodium_pdv"),
         )
         for row in rows
     ]
@@ -162,12 +169,6 @@ class SearchOptions:
     usage_weight: float = 0.5  # weight of pantry usage in the ingredient score (0 = off)
     shortlist_size: int = 20  # verified recipes passed to diversity / rerank
     mmr_lambda: float = 0.7
-
-
-@dataclass
-class VerifiedCandidate:
-    candidate: Candidate
-    verification: VerificationResult
 
 
 @dataclass
@@ -234,7 +235,10 @@ def find_verified(
         results = verifier.verify_all(result.candidates, query)
     found = FindResult(
         top=[],
-        checked=[VerifiedCandidate(c, v) for c, v in zip(result.candidates, results, strict=True)],
+        checked=[
+            VerifiedCandidate(candidate=c, verification=v)
+            for c, v in zip(result.candidates, results, strict=True)
+        ],
         matched_recipes=result.matched_recipes,
     )
     verification = {vc.candidate.recipe_id: vc.verification for vc in found.checked}
@@ -249,18 +253,21 @@ def find_verified(
             shortlist = reranker.rerank(query, shortlist, options.top_k)
     # The reranker returns copies (with rerank_reason); pair them with their verification.
     found.top = [
-        VerifiedCandidate(c, verification[c.recipe_id]) for c in shortlist[: options.top_k]
+        VerifiedCandidate(candidate=c, verification=verification[c.recipe_id])
+        for c in shortlist[: options.top_k]
     ]
     return found
 
 
 def matching_from_settings(
-    settings: Settings, conn: sqlite3.Connection, embedder: Embedder
+    settings: Settings, conn: sqlite3.Connection, embedder: Embedder, state: sqlite3.Connection
 ) -> tuple[PantryExpander, Verifier]:
-    """Pantry expansion and a verifier that share one CompositeMatcher (and its cache)."""
+    """Pantry expansion and a verifier that share one CompositeMatcher; its cache lives in
+    the state database (`state`), the recipes in `conn`."""
     from pathlib import Path
 
     from pantry_chef.agents.hidden_allergens import HiddenAllergenChecker
+    from pantry_chef.db.state import import_legacy_match_cache
     from pantry_chef.ingredients.matcher import (
         CompositeMatcher,
         ExactMatcher,
@@ -273,11 +280,12 @@ def matching_from_settings(
     from pantry_chef.llm.factory import create_llm
     from pantry_chef.search.semantic import ChromaNameIndex
 
+    import_legacy_match_cache(state, settings.db_path)  # answers cached before state.db
     llm = create_llm(settings)
     llm_matcher = LLMMatcher(llm)
     matcher = CompositeMatcher(
         ExactMatcher(parents_from_seed(load_seed())),
-        MatchCache(conn, llm_cache_source(llm_matcher)),
+        MatchCache(state, llm_cache_source(llm_matcher)),
         llm_matcher,
         log_path=Path("data/processed/match_log.jsonl"),
     )

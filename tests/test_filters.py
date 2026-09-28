@@ -63,6 +63,25 @@ def test_gluten_free(enriched_conn):
     assert POACHED_EGGS in ids
 
 
+def test_low_sugar_uses_the_sugar_share_of_daily_value(enriched_conn):
+    # sugar_pdv: poached eggs 0, tuna burritos 10 (at the limit), pancakes/waffles 17
+    ids = allowed(enriched_conn, diets=[Diet.LOW_SUGAR])
+    assert {POACHED_EGGS, TUNA_BURRITOS} <= ids
+    assert not ids & {PANCAKES, WAFFLES, LEMONADE, SYRUP}
+
+
+def test_low_salt_uses_the_sodium_share_of_daily_value(enriched_conn):
+    # sodium_pdv: poached eggs 3, pancakes 13, waffles 26
+    ids = allowed(enriched_conn, diets=[Diet.LOW_SALT])
+    assert POACHED_EGGS in ids
+    assert not ids & {PANCAKES, WAFFLES, EGG_FOO_YUNG}
+
+
+def test_unknown_nutrition_never_passes(enriched_conn):
+    enriched_conn.execute("UPDATE recipes SET sugar_pdv = NULL WHERE id = ?", (POACHED_EGGS,))
+    assert POACHED_EGGS not in allowed(enriched_conn, diets=[Diet.LOW_SUGAR])
+
+
 def test_unknown_diet_flag_never_passes(enriched_conn):
     enriched_conn.execute("UPDATE recipes SET is_vegan = NULL WHERE id = ?", (LEMONADE,))
     assert LEMONADE not in allowed(enriched_conn, diets=[Diet.VEGAN])

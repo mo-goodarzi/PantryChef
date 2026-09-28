@@ -83,3 +83,9 @@ def test_find_recipes_returns_the_top_candidates_of_find_verified(enriched_conn)
     query = RecipeQuery(ingredients=["flour", "butter", "eggs", "milk"])
     top = find_verified(enriched_conn, query, SearchOptions()).top
     assert find_recipes(enriched_conn, query, SearchOptions()) == [vc.candidate for vc in top]
+
+
+def test_candidates_carry_the_nutrition_the_verifier_checks(enriched_conn):
+    result = search(enriched_conn, RecipeQuery(ingredients=["flour", "butter", "eggs", "milk"]))
+    pancakes = next(c for c in result.candidates if c.recipe_id == PANCAKES)
+    assert (pancakes.sugar_pdv, pancakes.sodium_pdv) == (17.0, 13.0)

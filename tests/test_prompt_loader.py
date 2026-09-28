@@ -31,3 +31,8 @@ def test_quantity_matters_prompt_follows_the_plan_examples():
     assert "eggs" in true_part and "pasta" in true_part
     for basic in ("flour", "milk", "bread", "salt"):
         assert basic in false_part
+
+
+def test_prompts_are_not_sensitive_unless_their_header_says_so():
+    assert not parse_prompt_file("---\nname: a\nversion: 1\n---\nx").sensitive
+    assert parse_prompt_file("---\nname: a\nversion: 1\nsensitive: true\n---\nx").sensitive

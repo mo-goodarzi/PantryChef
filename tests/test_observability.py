@@ -80,3 +80,10 @@ def test_logs_follow_a_replaced_stdout(capsys):
     score("after_swap", 1)
     [line] = read_lines(capsys)
     assert line["score"] == "after_swap"
+
+
+def test_hash_user_id_is_stable_and_hides_the_name():
+    from pantry_chef.observability import hash_user_id
+
+    assert hash_user_id("alice") == hash_user_id("alice") != hash_user_id("bob")
+    assert "alice" not in hash_user_id("alice")

@@ -7,7 +7,7 @@ and read with json_each, so the SQL never changes with the number of items.
 import json
 
 from pantry_chef.ingredients.normalize import normalize
-from pantry_chef.models.query import Diet, RecipeQuery
+from pantry_chef.models.query import NUTRITION_LIMITS, Diet, RecipeQuery
 
 # Minutes outside this range are data errors (0 min, or > 24 h up to ~2 billion min).
 MIN_MINUTES = 1
@@ -36,9 +36,14 @@ def filter_conditions(query: RecipeQuery) -> tuple[list[str], dict[str, object]]
         )
         params["allergens"] = json.dumps([a.value for a in query.required_allergen_free])
 
-    # A diet flag of NULL (unknown) never passes: "= 1" is false for NULL.
+    # A diet flag of NULL (unknown) never passes: "= 1" is false for NULL, and so is
+    # "<= limit" for unknown nutrition.
     for diet in query.diets:
-        conditions.append(f"r.{DIET_COLUMNS[diet]} = 1")
+        if diet in NUTRITION_LIMITS:
+            column, limit = NUTRITION_LIMITS[diet]
+            conditions.append(f"r.{column} <= {limit}")
+        else:
+            conditions.append(f"r.{DIET_COLUMNS[diet]} = 1")
 
     if query.exclude_ingredients:
         conditions.append(

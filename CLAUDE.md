@@ -98,6 +98,7 @@ pantry-chef/
 - Search from the terminal: `uv run python -m pantry_chef.search.cli --have "eggs,milk,bread" --pref "sweet breakfast" --allergy peanuts [--match] [--rerank]`
 - Judge calibration: `uv run python eval/judge_calibration.py export --results eval/reports/<run>.json`, then `... score`
 - Build embeddings: `uv run python scripts/build_embeddings.py`
+- Chat (full graph, terminal): `uv run python scripts/chat_cli.py --user <name>`
 - API: `uv run uvicorn pantry_chef.api.main:app --reload`
 - UI: `uv run streamlit run ui/streamlit_app.py`
 - Eval: `uv run python eval/run_eval.py --suite <name>`

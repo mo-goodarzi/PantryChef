@@ -14,7 +14,8 @@ class Settings(BaseSettings):
     # Data paths
     raw_recipes_csv: Path = Path("data/raw/RAW_recipes.csv")
     raw_interactions_csv: Path = Path("data/raw/RAW_interactions.csv")
-    db_path: Path = Path("data/processed/pantry.db")
+    db_path: Path = Path("data/processed/pantry.db")  # recipes: rebuilt, read-only at runtime
+    state_db_path: Path = Path("data/processed/state.db")  # runtime: profiles, caches, chats
     chroma_path: Path = Path("data/processed/chroma")
 
     # LLM
@@ -37,6 +38,10 @@ class Settings(BaseSettings):
     coverage_pool: int = 1000  # top recipes by coverage that get a semantic score
     semantic_neighbors: int = 2000  # nearest recipes to the wish, added to the pool
     usage_weight: float = 0.5  # ingredient score = (1 - w) * coverage + w * pantry usage
+
+    # Conversation
+    # The quantity question is built but off until recipes have amounts (Phase 8).
+    ask_quantities: bool = False
 
     log_level: str = "INFO"
 

@@ -95,7 +95,9 @@ def main() -> None:
     parser.add_argument("--rerank", action="store_true", help="let the LLM pick the final top")
     parser.add_argument("--match", action="store_true", help="smarter ingredient matching (LLM)")
     parser.add_argument("--allergy", help="comma-separated, e.g. peanuts,milk,shellfish")
-    parser.add_argument("--diet", help="comma-separated: vegetarian, vegan, gluten-free")
+    parser.add_argument(
+        "--diet", help="comma-separated: vegetarian, vegan, gluten-free, low-sugar, low-salt"
+    )
     parser.add_argument("--exclude", help="comma-separated ingredients to avoid")
     parser.add_argument("--max-minutes", type=int)
     parser.add_argument("--meal-type", help="e.g. breakfast, main-dish, dessert")
@@ -117,7 +119,10 @@ def main() -> None:
     semantic = semantic_from_settings(settings) if use_semantic or args.match else None
     expander, verifier, reranker = None, None, None
     if args.match and semantic is not None:
-        expander, verifier = matching_from_settings(settings, conn, semantic.embedder)
+        from pantry_chef.db.state import open_state_db
+
+        state = open_state_db(settings.state_db_path)
+        expander, verifier = matching_from_settings(settings, conn, semantic.embedder, state)
     if args.rerank:
         from pantry_chef.llm.factory import create_llm
         from pantry_chef.search.rerank import LLMReranker

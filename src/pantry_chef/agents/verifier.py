@@ -21,7 +21,14 @@ from pantry_chef.ingredients.matcher import ExactMatcher, Matcher
 from pantry_chef.ingredients.normalize import normalize
 from pantry_chef.ingredients.quantities import Amount, available_ratio
 from pantry_chef.models.matching import MatchLabel, MatchResult
-from pantry_chef.models.query import AmountStatus, Diet, PantryItem, RecipeQuery
+from pantry_chef.models.query import (
+    INGREDIENT_DIETS,
+    NUTRITION_LIMITS,
+    AmountStatus,
+    Diet,
+    PantryItem,
+    RecipeQuery,
+)
 from pantry_chef.models.recipe import Candidate, RecipeIngredient
 from pantry_chef.models.verification import (
     CheckResult,
@@ -127,7 +134,7 @@ def stand_in_reasons(
             if breaks_diet(facts, diet)
         ]
     unknown = facts is None or not facts.known
-    if not reasons and unknown and (allergens or diets):
+    if not reasons and unknown and (allergens or diets & INGREDIENT_DIETS):
         reasons.append(
             FailureReason(
                 code=FailureCode.ALLERGEN if allergens else FailureCode.DIET_VIOLATION,
@@ -265,6 +272,9 @@ def check_hidden_allergens(
 
 
 def breaks_diet(ingredient: RecipeIngredient | IngredientOption, diet: Diet) -> bool:
+    """Ingredient-level diets only; nutrition diets are checked per recipe."""
+    if diet in NUTRITION_LIMITS:
+        return False
     if diet is Diet.VEGETARIAN:
         return ingredient.contains_meat or ingredient.contains_fish
     if diet is Diet.VEGAN:
@@ -272,6 +282,23 @@ def breaks_diet(ingredient: RecipeIngredient | IngredientOption, diet: Diet) -> 
     if diet is Diet.GLUTEN_FREE:
         return Allergen.GLUTEN in ingredient.allergens
     raise ValueError(f"unsupported diet: {diet}")
+
+
+def nutrition_reason(candidate: Candidate, diet: Diet) -> FailureReason | None:
+    """A reason when the recipe's nutrition per serving is over the diet's limit, or
+    unknown (unknown never passes, like a NULL diet flag)."""
+    column, limit = NUTRITION_LIMITS[diet]
+    value = getattr(candidate, column)
+    if value is not None and value <= limit:
+        return None
+    nutrient = column.removesuffix("_pdv")
+    shown = "unknown" if value is None else f"{value:g}%"
+    return FailureReason(
+        code=FailureCode.DIET_VIOLATION,
+        item=diet.value,
+        detail=f"{nutrient} is {shown} of the daily value per serving, "
+        f"limit {limit:g}% for {diet.value.replace('_', '-')}",
+    )
 
 
 def check_diet(candidate: Candidate, diets: set[Diet]) -> CheckResult:
@@ -284,6 +311,11 @@ def check_diet(candidate: Candidate, diets: set[Diet]) -> CheckResult:
         for ingredient in candidate.ingredients
         for diet in sorted(diets)
         if breaks_diet(ingredient, diet)
+    ]
+    reasons += [
+        reason
+        for diet in sorted(diets & NUTRITION_LIMITS.keys())
+        if (reason := nutrition_reason(candidate, diet)) is not None
     ]
     return CheckResult(check="diet", passed=not reasons, reasons=reasons)
 

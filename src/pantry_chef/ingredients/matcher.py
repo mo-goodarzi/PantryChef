@@ -96,7 +96,7 @@ def parents_from_seed(seed: dict[str, dict]) -> dict[str, set[str]]:
 
 
 class MatchCache:
-    """Pair labels in the match_cache table of pantry.db.
+    """Pair labels in the match_cache table of state.db.
 
     Entries are tagged with their source (e.g. "llm:v2"); only entries from the current
     source are used, so changing the prompt version invalidates old answers.

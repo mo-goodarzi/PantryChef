@@ -6,7 +6,8 @@ A multi-agent recipe assistant. Tell it what you have at home ("eggs, milk, toas
 it returns safe, suitable recipes you can actually make, checked against your allergies
 and diet, plus an optional matching YouTube video.
 
-**Status:** search with ingredient matching and a full verifier (Phase 5a). See the plan for what comes next. See
+**Status:** the full conversation runs in the terminal (Phase 5b, `v0.1`): safety intake
+with consent, search with verification and retries, recipe choice and final answer. See
 [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for the design and build order.
 
 ## Setup
@@ -45,6 +46,36 @@ uv run python scripts/enrich_db.py           # rules + labels -> allergens, diet
 
 Data files are never committed.
 
+## Chat (terminal)
+
+```bash
+uv run python scripts/chat_cli.py --user alice
+```
+
+The shape of a first conversation (recipe lines shortened):
+
+```
+What do you have at home, and what do you feel like?
+you> I have eggs, milk and toast. Something sweet for breakfast?
+Before we start: do you have any food allergies or intolerances, diets you follow
+(e.g. vegetarian), or health conditions I should consider when choosing recipes?
+you> I'm allergic to peanuts and I have type 2 diabetes
+I'll avoid: peanuts.
+For what you told me about your health: low sugar. This is not medical advice; ...
+Is this right? (yes/no) yes
+Remember it for next time? (yes/no) yes
+Which one would you like to make?
+ 1. ... (15 min)
+    why: ...
+```
+
+The first conversation asks about allergies, diets and health once; the profile is kept
+only if you agree (in `data/processed/state.db`, keyed by a hashed name). Without consent,
+the conversation is deleted when you leave. Health conditions are turned into restrictions
+you confirm (diabetes -> low sugar); the condition itself is never stored or traced.
+Needs the database, the embeddings and `OPENAI_API_KEY`. With `LANGFUSE_*` keys set, every
+turn is traced in Langfuse (health text masked).
+
 ## Find recipes (terminal)
 
 ```bash
@@ -67,7 +98,8 @@ Pantry: bread, egg, milk
 ```
 
 Allergens and diets are enforced twice: by SQL filters before ranking and by a
-deterministic verifier afterwards.
+deterministic verifier afterwards. Diets: vegetarian, vegan, gluten-free, low-sugar and
+low-salt (the last two from each recipe's nutrition per serving).
 
 ## Results: search quality
 

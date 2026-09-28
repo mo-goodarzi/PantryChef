@@ -390,7 +390,8 @@ Acceptance criteria
 6. **Profile storage:** `profiles` table (JSON), only written when `consent_to_store`.
 7. **CLI runner** `scripts/chat_cli.py` to run the graph interactively with interrupts.
 8. **Tracing:** connect Langfuse inside `observability/tracing.py` (no-op without keys);
-   pass the Langfuse callback handler to every graph run (see §4); confirm
+   nodes, search stages and LLM calls use the tracing helpers (not the LangChain callback
+   handler, which would send raw state and health text; see `docs/decisions.md`); confirm
    one trace per request with nested node spans, LLM generations, and scores.
 
 Acceptance criteria
