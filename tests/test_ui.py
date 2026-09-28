@@ -80,3 +80,14 @@ def test_profile_in_the_sidebar_and_delete_my_data(open_ui):
     app.button(key="delete_data").click().run()
     assert "Your saved profile was deleted." in [i.value for i in app.info]
     assert not app.session_state["history"]
+
+
+def test_an_unreachable_api_is_shown_not_crashed():
+    from pantry_chef.api.client import PantryChefClient
+
+    app = AppTest.from_file(str(UI), default_timeout=30)
+    app.session_state["client"] = PantryChefClient("http://127.0.0.1:9")
+    app.run()
+    ask(app, "I have eggs")
+    assert not app.exception
+    assert "cannot reach the PantryChef API" in chat_text(app)

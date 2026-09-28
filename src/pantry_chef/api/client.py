@@ -23,7 +23,12 @@ class PantryChefClient:
         self.http = http or httpx.Client(base_url=base_url, timeout=120)
 
     def _call(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
-        response = self.http.request(method, path, **kwargs)
+        try:
+            response = self.http.request(method, path, **kwargs)
+        except httpx.TransportError as error:  # connection refused, timeout, ...
+            raise ApiError(
+                503, f"cannot reach the PantryChef API ({type(error).__name__})"
+            ) from error
         if response.status_code >= 400:
             detail = response.json().get("detail") if response.content else None
             raise ApiError(response.status_code, str(detail or response.reason_phrase))

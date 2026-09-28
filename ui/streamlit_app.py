@@ -114,10 +114,10 @@ def record(turn: TurnOut) -> None:
 
 def send(text: str) -> None:
     ss = st.session_state
-    if ss.session_id is None:
-        ss.session_id = client().new_session()
     ss.history.append(("user", text))
     try:
+        if ss.session_id is None:
+            ss.session_id = client().new_session()
         record(client().send(ss.session_id, text, user_id=ss.get("user_name") or None))
     except ApiError as error:
         ss.history.append(("assistant", f"Sorry, that did not work: {error.message}"))

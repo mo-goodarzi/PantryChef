@@ -147,3 +147,10 @@ def test_empty_messages_are_rejected(make_client):
     with pytest.raises(ApiError) as error:
         client.send(client.new_session(), "")
     assert error.value.status == 422
+
+
+def test_client_reports_an_unreachable_api_clearly():
+    client = PantryChefClient("http://127.0.0.1:9")  # nothing listens here
+    with pytest.raises(ApiError) as error:
+        client.new_session()
+    assert error.value.status == 503 and "cannot reach" in error.value.message
