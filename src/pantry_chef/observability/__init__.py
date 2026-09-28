@@ -7,11 +7,25 @@ from pantry_chef.observability.logging import (
     hash_user_id,
     mask,
 )
-from pantry_chef.observability.tracing import score, span, trace, traced
+from pantry_chef.observability.tracing import (
+    GenerationRecord,
+    configure_tracing,
+    flush_tracing,
+    generation,
+    score,
+    span,
+    trace,
+    traced,
+    tracing_from_settings,
+)
 
 __all__ = [
+    "GenerationRecord",
     "bind_context",
     "configure_logging",
+    "configure_tracing",
+    "flush_tracing",
+    "generation",
     "get_logger",
     "hash_user_id",
     "mask",
@@ -19,4 +33,5 @@ __all__ = [
     "span",
     "trace",
     "traced",
+    "tracing_from_settings",
 ]
