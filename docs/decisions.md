@@ -325,3 +325,38 @@ exact-name rule.
 **Next ranking problem (not changed here):** coverage favors tiny recipes that use one pantry
 item at 100% coverage (zabaglione, parmesan crisps for a carbonara pantry). A "share of the
 pantry used" term is the obvious fix; it changes the scoring and gets its own before/after run.
+
+## 2026-09-28 — Pantry usage in the ingredient score
+
+**Problem:** coverage alone ("share of the recipe's key ingredients I have") ranks a
+one-ingredient recipe at 100% above a real dish that uses the whole pantry but misses one item.
+Example: pantry pasta, egg, bacon, parmesan → zabaglione, parmesan crisps, mayonnaise.
+
+**Change:** ingredient score = (1 − u) × coverage part + u × pantry usage, where pantry usage =
+distinct non-staple pantry items the recipe uses ÷ number of non-staple pantry items (an item
+covering several names, "pasta" for "spaghetti" and "pasta noodle", counts once). u = 0.5 was
+fixed before running the eval (equal weight, the neutral choice); 0.3 is reported as a
+sensitivity check. Default on (`usage_weight`); older eval variants keep 0.0 so their reports
+stay reproducible.
+
+**Results** (`eval/reports/search_20260928-1121.md`, 0 errors, 0 allergen violations):
+
+| Variant | hit@5 | MRR | judge |
+|---|---|---|---|
+| coverage | 74% | 0.60 | 2.94 |
+| coverage + usage | 74% | 0.60 | 2.94 |
+| semantic + matcher | 90% | 0.74 | 3.60 |
+| semantic + matcher + usage (0.5) | 92% | 0.76 | 4.07 |
+| semantic + matcher + usage (0.3) | 92% | 0.78 | 4.10 |
+| semantic + matcher + rerank | 94% | 0.83 | 4.20 |
+| **semantic + matcher + usage + rerank** | **96%** | **0.86** | **4.40** |
+
+Findings: (1) usage changes nothing without the matcher (identical top-5 lists in 50/50 cases):
+with exact names the top results already have full coverage and the existing "uses more
+pantry" tie-break orders them the same way; real dishes only get close once the matcher covers
+names like "spaghetti". The two changes work together. (2) 0.3 and 0.5 give the same hit@5, so
+the result is not sensitive to the exact weight. (3) The carbonara case (c04) now passes
+("spaghetti with bacon and eggs"); the cuisine group goes from 80% to 100%.
+(4) The hard-rule pass rate drops (93% → 79%) because the eval's exact-name rule counts
+matcher-covered ingredients as missing (known conservative bias, see Phase 5a).
+Latency differences between variants in this run mostly reflect cold vs warm matcher caches.

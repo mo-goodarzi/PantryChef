@@ -11,6 +11,7 @@ from pantry_chef.agents.verifier import Verifier
 from pantry_chef.config import Settings
 from pantry_chef.db.repository import load_recipe_ingredients
 from pantry_chef.ingredients.normalize import normalize
+from pantry_chef.ingredients.staples import is_staple
 from pantry_chef.models.query import RecipeQuery
 from pantry_chef.models.recipe import Candidate, RecipeIngredient
 from pantry_chef.models.verification import VerificationStatus
@@ -101,18 +102,23 @@ def search(
     limit: int = 20,
     semantic: SemanticSearch | None = None,
     expander: PantryExpander | None = None,
+    usage_weight: float = 0.5,
 ) -> SearchResult:
     pantry = pantry_names(query)
     conditions, params = filter_conditions(query)
 
-    # Names the pantry covers: the pantry itself plus matched names ("pasta" -> "spaghetti").
-    covered = set(pantry)
+    # Names the pantry covers -> the pantry item behind each ("spaghetti" -> "pasta").
+    covered = {name: name for name in pantry}
     if expander is not None:
         with span("search.expand_pantry", pantry_size=len(pantry)):
-            covered |= set(expander.expand(pantry))
+            for name, match in expander.expand(pantry).items():
+                covered.setdefault(name, match.user_term or name)
+    pantry_size = sum(not is_staple(name) for name in pantry)
 
     with span("search.coverage", pantry_size=len(covered), filters=len(conditions)):
-        rows, matched = rank_by_coverage(conn, sorted(covered), conditions, params)
+        rows, matched = rank_by_coverage(
+            conn, covered, conditions, params, usage_weight=usage_weight, pantry_size=pantry_size
+        )
     if semantic is not None and query.preferences_text.strip():
         with span("search.semantic", pool=min(len(rows), semantic.coverage_pool)):
             rows = rescore_with_semantics(rows, query.preferences_text, semantic)
@@ -129,7 +135,7 @@ def search(
             ingredients=ingredients.get(row.recipe_id, []),
             have_key=row.have_key,
             total_key=row.total_key,
-            missing_key=missing_key_names(ingredients.get(row.recipe_id, []), covered),
+            missing_key=missing_key_names(ingredients.get(row.recipe_id, []), set(covered)),
             coverage=row.have_key / row.total_key if row.total_key else 1.0,
             avg_rating=row.avg_rating,
             n_ratings=row.n_ratings,
@@ -152,6 +158,7 @@ class SearchOptions:
     use_diversity: bool = False  # needs semantic (recipe vectors)
     use_rerank: bool = False
     use_matcher: bool = False  # pantry expansion + matcher-based verification
+    usage_weight: float = 0.5  # weight of pantry usage in the ingredient score (0 = off)
     shortlist_size: int = 20  # verified recipes passed to diversity / rerank
     mmr_lambda: float = 0.7
 
@@ -182,6 +189,7 @@ def find_recipes(
         limit=options.pool_size,
         semantic=semantic if options.use_semantic else None,
         expander=expander if options.use_matcher else None,
+        usage_weight=options.usage_weight,
     )
     verifier = verifier if options.use_matcher and verifier else Verifier(conn)
     with span("search.verify", candidates=len(result.candidates)):

@@ -4,7 +4,12 @@ Only key ingredients count (staples, spices, condiments are assumed or optional)
 they are counted by canonical name, so "egg" and "eggs" in one recipe count once.
 Candidates are recipes that share at least one KEY ingredient with the pantry.
 
-Ranking: highest ingredient score, then recipes that use more of the pantry, then rating.
+Ingredient score = (1 - u) * coverage part + u * pantry usage, where
+- coverage part = have_key / total_key - 0.1 per missing key ingredient ("can I make it?")
+- pantry usage  = share of the user's (non-staple) pantry items the recipe uses
+  ("does it use what I have?"). Without it, a one-ingredient recipe that uses 1 of 4 pantry
+  items has full coverage and beats a dish that uses all 4 but misses one garlic clove.
+Ranking: highest score, then recipes that use more of the pantry, then rating.
 """
 
 import json
@@ -28,6 +33,8 @@ class CoverageRow:
     n_ratings: int
     ingredient_score: float
     weighted_rating: float
+    pantry_used: int = 0  # distinct pantry items this recipe uses
+    pantry_usage: float = 0.0  # pantry_used / number of non-staple pantry items
     semantic_score: float | None = None  # set by the semantic step (0..1 within the pool)
     final_score: float | None = None  # set by the semantic step; else = ingredient_score
 
@@ -36,12 +43,25 @@ class CoverageRow:
         return (-final, -self.have_key, -self.weighted_rating, self.recipe_id)
 
 
-def ingredient_score(have_key: int, total_key: int) -> float:
+def coverage_part(have_key: int, total_key: int) -> float:
     """have_key / total_key, minus a penalty for each missing key ingredient."""
     if total_key == 0:
         return 1.0
     missing = total_key - have_key
     return have_key / total_key - MISSING_KEY_PENALTY * missing
+
+
+def ingredient_score(
+    have_key: int, total_key: int, usage: float = 0.0, usage_weight: float = 0.0
+) -> float:
+    """(1 - usage_weight) * coverage part + usage_weight * pantry usage."""
+    return (1 - usage_weight) * coverage_part(have_key, total_key) + usage_weight * usage
+
+
+def pantry_usage(have_names: list[str], covered: dict[str, str]) -> int:
+    """Distinct pantry items behind the recipe's matched names (an item that covers two
+    names, like "pasta" for "spaghetti" and "pasta noodle", counts once)."""
+    return len({covered[name] for name in have_names if name in covered})
 
 
 def weighted_rating(avg: float | None, n: int, overall_mean: float) -> float:
@@ -54,12 +74,13 @@ def weighted_rating(avg: float | None, n: int, overall_mean: float) -> float:
 # and ingredient_id); the number of key ingredients per recipe is precomputed (n_key).
 COVERAGE_SQL = """
 WITH have AS (
-    SELECT ri.recipe_id, COUNT(DISTINCT i.canonical_name) AS have_key
+    SELECT ri.recipe_id, COUNT(DISTINCT i.canonical_name) AS have_key,
+           GROUP_CONCAT(DISTINCT i.canonical_name) AS have_names
     FROM ingredients i JOIN recipe_ingredients ri ON ri.ingredient_id = i.id
     WHERE i.canonical_name IN (SELECT value FROM json_each(:pantry)) AND ri.is_key = 1
     GROUP BY ri.recipe_id
 )
-SELECT r.id, r.name, r.minutes, r.n_key AS total_key, h.have_key,
+SELECT r.id, r.name, r.minutes, r.n_key AS total_key, h.have_key, h.have_names,
        s.avg_rating, COALESCE(s.n_ratings, 0) AS n_ratings
 FROM have h
 JOIN recipes r ON r.id = h.recipe_id
@@ -70,35 +91,48 @@ WHERE {conditions}
 
 def rank_by_coverage(
     conn: sqlite3.Connection,
-    pantry: list[str],
+    pantry: list[str] | dict[str, str],
     conditions: list[str],
     params: dict[str, object],
     limit: int | None = None,
+    usage_weight: float = 0.0,
+    pantry_size: int | None = None,
 ) -> tuple[list[CoverageRow], int]:
-    """Recipes sorted by coverage (the first `limit`, or all), and how many passed filters.
+    """Recipes sorted by ingredient score (the first `limit`, or all), and how many passed
+    the filters.
 
-    `pantry` must already be canonical names.
+    `pantry` is canonical names, or {covered name: pantry item it comes from} when the
+    pantry was expanded. `pantry_size` is the number of non-staple pantry items.
     """
+    covered = pantry if isinstance(pantry, dict) else {name: name for name in pantry}
+    size = max(pantry_size if pantry_size is not None else len(set(covered.values())), 1)
     overall_mean = (
         conn.execute("SELECT AVG(avg_rating) FROM recipe_stats WHERE n_ratings > 0").fetchone()[0]
         or 0.0
     )
     sql = COVERAGE_SQL.format(conditions=" AND ".join(conditions))
-    rows = conn.execute(sql, {**params, "pantry": json.dumps(sorted(set(pantry)))}).fetchall()
+    rows = conn.execute(sql, {**params, "pantry": json.dumps(sorted(covered))}).fetchall()
 
-    ranked = [
-        CoverageRow(
-            recipe_id=row["id"],
-            name=row["name"],
-            minutes=row["minutes"],
-            total_key=row["total_key"],
-            have_key=row["have_key"],
-            avg_rating=row["avg_rating"],
-            n_ratings=row["n_ratings"],
-            ingredient_score=ingredient_score(row["have_key"], row["total_key"]),
-            weighted_rating=weighted_rating(row["avg_rating"], row["n_ratings"], overall_mean),
+    ranked = []
+    for row in rows:
+        used = pantry_usage((row["have_names"] or "").split(","), covered)
+        usage = min(used / size, 1.0)
+        ranked.append(
+            CoverageRow(
+                recipe_id=row["id"],
+                name=row["name"],
+                minutes=row["minutes"],
+                total_key=row["total_key"],
+                have_key=row["have_key"],
+                avg_rating=row["avg_rating"],
+                n_ratings=row["n_ratings"],
+                ingredient_score=ingredient_score(
+                    row["have_key"], row["total_key"], usage, usage_weight
+                ),
+                weighted_rating=weighted_rating(row["avg_rating"], row["n_ratings"], overall_mean),
+                pantry_used=used,
+                pantry_usage=usage,
+            )
         )
-        for row in rows
-    ]
     ranked.sort(key=CoverageRow.sort_key)
     return ranked[:limit], len(rows)
