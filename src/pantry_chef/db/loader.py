@@ -71,6 +71,7 @@ def prepare_recipe(raw: dict) -> PreparedRecipe | str:
         return "empty_name"
 
     try:
+        recipe_id, minutes = int(raw["id"]), int(raw["minutes"])  # NaN raises ValueError
         steps = [s for s in (clean_text(step) for step in parse_list(raw["steps"])) if s]
         ingredients = clean_ingredients(parse_list(raw["ingredients"]))
         tags = clean_tags(parse_list(raw["tags"]))
@@ -84,10 +85,10 @@ def prepare_recipe(raw: dict) -> PreparedRecipe | str:
         return "no_ingredients"
 
     row = {
-        "id": int(raw["id"]),
+        "id": recipe_id,
         "name": name,
         "description": clean_text(raw["description"]),
-        "minutes": int(raw["minutes"]),
+        "minutes": minutes,
         "n_steps": len(steps),
         "n_ingredients": len(ingredients),
         "steps_json": json.dumps(steps),

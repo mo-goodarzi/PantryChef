@@ -153,3 +153,24 @@ def test_failed_build_keeps_previous_database(db_path, tmp_path):
     conn = connect(db_path)
     assert count(conn, "recipes") == N_ROWS - N_UNUSABLE
     conn.close()
+
+
+@pytest.mark.parametrize("field", ["minutes", "id"])
+def test_row_with_a_missing_number_is_skipped_not_fatal(field):
+    import math
+
+    from pantry_chef.db.loader import prepare_recipe
+
+    raw = {
+        "name": "toast",
+        "id": 1,
+        "minutes": 5,
+        "steps": "['toast the bread']",
+        "ingredients": "['bread']",
+        "tags": "[]",
+        "nutrition": "[1, 1, 1, 1, 1, 1, 1]",
+        "description": None,
+        "submitted": "2020-01-01",
+    }
+    assert not isinstance(prepare_recipe(raw), str)
+    assert prepare_recipe({**raw, field: math.nan}) == "parse_error"

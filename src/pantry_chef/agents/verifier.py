@@ -5,7 +5,8 @@ parts (ingredient matching, hidden-allergen lookup, substitutes) are computed ON
 search for all candidates by Verifier.prepare(), then each candidate is checked.
 
 Allergen and diet checks use ingredient-level data (own + inherited allergens), independent
-of the SQL filter; the hidden-allergen check can only add failures. Decision: any failed
+of the SQL filter; the hidden-allergen check can only add failures, and a compound ingredient
+it got no answer for fails (never assumed clean). Decision: any failed
 check -> fail; otherwise any adaptation (substitute, scaling) -> adapt; otherwise pass.
 """
 
@@ -15,6 +16,7 @@ from dataclasses import dataclass, field
 from pantry_chef.agents.hidden_allergens import HiddenAllergenChecker, is_compound
 from pantry_chef.db.repository import IngredientOption, load_canonical_facts, load_substitutes
 from pantry_chef.ingredients.allergens import Allergen
+from pantry_chef.ingredients.enrich import combine
 from pantry_chef.ingredients.matcher import ExactMatcher, Matcher
 from pantry_chef.ingredients.normalize import normalize
 from pantry_chef.ingredients.quantities import Amount, available_ratio
@@ -40,8 +42,31 @@ class VerificationContext:
     matches: dict[str, MatchResult] = field(default_factory=dict)  # by recipe canonical
     pantry_items: dict[str, PantryItem] = field(default_factory=dict)  # by canonical
     hidden: dict[str, set[Allergen]] = field(default_factory=dict)  # by ingredient name
+    # Compound ingredients the hidden-allergen check got no answer for (fail closed).
+    hidden_unchecked: set[str] = field(default_factory=set)  # ingredient names
     substitutes: dict[str, list[IngredientOption]] = field(default_factory=dict)
     pantry_facts: dict[str, IngredientOption] = field(default_factory=dict)  # by canonical
+
+
+def load_pantry_facts(conn: sqlite3.Connection, pantry: set[str]) -> dict[str, IngredientOption]:
+    """Allergen and diet facts for every pantry item: database facts (own + inherited
+    allergens) OR the name rules. Items missing from the database get rule facts only and
+    known=False, because rules alone cannot prove an item is safe."""
+    db_facts = load_canonical_facts(conn, sorted(pantry))
+    facts = {}
+    for name in sorted(pantry):
+        rules = combine(name, label=None)  # same rules as used when enriching the database
+        db = db_facts.get(name)
+        facts[name] = IngredientOption(
+            name=name,
+            note=None,
+            allergens=sorted(set(rules.allergen_sources) | set(db.allergens if db else [])),
+            contains_meat=rules.contains_meat or bool(db and db.contains_meat),
+            contains_fish=rules.contains_fish or bool(db and db.contains_fish),
+            animal_product=rules.animal_product or bool(db and db.animal_product),
+            known=db is not None,
+        )
+    return facts
 
 
 def needs_match(ingredient: RecipeIngredient) -> bool:
@@ -71,6 +96,49 @@ def match_for(ingredient: RecipeIngredient, context: VerificationContext) -> Mat
 # --- checks --------------------------------------------------------------------------
 
 
+def stand_in_reasons(
+    user_term: str,
+    ingredient: RecipeIngredient,
+    facts: IngredientOption | None,
+    allergens: set[Allergen],
+    diets: set[Diet],
+) -> list[FailureReason]:
+    """A pantry item used for a DIFFERENT recipe ingredient brings in its own allergens and
+    diet facts. An item we have no database facts for fails closed when the user has
+    restrictions: the name rules cannot prove it is safe ("skyr" is dairy)."""
+    used_for = f"your {user_term!r} (for {ingredient.name})"
+    reasons = []
+    if facts is not None:
+        reasons += [
+            FailureReason(
+                code=FailureCode.ALLERGEN,
+                item=user_term,
+                detail=f"{used_for} contains {allergen.value}",
+            )
+            for allergen in sorted(set(facts.allergens) & allergens)
+        ]
+        reasons += [
+            FailureReason(
+                code=FailureCode.DIET_VIOLATION,
+                item=user_term,
+                detail=f"{used_for} is not {diet.value.replace('_', '-')}",
+            )
+            for diet in sorted(diets)
+            if breaks_diet(facts, diet)
+        ]
+    unknown = facts is None or not facts.known
+    if not reasons and unknown and (allergens or diets):
+        reasons.append(
+            FailureReason(
+                code=FailureCode.ALLERGEN if allergens else FailureCode.DIET_VIOLATION,
+                item=user_term,
+                detail=f"{used_for} is not in the ingredient database, so it cannot be "
+                "checked against your restrictions",
+            )
+        )
+    return reasons
+
+
 def check_ingredients(
     candidate: Candidate,
     pantry: set[str],
@@ -98,27 +166,9 @@ def check_ingredients(
                 )
             )
         else:
-            stand_in = context.pantry_facts.get(match.user_term or "")
-            if match.user_term != ingredient.canonical_name and stand_in is not None:
-                for allergen in sorted(set(stand_in.allergens) & allergens):
-                    reasons.append(
-                        FailureReason(
-                            code=FailureCode.ALLERGEN,
-                            item=match.user_term,
-                            detail=f"your {match.user_term!r} (for {ingredient.name}) contains "
-                            f"{allergen.value}",
-                        )
-                    )
-                for diet in sorted(diets):
-                    if breaks_diet(stand_in, diet):
-                        reasons.append(
-                            FailureReason(
-                                code=FailureCode.DIET_VIOLATION,
-                                item=match.user_term,
-                                detail=f"your {match.user_term!r} (for {ingredient.name}) is not "
-                                f"{diet.value.replace('_', '-')}",
-                            )
-                        )
+            if match.user_term and match.user_term != ingredient.canonical_name:
+                stand_in = context.pantry_facts.get(match.user_term)
+                reasons += stand_in_reasons(match.user_term, ingredient, stand_in, allergens, diets)
             if match.label is MatchLabel.SUBSTITUTE:
                 adaptations.append(f"use your {match.user_term} instead of {ingredient.name}")
     return CheckResult(
@@ -201,6 +251,16 @@ def check_hidden_allergens(
             (context.hidden.get(ingredient.name, set()) & allergens) - set(ingredient.allergens)
         )
     ]
+    if allergens:
+        reasons += [
+            FailureReason(
+                code=FailureCode.HIDDEN_ALLERGEN,
+                item=ingredient.canonical_name,
+                detail=f"{ingredient.name!r} could not be checked for hidden allergens",
+            )
+            for ingredient in candidate.ingredients
+            if ingredient.name in context.hidden_unchecked
+        ]
     return CheckResult(check="hidden_allergens", passed=not reasons, reasons=reasons)
 
 
@@ -352,9 +412,11 @@ class Verifier:
         matches = {m.recipe_term: m for m in self.matcher.match(sorted(pantry), key_terms)}
 
         hidden: dict[str, set[Allergen]] = {}
+        unchecked: set[str] = set()
         if self.hidden_checker is not None and query.required_allergen_free:
             compound = sorted({i.name for i in ingredients if is_compound(i)})
             hidden = self.hidden_checker.check(compound)
+            unchecked = set(compound) - set(hidden)  # not answered: never assume "clean"
 
         missing_extra = sorted(
             {
@@ -368,8 +430,9 @@ class Verifier:
             matches=matches,
             pantry_items=items,
             hidden=hidden,
+            hidden_unchecked=unchecked,
             substitutes=load_substitutes(self.conn, missing_extra),
-            pantry_facts=load_canonical_facts(self.conn, sorted(pantry)),
+            pantry_facts=load_pantry_facts(self.conn, pantry),
         )
 
     def verify_all(

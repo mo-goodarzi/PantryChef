@@ -360,3 +360,27 @@ the result is not sensitive to the exact weight. (3) The carbonara case (c04) no
 (4) The hard-rule pass rate drops (93% → 79%) because the eval's exact-name rule counts
 matcher-covered ingredients as missing (known conservative bias, see Phase 5a).
 Latency differences between variants in this run mostly reflect cold vs warm matcher caches.
+
+## 2026-09-28 — Verifier safety fixes (review before Phase 5b)
+
+A code review found three places where the verifier's second safety layer could pass
+something it had not really checked. Each is now fail-closed and has a regression test.
+
+- **Pantry items missing from the database.** A pantry item standing in for a different
+  recipe ingredient was re-checked only when the database knew it, so a free-text item
+  ("homemade cashew milk" for milk) skipped the allergen check. Pantry facts now combine
+  database facts with the same name rules used during enrichment, and an item with no
+  database facts cannot stand in when the user has allergies or diets: rules can prove an
+  allergen is present, never that it is absent ("skyr" is dairy). Without restrictions it
+  still works as a substitute. This matters for Phase 5b, where pantry items come from free
+  text.
+- **One allergen lookup everywhere.** Substitutes and pantry items only got their own
+  allergens, while recipe ingredients also inherit those of parents and contained
+  ingredients. All three now use the same query (`load_allergens`).
+- **Unanswered hidden-allergen checks.** If the LLM left a compound ingredient out of its
+  answer, it counted as having no hidden allergens for that request. It now fails as
+  `hidden_allergen` ("could not be checked"); it is asked again next time, since only
+  answered names are cached.
+
+Also: `find_verified()` returns each candidate with its verification result (adaptations
+for the answer, failures for the finder's feedback), which the Phase 5b retry loop needs.

@@ -11,9 +11,17 @@ repos:
         exclude: ^tests/fixtures/
       - id: check-yaml
       - id: check-toml
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
+  # Ruff runs from the project environment, so the hooks and CI use the version pinned
+  # in uv.lock (a separately pinned hook version drifted from it).
+  - repo: local
     hooks:
       - id: ruff
-        args: ["--fix"]
+        name: ruff
+        entry: uv run ruff check --fix
+        language: system
+        types_or: [python, pyi]
       - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format
+        language: system
+        types_or: [python, pyi]

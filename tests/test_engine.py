@@ -55,3 +55,31 @@ def test_missing_key_names_keeps_order_and_dedupes():
         ing("salt", "salt", key=False),
     ]
     assert missing_key_names(ingredients, {"milk"}) == ["eggs", "flour"]
+
+
+# --- full pipeline with verification results -----------------------------------------
+
+
+def test_find_verified_keeps_the_verification_of_every_candidate(enriched_conn):
+    from pantry_chef.search.engine import SearchOptions, find_verified
+
+    query = RecipeQuery(ingredients=["flour", "butter", "eggs", "milk"])
+    result = find_verified(enriched_conn, query, SearchOptions(top_k=2))
+
+    assert result.matched_recipes >= len(result.checked) > len(result.top)
+    assert all(vc.candidate.recipe_id == vc.verification.candidate_id for vc in result.checked)
+    assert [vc.candidate.recipe_id for vc in result.top] == [
+        vc.candidate.recipe_id for vc in result.approved[:2]
+    ]
+    assert all(vc.verification.status is not VerificationStatus.FAIL for vc in result.top)
+    # Failures stay available for the finder's feedback, with their reasons.
+    failed = [vc for vc in result.checked if vc.verification.status is VerificationStatus.FAIL]
+    assert failed and all(vc.verification.reasons for vc in failed)
+
+
+def test_find_recipes_returns_the_top_candidates_of_find_verified(enriched_conn):
+    from pantry_chef.search.engine import SearchOptions, find_recipes, find_verified
+
+    query = RecipeQuery(ingredients=["flour", "butter", "eggs", "milk"])
+    top = find_verified(enriched_conn, query, SearchOptions()).top
+    assert find_recipes(enriched_conn, query, SearchOptions()) == [vc.candidate for vc in top]

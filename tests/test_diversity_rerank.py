@@ -6,7 +6,7 @@ import pytest
 from pantry_chef.models.query import RecipeQuery
 from pantry_chef.models.recipe import Candidate
 from pantry_chef.search.diversity import mmr
-from pantry_chef.search.engine import SearchOptions, SemanticSearch, find_recipes
+from pantry_chef.search.engine import SearchOptions, SemanticSearch, find_recipes, find_verified
 from pantry_chef.search.rerank import LLMReranker, RankedPick, RerankResult, apply_picks
 
 from .test_semantic import KeywordEmbedder, MemoryStore
@@ -111,6 +111,17 @@ def test_full_pipeline_with_rerank(enriched_conn, semantic):
     )
     assert result[0].recipe_id == 118761 and result[0].rerank_reason == "pick 118761"
     assert len(result) == 2
+
+
+def test_rerank_keeps_each_recipe_with_its_own_verification(enriched_conn, semantic):
+    llm = FakeRerankLLM(order=[118761])
+    options = SearchOptions(use_semantic=True, use_rerank=True, top_k=2)
+    query = RecipeQuery(ingredients=["flour", "butter", "egg", "milk"], preferences_text="eggs")
+    top = find_verified(
+        enriched_conn, query, options, semantic=semantic, reranker=LLMReranker(llm, enriched_conn)
+    ).top
+    assert top[0].candidate.rerank_reason == "pick 118761"
+    assert all(vc.candidate.recipe_id == vc.verification.candidate_id for vc in top)
 
 
 def test_rerank_option_requires_a_reranker(enriched_conn):

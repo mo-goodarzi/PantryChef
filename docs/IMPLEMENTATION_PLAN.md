@@ -477,8 +477,6 @@ precision of "verified" videos, and with vs. without transcript check.
 Acceptance criteria
 - Video agent never returns an unverified video as verified.
 - Quota usage per request logged.
-
----
 - Public demo running. Tag `v1.0`.
 
 ---
