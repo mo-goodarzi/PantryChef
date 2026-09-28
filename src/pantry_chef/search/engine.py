@@ -15,7 +15,11 @@ from pantry_chef.ingredients.normalize import normalize
 from pantry_chef.ingredients.staples import is_staple
 from pantry_chef.models.query import RecipeQuery
 from pantry_chef.models.recipe import Candidate, RecipeIngredient
-from pantry_chef.models.verification import VerificationResult, VerificationStatus
+from pantry_chef.models.verification import (
+    VerificationResult,
+    VerificationStatus,
+    VerifiedCandidate,
+)
 from pantry_chef.observability import span
 from pantry_chef.search.coverage import CoverageRow, rank_by_coverage
 from pantry_chef.search.diversity import mmr
@@ -168,12 +172,6 @@ class SearchOptions:
 
 
 @dataclass
-class VerifiedCandidate:
-    candidate: Candidate
-    verification: VerificationResult
-
-
-@dataclass
 class FindResult:
     top: list[VerifiedCandidate]  # the best pass/adapt recipes, at most top_k
     checked: list[VerifiedCandidate]  # every verified candidate, failures included
@@ -237,7 +235,10 @@ def find_verified(
         results = verifier.verify_all(result.candidates, query)
     found = FindResult(
         top=[],
-        checked=[VerifiedCandidate(c, v) for c, v in zip(result.candidates, results, strict=True)],
+        checked=[
+            VerifiedCandidate(candidate=c, verification=v)
+            for c, v in zip(result.candidates, results, strict=True)
+        ],
         matched_recipes=result.matched_recipes,
     )
     verification = {vc.candidate.recipe_id: vc.verification for vc in found.checked}
@@ -252,7 +253,8 @@ def find_verified(
             shortlist = reranker.rerank(query, shortlist, options.top_k)
     # The reranker returns copies (with rerank_reason); pair them with their verification.
     found.top = [
-        VerifiedCandidate(c, verification[c.recipe_id]) for c in shortlist[: options.top_k]
+        VerifiedCandidate(candidate=c, verification=verification[c.recipe_id])
+        for c in shortlist[: options.top_k]
     ]
     return found
 

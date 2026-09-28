@@ -4,6 +4,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
+from pantry_chef.models.recipe import Candidate
+
 
 class FailureCode(StrEnum):
     MISSING_INGREDIENT = "missing_ingredient"
@@ -51,3 +53,10 @@ class VerificationResult(BaseModel):
     @property
     def reasons(self) -> list[FailureReason]:
         return [reason for check in self.checks for reason in check.reasons]
+
+
+class VerifiedCandidate(BaseModel):
+    """A search candidate together with its verification (pass, adapt or fail)."""
+
+    candidate: Candidate
+    verification: VerificationResult
