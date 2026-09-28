@@ -81,14 +81,7 @@ CREATE TABLE ingredient_relation (
   PRIMARY KEY (a_id, b_id, relation)
 );
 
-CREATE TABLE match_cache (
-  user_term TEXT, recipe_term TEXT, label TEXT,
-  source TEXT, created_at TEXT, PRIMARY KEY (user_term, recipe_term)
-);
-
-CREATE TABLE profiles (              -- written only when consent_to_store is true
-  user_id TEXT PRIMARY KEY, profile_json TEXT NOT NULL, updated_at TEXT
-);
+-- Runtime tables (match_cache, profiles, checkpoints) live in state.db: state_schema.sql.
 
 CREATE INDEX idx_ri_ingredient ON recipe_ingredients(ingredient_id);
 CREATE INDEX idx_ingredients_canonical ON ingredients(canonical_name);

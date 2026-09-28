@@ -119,7 +119,10 @@ def main() -> None:
     semantic = semantic_from_settings(settings) if use_semantic or args.match else None
     expander, verifier, reranker = None, None, None
     if args.match and semantic is not None:
-        expander, verifier = matching_from_settings(settings, conn, semantic.embedder)
+        from pantry_chef.db.state import open_state_db
+
+        state = open_state_db(settings.state_db_path)
+        expander, verifier = matching_from_settings(settings, conn, semantic.embedder, state)
     if args.rerank:
         from pantry_chef.llm.factory import create_llm
         from pantry_chef.search.rerank import LLMReranker

@@ -258,12 +258,14 @@ def find_verified(
 
 
 def matching_from_settings(
-    settings: Settings, conn: sqlite3.Connection, embedder: Embedder
+    settings: Settings, conn: sqlite3.Connection, embedder: Embedder, state: sqlite3.Connection
 ) -> tuple[PantryExpander, Verifier]:
-    """Pantry expansion and a verifier that share one CompositeMatcher (and its cache)."""
+    """Pantry expansion and a verifier that share one CompositeMatcher; its cache lives in
+    the state database (`state`), the recipes in `conn`."""
     from pathlib import Path
 
     from pantry_chef.agents.hidden_allergens import HiddenAllergenChecker
+    from pantry_chef.db.state import import_legacy_match_cache
     from pantry_chef.ingredients.matcher import (
         CompositeMatcher,
         ExactMatcher,
@@ -276,11 +278,12 @@ def matching_from_settings(
     from pantry_chef.llm.factory import create_llm
     from pantry_chef.search.semantic import ChromaNameIndex
 
+    import_legacy_match_cache(state, settings.db_path)  # answers cached before state.db
     llm = create_llm(settings)
     llm_matcher = LLMMatcher(llm)
     matcher = CompositeMatcher(
         ExactMatcher(parents_from_seed(load_seed())),
-        MatchCache(conn, llm_cache_source(llm_matcher)),
+        MatchCache(state, llm_cache_source(llm_matcher)),
         llm_matcher,
         log_path=Path("data/processed/match_log.jsonl"),
     )

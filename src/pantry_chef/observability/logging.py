@@ -4,6 +4,7 @@ Every log line carries the current trace_id and session_id (bound with bind_cont
 so logs can be matched with traces.
 """
 
+import hashlib
 import logging
 import sys
 
@@ -57,3 +58,8 @@ def mask(value: object) -> str:
     if value is None or value == "":
         return ""
     return MASK
+
+
+def hash_user_id(user_id: str) -> str:
+    """Pseudonymous id for traces and stored profiles: the raw name never leaves the app."""
+    return hashlib.sha256(f"pantry-chef:{user_id}".encode()).hexdigest()[:16]

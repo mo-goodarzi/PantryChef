@@ -90,11 +90,11 @@ class FakeMatchLLM:
 
 
 @pytest.fixture
-def composite(enriched_conn, tmp_path):
+def composite(state_conn, tmp_path):
     llm = FakeMatchLLM()
     matcher = CompositeMatcher(
         ExactMatcher(PARENTS),
-        MatchCache(enriched_conn),
+        MatchCache(state_conn),
         LLMMatcher(llm),
         log_path=tmp_path / "match_log.jsonl",
     )
@@ -162,8 +162,8 @@ def test_invented_names_from_the_llm_are_ignored(enriched_conn):
     assert [r.recipe_term for r in results] == ["cooked rice"]
 
 
-def test_without_llm_unknown_terms_are_different(enriched_conn):
-    matcher = CompositeMatcher(ExactMatcher(), MatchCache(enriched_conn), llm=None)
+def test_without_llm_unknown_terms_are_different(state_conn):
+    matcher = CompositeMatcher(ExactMatcher(), MatchCache(state_conn), llm=None)
     [r] = matcher.match(["rice"], ["cooked rice"])
     assert (r.label, r.source) == (MatchLabel.DIFFERENT, "none")
 
@@ -174,11 +174,11 @@ def test_results_keep_recipe_order_including_duplicates(composite):
     assert [r.recipe_term for r in results] == ["egg", "milk", "egg"]
 
 
-def test_cache_entries_from_an_older_prompt_version_are_ignored(enriched_conn):
-    old = MatchCache(enriched_conn, source="llm:ingredient_match:v1")
+def test_cache_entries_from_an_older_prompt_version_are_ignored(state_conn):
+    old = MatchCache(state_conn, source="llm:ingredient_match:v1")
     old.put_many([("egg", "egg noodle", MatchLabel.CONTAINS)])
     assert old.get("egg", "egg noodle") is MatchLabel.CONTAINS
-    new = MatchCache(enriched_conn, source="llm:ingredient_match:v2")
+    new = MatchCache(state_conn, source="llm:ingredient_match:v2")
     assert new.get("egg", "egg noodle") is None
 
 

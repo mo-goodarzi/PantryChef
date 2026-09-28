@@ -14,7 +14,8 @@ class Settings(BaseSettings):
     # Data paths
     raw_recipes_csv: Path = Path("data/raw/RAW_recipes.csv")
     raw_interactions_csv: Path = Path("data/raw/RAW_interactions.csv")
-    db_path: Path = Path("data/processed/pantry.db")
+    db_path: Path = Path("data/processed/pantry.db")  # recipes: rebuilt, read-only at runtime
+    state_db_path: Path = Path("data/processed/state.db")  # runtime: profiles, caches, chats
     chroma_path: Path = Path("data/processed/chroma")
 
     # LLM

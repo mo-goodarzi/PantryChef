@@ -10,6 +10,7 @@ from pathlib import Path
 
 from pantry_chef.config import get_settings
 from pantry_chef.db.connection import connect
+from pantry_chef.db.state import open_state_db
 from pantry_chef.evaluation.cases import load_cases
 from pantry_chef.evaluation.judge import CachedJudge
 from pantry_chef.evaluation.search_eval import evaluate_variant, summarize, write_report
@@ -73,7 +74,8 @@ def main() -> None:
     reranker = LLMReranker(create_llm(settings), conn)
     expander, verifier = (None, None)
     if semantic is not None and any(VARIANTS[v].use_matcher for v in variants):
-        expander, verifier = matching_from_settings(settings, conn, semantic.embedder)
+        state = open_state_db(settings.state_db_path)
+        expander, verifier = matching_from_settings(settings, conn, semantic.embedder, state)
 
     all_results = {}
     for variant in variants:

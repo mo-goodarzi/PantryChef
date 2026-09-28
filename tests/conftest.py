@@ -106,3 +106,12 @@ def enriched_conn(tmp_path):
     enrich_database(conn, {n: fixture_label(n) for n in names}, relation_seed=RELATION_SEED)
     yield conn
     conn.close()
+
+
+@pytest.fixture
+def state_conn(tmp_path):
+    from pantry_chef.db.state import open_state_db
+
+    conn = open_state_db(tmp_path / "state.db")
+    yield conn
+    conn.close()
