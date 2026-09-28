@@ -37,15 +37,20 @@ WHERE rel.relation = 'contains' AND rel.a_id IN (SELECT id FROM wanted)
 """
 
 
+def load_allergens(conn: sqlite3.Connection, ingredient_ids: list[int]) -> dict[int, set[Allergen]]:
+    """Own + inherited allergens per ingredient id (see ALLERGENS_SQL). Every lookup that
+    feeds a safety check (recipe ingredients, substitutes, pantry items) uses this."""
+    allergens: dict[int, set[Allergen]] = defaultdict(set)
+    for row in conn.execute(ALLERGENS_SQL, {"ids": json.dumps(sorted(set(ingredient_ids)))}):
+        allergens[row["id"]].add(Allergen(row["allergen"]))
+    return allergens
+
+
 def load_recipe_ingredients(
     conn: sqlite3.Connection, recipe_ids: list[int]
 ) -> dict[int, list[RecipeIngredient]]:
     rows = conn.execute(INGREDIENTS_SQL, {"ids": json.dumps(recipe_ids)}).fetchall()
-    ingredient_ids = sorted({row["ingredient_id"] for row in rows})
-
-    allergens: dict[int, set[Allergen]] = defaultdict(set)
-    for row in conn.execute(ALLERGENS_SQL, {"ids": json.dumps(ingredient_ids)}):
-        allergens[row["id"]].add(Allergen(row["allergen"]))
+    allergens = load_allergens(conn, [row["ingredient_id"] for row in rows])
 
     result: dict[int, list[RecipeIngredient]] = defaultdict(list)
     for row in rows:
@@ -137,13 +142,7 @@ def load_substitutes(
         """,
         {"names": json.dumps(canonical_names)},
     ).fetchall()
-    allergens: dict[int, set[Allergen]] = defaultdict(set)
-    for row in conn.execute(
-        "SELECT ingredient_id, allergen FROM ingredient_allergens "
-        "WHERE ingredient_id IN (SELECT value FROM json_each(:ids))",
-        {"ids": json.dumps([r["id"] for r in rows])},
-    ):
-        allergens[row["ingredient_id"]].add(Allergen(row["allergen"]))
+    allergens = load_allergens(conn, [r["id"] for r in rows])
 
     options: dict[str, dict[str, IngredientOption]] = defaultdict(dict)
     for row in rows:
@@ -166,25 +165,22 @@ def load_canonical_facts(
     """Allergens and diet facts per canonical name, merged over all raw names that share
     it (conservative: any raw name with an allergen gives the canonical name that
     allergen)."""
-    facts: dict[str, IngredientOption] = {}
     rows = conn.execute(
-        """
-        SELECT i.canonical_name AS name, MAX(i.contains_meat) AS meat,
-               MAX(i.contains_fish) AS fish, MAX(i.animal_product) AS animal,
-               GROUP_CONCAT(DISTINCT ia.allergen) AS allergens
-        FROM ingredients i LEFT JOIN ingredient_allergens ia ON ia.ingredient_id = i.id
-        WHERE i.canonical_name IN (SELECT value FROM json_each(:names))
-        GROUP BY i.canonical_name
-        """,
+        "SELECT id, canonical_name AS name, contains_meat, contains_fish, animal_product "
+        "FROM ingredients WHERE canonical_name IN (SELECT value FROM json_each(:names))",
         {"names": json.dumps(canonical_names)},
-    )
+    ).fetchall()
+    allergens = load_allergens(conn, [r["id"] for r in rows])
+
+    facts: dict[str, IngredientOption] = {}
     for row in rows:
+        seen = facts.get(row["name"])
         facts[row["name"]] = IngredientOption(
             name=row["name"],
             note=None,
-            allergens=sorted(Allergen(a) for a in (row["allergens"] or "").split(",") if a),
-            contains_meat=bool(row["meat"]),
-            contains_fish=bool(row["fish"]),
-            animal_product=bool(row["animal"]),
+            allergens=sorted(allergens[row["id"]] | set(seen.allergens if seen else [])),
+            contains_meat=bool(row["contains_meat"]) or bool(seen and seen.contains_meat),
+            contains_fish=bool(row["contains_fish"]) or bool(seen and seen.contains_fish),
+            animal_product=bool(row["animal_product"]) or bool(seen and seen.animal_product),
         )
     return facts

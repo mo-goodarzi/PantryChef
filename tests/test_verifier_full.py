@@ -445,3 +445,24 @@ def test_load_canonical_facts_merges_raw_names(enriched_conn):
     assert facts["egg"].allergens == [Allergen.EGGS]
     assert facts["chicken breast"].contains_meat
     assert "nothing" not in facts
+
+
+def test_load_canonical_facts_includes_allergens_of_contained_ingredients(enriched_conn):
+    from pantry_chef.db.repository import load_canonical_facts
+
+    # Fixture seed: salad dressing contains swiss cheese (milk); its own label is eggs.
+    facts = load_canonical_facts(enriched_conn, ["salad dressing"])
+    assert facts["salad dressing"].allergens == [Allergen.EGGS, Allergen.MILK]
+
+
+def test_substitutes_include_allergens_of_contained_ingredients(enriched_conn):
+    from pantry_chef.db.repository import load_substitutes
+
+    ids = {r["name"]: r["id"] for r in enriched_conn.execute("SELECT id, name FROM ingredients")}
+    enriched_conn.execute(
+        "INSERT INTO ingredient_relation (a_id, b_id, relation) VALUES (?, ?, 'substitute')",
+        (ids["butter"], ids["salad dressing"]),
+    )
+    [option] = load_substitutes(enriched_conn, ["butter"])["butter"]
+    assert option.name == "salad dressing"
+    assert option.allergens == [Allergen.EGGS, Allergen.MILK]
