@@ -185,3 +185,8 @@ def test_verdicts_never_remove_recipes_without_allergies(enriched_conn, verdict)
     )
     assert QUICK_MIX in [vc.candidate.recipe_id for vc in result.top]
     assert llm.calls == []
+
+
+def test_quotes_from_the_model_are_not_doubled():
+    outcome = outcome_for(review(1, Verdict.OPTIONAL, evidence='"top with almonds"'), "x")
+    assert outcome.warning == 'Leave out the peanuts: "top with almonds".'

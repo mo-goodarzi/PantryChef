@@ -71,7 +71,8 @@ def outcome_for(review: AllergyReview | None, recipe_name: str) -> ReviewOutcome
             ),
         )
     allergen = review.allergen or "an allergen"
-    quote = f'"{review.evidence}"' if review.evidence else "the recipe"
+    evidence = (review.evidence or "").strip().strip('"').strip("'").strip()
+    quote = f'"{evidence}"' if evidence else "the recipe"
     if review.verdict is Verdict.UNSAFE:
         return ReviewOutcome(
             keep=False,
