@@ -113,7 +113,8 @@ def test_request_becomes_a_query_with_the_profile_restrictions():
     assert query.preferences_text == "something sweet for breakfast"
     assert query.required_allergen_free == [Allergen.PEANUTS]
     assert query.diets == [Diet.LOW_SUGAR]
-    assert query.exclude_ingredients == ["kiwi", "mushrooms"]
+    assert query.exclude_ingredients == ["mushrooms"]
+    assert query.other_allergies == ["kiwi"]  # word match, not an exact exclusion
 
 
 def test_allergies_mentioned_in_a_request_only_make_the_query_stricter():
@@ -129,7 +130,8 @@ def test_allergies_mentioned_in_a_request_only_make_the_query_stricter():
     query = build_query(UserProfile(allergens=[Allergen.PEANUTS]), request)
     assert query.required_allergen_free == [Allergen.PEANUTS, Allergen.SESAME]
     assert query.max_minutes == 20
-    assert query.exclude_ingredients == ["cilantro", "lychee"]
+    assert query.exclude_ingredients == ["cilantro"]
+    assert query.other_allergies == ["lychee"]
 
 
 def test_request_prompt_is_sensitive():

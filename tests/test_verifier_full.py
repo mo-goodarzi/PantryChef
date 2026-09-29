@@ -572,3 +572,14 @@ def test_substitutes_include_allergens_of_contained_ingredients(enriched_conn):
     [option] = load_substitutes(enriched_conn, ["butter"])["butter"]
     assert option.name == "salad dressing"
     assert option.allergens == [Allergen.EGGS, Allergen.MILK]
+
+
+def test_other_allergies_are_checked_again_in_the_verifier():
+    from pantry_chef.agents.verifier import check_other_allergies
+
+    recipe = cand(ing("kiwi fruit"), ing("sugar", key=False, staple=True))
+    [reason] = check_other_allergies(recipe, ["kiwi"]).reasons
+    assert reason.code is FailureCode.ALLERGEN and "kiwi allergy" in reason.detail
+    assert check_other_allergies(recipe, ["mango"]).passed
+    query = RecipeQuery(ingredients=["kiwi fruit"], other_allergies=["kiwi"])
+    assert verify(recipe, query).status is VerificationStatus.FAIL

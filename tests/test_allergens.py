@@ -120,3 +120,27 @@ def test_tricky_cases(name, expected):
 
 def test_there_are_fourteen_eu_allergens():
     assert len(Allergen) == 14
+
+
+# --- allergies outside the EU list, matched as whole words ---------------------------
+
+
+@pytest.mark.parametrize(
+    ("text", "word", "expected"),
+    [
+        ("kiwi", "kiwi", True),
+        ("kiwi fruit", "kiwi", True),
+        ("kiwis", "kiwi", True),
+        ("strawberry kiwi gelatin powder", "kiwi", True),
+        ("Kiwi-Lime Sorbet", "kiwi", True),
+        ("kiwis", "kiwis", True),  # the user may write the plural
+        ("kiwifruit", "kiwi", False),  # one word: not a whole-word match
+        ("lychees in syrup", "lychee", True),
+        ("pine nuts", "pine nut", True),
+        ("peanut butter", "pine nut", False),
+    ],
+)
+def test_mentions_word(text, word, expected):
+    from pantry_chef.ingredients.allergens import mentions_word
+
+    assert mentions_word(text, word) is expected

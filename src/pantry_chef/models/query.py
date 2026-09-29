@@ -42,6 +42,9 @@ class RecipeQuery(BaseModel):
     exclude_ingredients: list[str] = Field(default_factory=list)
     exclude_recipe_ids: list[int] = Field(default_factory=list)
     required_allergen_free: list[Allergen] = Field(default_factory=list)
+    # Allergies outside the EU 14 ("kiwi"): excluded when an ingredient NAME contains the
+    # word (any plural), in the SQL filter and again in the verifier.
+    other_allergies: list[str] = Field(default_factory=list)
     diets: list[Diet] = Field(default_factory=list)
 
 

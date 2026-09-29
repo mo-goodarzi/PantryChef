@@ -103,3 +103,16 @@ def test_meal_type_and_cuisine(enriched_conn):
     assert {PANCAKES, WAFFLES, POACHED_EGGS} <= breakfast
     assert CALZONES not in breakfast
     assert allowed(enriched_conn, cuisine="no-such-cuisine") == set()
+
+
+def test_other_allergies_exclude_by_whole_word(enriched_conn):
+    # "lemongrass" appears as "fresh lemongrass" and "lemongrass" in the two thai soups
+    ids = allowed(enriched_conn, other_allergies=["lemongrass"])
+    assert CHICKEN_SOUP not in ids and THAI_SOUP not in ids
+    assert PANCAKES in ids
+
+
+def test_other_allergy_words_match_plurals_in_raw_names(enriched_conn):
+    # the apple salad lists "seedless grapes"
+    assert APPLE_SALAD not in allowed(enriched_conn, other_allergies=["grape"])
+    assert APPLE_SALAD in allowed(enriched_conn, other_allergies=["grapefruit"])

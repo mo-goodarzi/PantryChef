@@ -6,6 +6,7 @@ and read with json_each, so the SQL never changes with the number of items.
 
 import json
 
+from pantry_chef.ingredients.allergens import allergy_word_variants
 from pantry_chef.ingredients.normalize import normalize
 from pantry_chef.models.query import NUTRITION_LIMITS, Diet, RecipeQuery
 
@@ -53,6 +54,22 @@ def filter_conditions(query: RecipeQuery) -> tuple[list[str], dict[str, object]]
         )
         params["exclude_ingredients"] = json.dumps(
             sorted({normalize(name) for name in query.exclude_ingredients})
+        )
+
+    if query.other_allergies:
+        # Whole-word match on the raw and canonical name: "kiwi" also excludes
+        # "kiwi fruit" and "strawberry kiwi gelatin powder".
+        conditions.append(
+            "NOT EXISTS (SELECT 1 FROM recipe_ingredients ri3 "
+            "JOIN ingredients i3 ON i3.id = ri3.ingredient_id "
+            "JOIN json_each(:other_allergy_words) w "
+            "WHERE ri3.recipe_id = r.id AND ("
+            "(' ' || replace(replace(lower(i3.name), ',', ' '), '-', ' ') || ' ') "
+            "LIKE '% ' || w.value || ' %' "
+            "OR (' ' || i3.canonical_name || ' ') LIKE '% ' || w.value || ' %'))"
+        )
+        params["other_allergy_words"] = json.dumps(
+            sorted({v for word in query.other_allergies for v in allergy_word_variants(word)})
         )
 
     if query.exclude_recipe_ids:

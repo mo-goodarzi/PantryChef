@@ -29,13 +29,14 @@ def interpret_request(llm: StructuredLLM, message: str) -> RequestAnswer:
 def build_query(profile: UserProfile, request: RequestAnswer) -> RecipeQuery:
     groups, other = split_allergies(request.allergies)
     allergens = set(profile.allergens) | {code for codes in groups.values() for code in codes}
-    exclude = set(request.avoid) | set(profile.dislikes) | set(profile.other_allergies)
-    exclude |= set(other)
+    exclude = set(request.avoid) | set(profile.dislikes)
+    other_allergies = {" ".join(w.lower().split()) for w in [*profile.other_allergies, *other]}
     return RecipeQuery(
         ingredients=[item for item in request.pantry if item.strip()],
         preferences_text=request.wish,
         max_minutes=request.max_minutes,
         exclude_ingredients=sorted(" ".join(e.lower().split()) for e in exclude if e.strip()),
         required_allergen_free=sorted(allergens),
+        other_allergies=sorted(w for w in other_allergies if w),
         diets=list(profile.diets),
     )

@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 
 from pantry_chef.agents.hidden_allergens import HiddenAllergenChecker, is_compound
 from pantry_chef.db.repository import IngredientOption, load_canonical_facts, load_substitutes
-from pantry_chef.ingredients.allergens import Allergen
+from pantry_chef.ingredients.allergens import Allergen, mentions_word
 from pantry_chef.ingredients.enrich import combine
 from pantry_chef.ingredients.matcher import ExactMatcher, Matcher
 from pantry_chef.ingredients.normalize import normalize
@@ -243,6 +243,22 @@ def check_allergens(candidate: Candidate, allergens: set[Allergen]) -> CheckResu
     return CheckResult(check="allergens", passed=not reasons, reasons=reasons)
 
 
+def check_other_allergies(candidate: Candidate, words: list[str]) -> CheckResult:
+    """Allergies outside the EU 14, by whole word in the ingredient name (second layer
+    after the SQL filter)."""
+    reasons = [
+        FailureReason(
+            code=FailureCode.ALLERGEN,
+            item=ingredient.canonical_name,
+            detail=f"{ingredient.name!r} matches your {word} allergy",
+        )
+        for ingredient in candidate.ingredients
+        for word in words
+        if mentions_word(ingredient.name, word) or mentions_word(ingredient.canonical_name, word)
+    ]
+    return CheckResult(check="other_allergies", passed=not reasons, reasons=reasons)
+
+
 def check_hidden_allergens(
     candidate: Candidate, allergens: set[Allergen], context: VerificationContext
 ) -> CheckResult:
@@ -394,6 +410,7 @@ def verify(
         check_ingredients(candidate, context.pantry, context, query),
         check_quantities(candidate, context),
         check_allergens(candidate, allergens),
+        check_other_allergies(candidate, query.other_allergies),
         check_hidden_allergens(candidate, allergens, context),
         check_diet(candidate, set(query.diets)),
         check_time(candidate, query.max_minutes),
