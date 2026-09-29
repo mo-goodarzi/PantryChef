@@ -1,0 +1,344 @@
+[
+ {
+  "recipe_id": 320074,
+  "allergens": [
+   "tree_nuts"
+  ],
+  "other_allergies": [],
+  "label": "required",
+  "note": "top with slivered almonds (not marked optional)"
+ },
+ {
+  "recipe_id": 280731,
+  "allergens": [
+   "tree_nuts"
+  ],
+  "other_allergies": [],
+  "label": "required",
+  "note": "whisk together ... almond extract"
+ },
+ {
+  "recipe_id": 297215,
+  "allergens": [
+   "tree_nuts"
+  ],
+  "other_allergies": [],
+  "label": "required",
+  "note": "fold in vanilla, almond and lemon juice"
+ },
+ {
+  "recipe_id": 43930,
+  "allergens": [
+   "tree_nuts"
+  ],
+  "other_allergies": [],
+  "label": "required",
+  "note": "roll in chopped pecans"
+ },
+ {
+  "recipe_id": 457631,
+  "allergens": [
+   "sesame"
+  ],
+  "other_allergies": [],
+  "label": "required",
+  "note": "garnish with toasted sesame seeds (not marked optional)"
+ },
+ {
+  "recipe_id": 92298,
+  "allergens": [
+   "peanuts"
+  ],
+  "other_allergies": [],
+  "label": "optional",
+  "note": "if using choc / peanut butter chips / m&ms / nuts"
+ },
+ {
+  "recipe_id": 104409,
+  "allergens": [
+   "peanuts"
+  ],
+  "other_allergies": [],
+  "label": "optional",
+  "note": "peanut oil is best but any vegetable oil will do"
+ },
+ {
+  "recipe_id": 89787,
+  "allergens": [
+   "peanuts"
+  ],
+  "other_allergies": [],
+  "label": "optional",
+  "note": "chocolate, butterscotch or peanut butter chips"
+ },
+ {
+  "recipe_id": 250489,
+  "allergens": [
+   "peanuts"
+  ],
+  "other_allergies": [],
+  "label": "optional",
+  "note": "offer curry condiments ... peanut halves"
+ },
+ {
+  "recipe_id": 265160,
+  "allergens": [
+   "peanuts"
+  ],
+  "other_allergies": [],
+  "label": "optional",
+  "note": "stir in cashews or peanuts (cashews also possible)"
+ },
+ {
+  "recipe_id": 371414,
+  "allergens": [
+   "peanuts"
+  ],
+  "other_allergies": [],
+  "label": "optional",
+  "note": "vanilla butter cream or chocolate peanut butter frosting"
+ },
+ {
+  "recipe_id": 432139,
+  "allergens": [
+   "peanuts"
+  ],
+  "other_allergies": [],
+  "label": "optional",
+  "note": "author also used a peanut sauce"
+ },
+ {
+  "recipe_id": 185933,
+  "allergens": [
+   "peanuts"
+  ],
+  "other_allergies": [],
+  "label": "optional",
+  "note": "garnish with chopped peanuts or pickled ginger"
+ },
+ {
+  "recipe_id": 289455,
+  "allergens": [
+   "peanuts"
+  ],
+  "other_allergies": [],
+  "label": "optional",
+  "note": "i usually throw in ... peanut butter"
+ },
+ {
+  "recipe_id": 221250,
+  "allergens": [
+   "peanuts"
+  ],
+  "other_allergies": [],
+  "label": "optional",
+  "note": "you can also add peanut butter if desired"
+ },
+ {
+  "recipe_id": 90765,
+  "allergens": [
+   "sesame"
+  ],
+  "other_allergies": [],
+  "label": "optional",
+  "note": "add mohn or sesame if you wish"
+ },
+ {
+  "recipe_id": 341433,
+  "allergens": [
+   "sesame"
+  ],
+  "other_allergies": [],
+  "label": "optional",
+  "note": "you can also add sesame seeds or poppy seeds"
+ },
+ {
+  "recipe_id": 216121,
+  "allergens": [
+   "sesame"
+  ],
+  "other_allergies": [],
+  "label": "optional",
+  "note": "variations: add sesame oil"
+ },
+ {
+  "recipe_id": 44319,
+  "allergens": [
+   "sesame"
+  ],
+  "other_allergies": [],
+  "label": "optional",
+  "note": "serve with sesame bread sticks"
+ },
+ {
+  "recipe_id": 20476,
+  "allergens": [
+   "sesame"
+  ],
+  "other_allergies": [],
+  "label": "optional",
+  "note": "poppy seeds or toasted sesame seeds"
+ },
+ {
+  "recipe_id": 366963,
+  "allergens": [
+   "tree_nuts"
+  ],
+  "other_allergies": [],
+  "label": "optional",
+  "note": "walnuts and raisins if using"
+ },
+ {
+  "recipe_id": 73494,
+  "allergens": [
+   "tree_nuts"
+  ],
+  "other_allergies": [],
+  "label": "optional",
+  "note": "candied ginger or walnuts, as desired"
+ },
+ {
+  "recipe_id": 42389,
+  "allergens": [
+   "tree_nuts"
+  ],
+  "other_allergies": [],
+  "label": "optional",
+  "note": "vanilla or almond extract"
+ },
+ {
+  "recipe_id": 221058,
+  "allergens": [
+   "tree_nuts"
+  ],
+  "other_allergies": [],
+  "label": "optional",
+  "note": "pumpkin seeds or almonds or peanuts"
+ },
+ {
+  "recipe_id": 49400,
+  "allergens": [
+   "tree_nuts"
+  ],
+  "other_allergies": [],
+  "label": "optional",
+  "note": "roll in chopped pecans if desired"
+ },
+ {
+  "recipe_id": 13947,
+  "allergens": [],
+  "other_allergies": [
+   "kiwi"
+  ],
+  "label": "optional",
+  "note": "garnish ... kiwi slices ... if desired"
+ },
+ {
+  "recipe_id": 19211,
+  "allergens": [],
+  "other_allergies": [
+   "kiwi"
+  ],
+  "label": "optional",
+  "note": "garnish with fruit like strawberries, kiwi, bananas, etc"
+ },
+ {
+  "recipe_id": 411612,
+  "allergens": [
+   "peanuts"
+  ],
+  "other_allergies": [],
+  "label": "none",
+  "note": "peanut butter consistency"
+ },
+ {
+  "recipe_id": 363573,
+  "allergens": [
+   "peanuts"
+  ],
+  "other_allergies": [],
+  "label": "none",
+  "note": "consistency of natural peanut butter"
+ },
+ {
+  "recipe_id": 241210,
+  "allergens": [
+   "peanuts"
+  ],
+  "other_allergies": [],
+  "label": "none",
+  "note": "color of the inverted peanut butter jar"
+ },
+ {
+  "recipe_id": 422938,
+  "allergens": [
+   "peanuts"
+  ],
+  "other_allergies": [],
+  "label": "none",
+  "note": "texture ... same as that of peanut butter"
+ },
+ {
+  "recipe_id": 465562,
+  "allergens": [
+   "peanuts"
+  ],
+  "other_allergies": [],
+  "label": "none",
+  "note": "roux turns a dark peanut butter color"
+ },
+ {
+  "recipe_id": 400191,
+  "allergens": [
+   "tree_nuts"
+  ],
+  "other_allergies": [],
+  "label": "none",
+  "note": "walnut sized balls"
+ },
+ {
+  "recipe_id": 319588,
+  "allergens": [
+   "tree_nuts"
+  ],
+  "other_allergies": [],
+  "label": "none",
+  "note": "walnut-sized balls"
+ },
+ {
+  "recipe_id": 69625,
+  "allergens": [
+   "tree_nuts"
+  ],
+  "other_allergies": [],
+  "label": "none",
+  "note": "walnut sized balls"
+ },
+ {
+  "recipe_id": 5170,
+  "allergens": [
+   "peanuts"
+  ],
+  "other_allergies": [],
+  "label": "none",
+  "note": "control: pancakes, no mention"
+ },
+ {
+  "recipe_id": 31750,
+  "allergens": [
+   "sesame"
+  ],
+  "other_allergies": [],
+  "label": "none",
+  "note": "control: waffles, no mention"
+ },
+ {
+  "recipe_id": 118761,
+  "allergens": [
+   "tree_nuts"
+  ],
+  "other_allergies": [],
+  "label": "none",
+  "note": "control: poached eggs, no mention"
+ }
+]
