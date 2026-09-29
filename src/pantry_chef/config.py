@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     # LLM
     llm_provider: Literal["openai"] = "openai"
     llm_model: str = "gpt-5.4-mini"
+    # Model for the final allergy review (one call per turn, ~10 recipes); can be stronger.
+    allergy_review_model: str = "gpt-5.4-mini"
     llm_reasoning_effort: Literal["minimal", "low", "medium", "high"] = "low"
     llm_timeout_seconds: float = 120
     anthropic_api_key: SecretStr | None = None

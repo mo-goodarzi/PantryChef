@@ -63,15 +63,16 @@ class Conversation:
         profile = self.state().profile
         if forget or profile is None or not profile.consent_to_store:
             checkpointer = self.graph.checkpointer
-            if checkpointer is None:
-                return  # nothing was saved
-            if not hasattr(checkpointer, "delete_thread"):
+            if not checkpointer:
+                return  # no checkpointer: nothing was saved
+            delete = getattr(checkpointer, "delete_thread", None)
+            if delete is None:
                 # A privacy promise must not be skipped silently.
                 raise RuntimeError(
                     f"{type(checkpointer).__name__} cannot delete a conversation; "
                     "the user's allergies would stay stored"
                 )
-            checkpointer.delete_thread(self.thread_id)
+            delete(self.thread_id)
 
     def _run(self, graph_input: Any) -> Turn:
         with trace("chat_turn", session_id=self.thread_id, user_id=self.user_id):

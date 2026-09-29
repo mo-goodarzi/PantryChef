@@ -28,6 +28,7 @@ class RecipeOption(BaseModel):
     uses: list[str] = Field(default_factory=list)  # pantry items the recipe uses
     adaptations: list[str] = Field(default_factory=list)  # "use your toast instead of bread"
     also_needs: list[str] = Field(default_factory=list)  # missing non-key / key items
+    warnings: list[str] = Field(default_factory=list)  # allergy review: leave out / check
 
 
 class Question(BaseModel):
@@ -80,6 +81,7 @@ class FinalAnswer(BaseModel):
     steps: list[str]  # exactly as in the recipe database, never rewritten by an LLM
     adaptations: list[str] = Field(default_factory=list)
     also_needs: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)  # allergy review: leave out / check
     notes: list[str] = Field(default_factory=list)  # e.g. allergies we can only check by name
     disclaimer: str | None = None  # when health-based restrictions were applied
 
