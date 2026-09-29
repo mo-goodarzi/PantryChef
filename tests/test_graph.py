@@ -419,3 +419,28 @@ def test_routing():
     assert nodes.after_search(state, ask_quantities=False) == "present"
     assert nodes.after_present(state.model_copy(update={"reply": "x"})) == nodes.END
     assert nodes.after_present(state) == "search"  # "show me more"
+
+
+def test_close_refuses_to_skip_deletion_silently(enriched_conn, state_conn):
+    llm = ScriptedLLM(safety_intake=SafetyAnswer(), request_parsing=BAKING)
+    chat = conversation(make_deps(enriched_conn, state_conn, llm))
+    through_safety(chat, consent=False)
+
+    class NoDelete:
+        """The real checkpointer, except that it cannot delete threads."""
+
+        def __init__(self, real):
+            self.real = real
+
+        def __getattr__(self, name):
+            if name == "delete_thread":
+                raise AttributeError(name)
+            return getattr(self.real, name)
+
+    real = chat.graph.checkpointer
+    chat.graph.checkpointer = NoDelete(real)
+    try:
+        with pytest.raises(RuntimeError, match="cannot delete"):
+            chat.close()
+    finally:
+        chat.graph.checkpointer = real

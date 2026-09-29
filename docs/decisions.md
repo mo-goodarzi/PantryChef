@@ -493,3 +493,55 @@ version from the PyTorch CPU index: ~2 GB image instead of ~7 GB. The lock file 
 installs are unchanged; `tests/test_docker.py` keeps the Dockerfile's torch version equal
 to the lock. Verified in the build sandbox without torch (the PyTorch index is blocked
 there); the CPU-torch step itself is only verified on a machine that can reach it.
+
+## 2026-09-29 — Allergy safety: steps, non-EU allergies, final review
+
+**Gap found:** every safety layer looked only at ingredient lists, but recipes also mention
+allergens in the steps. On the full DB: 342 recipes mention peanut, 1,528 tree nuts and 219
+sesame only in the steps. Most such mentions are optional (garnish, variation,
+"or substitute ..."); required ones are rare but exist ("roll in chopped pecans").
+
+**Non-EU allergies ("kiwi") are matched as whole words, twice.** Before, they were excluded
+by exact canonical name only, so "kiwi fruit", "kiwi juice" and "strawberry kiwi gelatin
+powder" passed. Now `RecipeQuery.other_allergies` is matched as a whole word (any plural) in
+raw and canonical ingredient names by the SQL filter AND by a verifier check. Kept separate
+from `exclude_ingredients`, which stays exact because it also carries the finder's retry
+feedback (word matching there would exclude "chicken broth" when "chicken" was missing).
+
+**Final allergy review (owner decisions on the policy):** an LLM reads the whole recipe
+(name, description, ingredients, steps) for users with allergies, on the verified shortlist
+before rerank, in one batched call (`allergy_review.md`, marked sensitive). A keyword scan of
+the steps (code) runs first and is passed as hints. Rules in code:
+
+| Verdict | Meaning | Result |
+|---|---|---|
+| unsafe | allergen is a required part of the dish | removed (recorded as a failure, so a retry excludes it) |
+| optional | only a garnish, variation, choice or serving suggestion | kept with "Leave out the X: ..." (owner: the cook can leave it out) |
+| uncertain | a product that often contains it (curry paste, granola) | kept with "Check the label ..." (owner: warn, don't hide) |
+| safe | nothing found | kept |
+| no verdict | the model skipped the recipe | removed (never show what was not reviewed) |
+
+Without a reviewer (e.g. the search CLI), the keyword scan's hits become warnings; code cannot
+tell a required step from an optional one, so it warns rather than removes. Allergies only
+for now (owner decision); diets stay code-only. Model is configurable
+(`ALLERGY_REVIEW_MODEL`, default the cheap `gpt-5.4-mini`).
+
+**Measured** on 38 hand-labeled real recipes (5 required, 22 optional, 11 none incl. 8 false
+alarm phrasings like "walnut sized balls"), `eval/reports/allergy_review_20260929-1335.md`:
+
+| Variant | required removed | required shown silently | optional warned | none clean | none false warnings |
+|---|---|---|---|---|---|
+| keyword scan (code only) | 0% (warns) | 0 | 100% | 36% | 7 |
+| LLM review, gpt-5.4-mini | 80% | 0 | 95% | 100% | 0 |
+| LLM review, gpt-5.4 | 100% | 0 | 95% | 100% | 0 |
+
+No variant ever showed a required allergen without a warning. The keyword scan alone warns on
+harmless phrases 7 times out of 11, which would teach users to ignore warnings. gpt-5.4-mini's
+only required miss ("top with slivered almonds") was still shown with a warning and is
+borderline (a topping can be left out); both models' other mistake removed an optional case,
+the safe direction. Only 5 required cases exist in the set (they are rare), so the
+percentages are rough. Default stays gpt-5.4-mini; gpt-5.4 is one setting away.
+
+**Also fixed:** `Conversation.close()` raises instead of silently keeping a conversation that
+must be deleted when the checkpointer cannot delete threads; `data/hf-cache/` (Hugging Face
+model cache written by the Docker setup into the mounted ./data) is git-ignored.

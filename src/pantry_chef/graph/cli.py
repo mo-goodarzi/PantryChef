@@ -101,6 +101,8 @@ def render_question(question: Question) -> str:
             lines.append(f"    why: {o.why}")
         if o.uses:
             lines.append(f"    uses: {', '.join(o.uses)}")
+        for warning in o.warnings:
+            lines.append(f"    ALLERGY: {warning}")
         if o.adaptations:
             lines.append(f"    adapt: {'; '.join(o.adaptations)}")
         if o.also_needs:
@@ -111,6 +113,7 @@ def render_question(question: Question) -> str:
 def render_answer(answer: FinalAnswer) -> str:
     lines = [f"{answer.name} ({answer.minutes} min)", f"Why it fits: {answer.why_it_fits}"]
     lines.append("Ingredients: " + ", ".join(answer.ingredients))
+    lines += [f"ALLERGY: {warning}" for warning in answer.warnings]
     if answer.adaptations:
         lines.append("Adapt: " + "; ".join(answer.adaptations))
     if answer.also_needs:

@@ -47,6 +47,8 @@ class VerificationResult(BaseModel):
     checks: list[CheckResult]
     adaptations: list[str] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
+    # Allergy warnings from the final review ("Leave out the peanuts: ...").
+    warnings: list[str] = Field(default_factory=list)
     # ingredient name -> staple | available | substitute | optional | missing | extra
     ingredient_status: dict[str, str] = Field(default_factory=dict)
 

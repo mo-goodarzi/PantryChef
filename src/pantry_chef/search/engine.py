@@ -8,6 +8,7 @@ find_verified(): search -> verify -> (diversity) -> (LLM rerank) -> top k, with 
 import sqlite3
 from dataclasses import dataclass, replace
 
+from pantry_chef.agents.allergy_review import AllergyReviewer, ReviewOutcome, code_only_outcomes
 from pantry_chef.agents.verifier import Verifier
 from pantry_chef.config import Settings
 from pantry_chef.db.repository import load_nutrition, load_recipe_ingredients
@@ -16,6 +17,7 @@ from pantry_chef.ingredients.staples import is_staple
 from pantry_chef.models.query import RecipeQuery
 from pantry_chef.models.recipe import Candidate, RecipeIngredient
 from pantry_chef.models.verification import (
+    CheckResult,
     VerificationResult,
     VerificationStatus,
     VerifiedCandidate,
@@ -195,10 +197,27 @@ def find_recipes(
     reranker: Reranker | None = None,
     verifier: Verifier | None = None,
     expander: PantryExpander | None = None,
+    allergy_reviewer: AllergyReviewer | None = None,
 ) -> list[Candidate]:
     """The top verified candidates only (see find_verified for their verification)."""
-    result = find_verified(conn, query, options, semantic, reranker, verifier, expander)
+    result = find_verified(
+        conn, query, options, semantic, reranker, verifier, expander, allergy_reviewer
+    )
     return [vc.candidate for vc in result.top]
+
+
+def apply_review(vc: VerifiedCandidate, outcome: ReviewOutcome | None) -> VerifiedCandidate:
+    """Record the allergy review on a candidate's verification: a removal becomes a failed
+    check (the finder's feedback excludes it on a retry), a warning is kept for display."""
+    if outcome is None:
+        return vc
+    v = vc.verification
+    if not outcome.keep and outcome.reason is not None:
+        check = CheckResult(check="allergy_review", passed=False, reasons=[outcome.reason])
+        v = v.model_copy(update={"status": VerificationStatus.FAIL, "checks": [*v.checks, check]})
+    elif outcome.warning:
+        v = v.model_copy(update={"warnings": [*v.warnings, outcome.warning]})
+    return VerifiedCandidate(candidate=vc.candidate, verification=v)
 
 
 def find_verified(
@@ -209,8 +228,13 @@ def find_verified(
     reranker: Reranker | None = None,
     verifier: Verifier | None = None,
     expander: PantryExpander | None = None,
+    allergy_reviewer: AllergyReviewer | None = None,
 ) -> FindResult:
-    """Full pipeline: search -> verify -> (diversity) -> (rerank) -> top k verified.
+    """Full pipeline: search -> verify -> allergy review -> (diversity) -> (rerank) -> top k.
+
+    The allergy review (users with allergies only) reads each shortlisted recipe in full;
+    removed recipes become failures (so a retry excludes them), kept ones may get a
+    warning. Without a reviewer, a keyword scan of the steps adds warnings instead.
 
     Candidates with status pass or adapt are kept (adapt = works with a substitute or a
     smaller batch). Every candidate keeps its VerificationResult, so callers can show
@@ -241,8 +265,15 @@ def find_verified(
         ],
         matched_recipes=result.matched_recipes,
     )
-    verification = {vc.candidate.recipe_id: vc.verification for vc in found.checked}
     shortlist = [vc.candidate for vc in found.approved[: options.shortlist_size]]
+    with span("search.allergy_review", candidates=len(shortlist)):
+        if allergy_reviewer is not None:
+            outcomes = allergy_reviewer.review(query, shortlist)
+        else:
+            outcomes = code_only_outcomes(conn, query, shortlist)
+    found.checked = [apply_review(vc, outcomes.get(vc.candidate.recipe_id)) for vc in found.checked]
+    shortlist = [c for c in shortlist if outcomes[c.recipe_id].keep]
+    verification = {vc.candidate.recipe_id: vc.verification for vc in found.checked}
 
     if options.use_diversity and semantic is not None:
         with span("search.diversity", candidates=len(shortlist)):

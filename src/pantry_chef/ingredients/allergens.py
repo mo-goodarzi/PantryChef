@@ -450,3 +450,18 @@ def parse_user_allergy(text: str) -> set[Allergen]:
             return {allergen}
     known = ", ".join(a.value for a in Allergen)
     raise ValueError(f"unknown allergy {text!r}; use one of: {known}")
+
+
+def allergy_word_variants(word: str) -> list[str]:
+    """Lowercase forms of an allergy word as it may appear in an ingredient name
+    ("kiwis" -> kiwi, kiwis, kiwies). Used by the SQL filter and the verifier alike."""
+    base = " ".join(word.lower().replace("-", " ").split())
+    singular = base[:-1] if base.endswith("s") and len(base) > 3 else base
+    return sorted({*plural_forms(base), *plural_forms(singular)})
+
+
+def mentions_word(text: str, word: str) -> bool:
+    """True if `text` contains `word` as a whole word or phrase, any plural form
+    ("kiwi fruit" mentions "kiwi"; "kiwifruit" and "bakiwi" do not)."""
+    padded = prepare(text.replace("-", " "))
+    return any(f" {form} " in padded for form in allergy_word_variants(word))

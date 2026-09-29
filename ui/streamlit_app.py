@@ -40,6 +40,7 @@ def option_markdown(option: RecipeOption) -> str:
         lines.append(f"_{option.why}_")
     if option.uses:
         lines.append(f"Uses: {', '.join(option.uses)}")
+    lines += [f":warning: **Allergy:** {warning}" for warning in option.warnings]
     if option.adaptations:
         lines.append(f"Adapt: {'; '.join(option.adaptations)}")
     if option.also_needs:
@@ -53,6 +54,7 @@ def answer_markdown(answer: FinalAnswer) -> str:
         f"**Why it fits:** {answer.why_it_fits}",
         "**Ingredients:** " + ", ".join(answer.ingredients),
     ]
+    parts += [f":warning: **Allergy:** {warning}" for warning in answer.warnings]
     if answer.adaptations:
         parts.append("**Adapt:** " + "; ".join(answer.adaptations))
     if answer.also_needs:

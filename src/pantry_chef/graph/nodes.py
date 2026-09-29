@@ -104,6 +104,7 @@ def recipe_option(number: int, vc: VerifiedCandidate) -> RecipeOption:
         uses=ingredients_with_status(vc, {"available", "substitute"}),
         adaptations=vc.verification.adaptations,
         also_needs=ingredients_with_status(vc, {"missing", "extra"}),
+        warnings=vc.verification.warnings,
     )
 
 
@@ -335,6 +336,7 @@ class ChatNodes:
                 steps=self.deps.steps(vc.candidate.recipe_id),
                 adaptations=vc.verification.adaptations,
                 also_needs=ingredients_with_status(vc, {"missing", "extra"}),
+                warnings=vc.verification.warnings,
                 notes=notes,
                 disclaimer=health_disclaimer(state.profile, state.query),
             )
