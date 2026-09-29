@@ -540,7 +540,8 @@ harmless phrases 7 times out of 11, which would teach users to ignore warnings. 
 only required miss ("top with slivered almonds") was still shown with a warning and is
 borderline (a topping can be left out); both models' other mistake removed an optional case,
 the safe direction. Only 5 required cases exist in the set (they are rare), so the
-percentages are rough. Default stays gpt-5.4-mini; gpt-5.4 is one setting away.
+percentages are rough. **Owner decision (2026-09-29): keep gpt-5.4-mini** for the review;
+gpt-5.4 is one setting away (`ALLERGY_REVIEW_MODEL`).
 
 **Also fixed:** `Conversation.close()` raises instead of silently keeping a conversation that
 must be deleted when the checkpointer cannot delete threads; `data/hf-cache/` (Hugging Face
