@@ -39,3 +39,6 @@ eval/reports/*.json
 .DS_Store
 .idea/
 .vscode/
+
+# Hugging Face model cache (Docker mounts ./data; model weights are never committed)
+data/hf-cache/
