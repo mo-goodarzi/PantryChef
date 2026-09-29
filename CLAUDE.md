@@ -96,6 +96,7 @@ pantry-chef/
 - Apply labels, allergens, diet flags, relations: `uv run python scripts/enrich_db.py`
 - Draft relation seed (LLM, then review): `uv run python scripts/draft_relations.py`
 - Search from the terminal: `uv run python -m pantry_chef.search.cli --have "eggs,milk,bread" --pref "sweet breakfast" --allergy peanuts [--match] [--rerank]`
+- Allergy review eval: `uv run python eval/run_allergy_review.py --models gpt-5.4-mini,gpt-5.4`
 - Judge calibration: `uv run python eval/judge_calibration.py export --results eval/reports/<run>.json`, then `... score`
 - Build embeddings: `uv run python scripts/build_embeddings.py`
 - Chat (full graph, terminal): `uv run python scripts/chat_cli.py --user <name>`

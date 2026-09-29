@@ -122,7 +122,11 @@ Pantry: bread, egg, milk
 ```
 
 Allergens and diets are enforced twice: by SQL filters before ranking and by a
-deterministic verifier afterwards. Diets: vegetarian, vegan, gluten-free, low-sugar and
+deterministic verifier afterwards. For users with allergies, a final review then reads the
+whole recipe, steps included (recipes often add nuts or sesame only in the steps): required
+allergens remove the recipe, optional ones ("garnish with peanuts, if desired") are shown with
+a "leave it out" warning. On 38 labeled real recipes it never showed a required allergen
+without a warning (`eval/reports/allergy_review_20260929-1335.md`). Diets: vegetarian, vegan, gluten-free, low-sugar and
 low-salt (the last two from each recipe's nutrition per serving).
 
 ## Results: search quality
