@@ -134,6 +134,16 @@ def test_allergies_mentioned_in_a_request_only_make_the_query_stricter():
     assert query.other_allergies == ["lychee"]
 
 
+def test_nutrition_goals_from_the_request_reach_the_query():
+    from pantry_chef.models.query import NutritionGoal
+
+    llm = FakeLLM(RequestAnswer(pantry=["steak"], wish="dinner", goals=["high_protein"]))
+    query = build_query(UserProfile(), interpret_request(llm, "steak, high protein dinner"))
+    assert query.nutrition_goals == [NutritionGoal.HIGH_PROTEIN]
+    assert query.preferences_text == "dinner"
+    assert build_query(UserProfile(), RequestAnswer(pantry=["egg"])).nutrition_goals == []
+
+
 def test_request_prompt_is_sensitive():
     llm = FakeLLM(RequestAnswer())
     interpret_request(llm, "eggs")
