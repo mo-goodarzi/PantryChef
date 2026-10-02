@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from pantry_chef.db.repository import recipe_summaries
 from pantry_chef.llm.factory import StructuredLLM
 from pantry_chef.llm.prompt_loader import load_prompt
-from pantry_chef.models.query import RecipeQuery
+from pantry_chef.models.query import RecipeQuery, goals_text
 from pantry_chef.models.recipe import Candidate
 
 
@@ -63,6 +63,7 @@ class LLMReranker:
             RerankResult,
             k=str(k),
             wish=query.preferences_text or "anything",
+            goals=goals_text(query.nutrition_goals) or "none",
             pantry=", ".join(query.ingredients),
             recipes=json.dumps(list(summaries.values()), indent=1),
         )
