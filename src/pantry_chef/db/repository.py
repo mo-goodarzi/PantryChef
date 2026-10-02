@@ -203,3 +203,17 @@ def load_canonical_facts(
             animal_product=bool(row["animal_product"]) or bool(seen and seen.animal_product),
         )
     return facts
+
+
+def canonical_categories(conn: sqlite3.Connection, names: list[str]) -> dict[str, str]:
+    """The most common category per canonical name (spellings of one name can differ)."""
+    rows = conn.execute(
+        "SELECT canonical_name, category, COUNT(*) AS n FROM ingredients "
+        "WHERE canonical_name IN (SELECT value FROM json_each(:names)) AND category IS NOT NULL "
+        "GROUP BY canonical_name, category ORDER BY n DESC, category",
+        {"names": json.dumps(sorted(set(names)))},
+    )
+    categories: dict[str, str] = {}
+    for row in rows:
+        categories.setdefault(row["canonical_name"], row["category"])
+    return categories

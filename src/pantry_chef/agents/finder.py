@@ -11,7 +11,7 @@ from pantry_chef.agents.safety import AllergyMention, split_allergies
 from pantry_chef.llm.factory import StructuredLLM
 from pantry_chef.llm.prompt_loader import load_prompt
 from pantry_chef.models.profile import UserProfile
-from pantry_chef.models.query import RecipeQuery
+from pantry_chef.models.query import NutritionGoal, RecipeQuery
 
 
 class RequestAnswer(BaseModel):
@@ -20,6 +20,7 @@ class RequestAnswer(BaseModel):
     max_minutes: int | None = Field(default=None, gt=0)
     avoid: list[str] = Field(default_factory=list)
     allergies: list[AllergyMention] = Field(default_factory=list)
+    goals: list[NutritionGoal] = Field(default_factory=list)
 
 
 def interpret_request(llm: StructuredLLM, message: str) -> RequestAnswer:
@@ -39,4 +40,5 @@ def build_query(profile: UserProfile, request: RequestAnswer) -> RecipeQuery:
         required_allergen_free=sorted(allergens),
         other_allergies=sorted(w for w in other_allergies if w),
         diets=list(profile.diets),
+        nutrition_goals=sorted(set(request.goals)),
     )

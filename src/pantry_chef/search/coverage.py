@@ -9,6 +9,9 @@ Ingredient score = (1 - u) * coverage part + u * pantry usage, where
 - pantry usage  = share of the user's (non-staple) pantry items the recipe uses
   ("does it use what I have?"). Without it, a one-ingredient recipe that uses 1 of 4 pantry
   items has full coverage and beats a dish that uses all 4 but misses one garlic clove.
+  Protein items (steak, chicken, tofu) weigh double: the dish is usually built around them,
+  so a steak recipe should beat a potato side dish that uses the onion and garlic.
+Nutrition goals subtract a fixed penalty from recipes that miss them (see goal_penalty).
 Ranking: highest score, then recipes that use more of the pantry, then rating.
 """
 
@@ -16,10 +19,18 @@ import json
 import sqlite3
 from dataclasses import dataclass
 
+from pantry_chef.models.query import NutritionGoal
+
 MISSING_KEY_PENALTY = 0.1
 # Bayesian average: a recipe needs about this many ratings before its own average
 # outweighs the overall mean, so one 5-star review does not beat 500 reviews at 4.8.
 RATING_PRIOR_WEIGHT = 10
+# Weight of a pantry item in the usage part, by ingredient category (default 1).
+CATEGORY_WEIGHTS = {"protein": 2.0}
+# High protein: Food.com's protein_pdv misses meat it cannot count ("4 steaks" -> 0%), so a
+# key meat or fish ingredient also counts. 40% of the 50 g daily value = 20 g per serving.
+HIGH_PROTEIN_PDV = 40.0
+GOAL_PENALTY = 0.25
 
 
 @dataclass
@@ -33,8 +44,8 @@ class CoverageRow:
     n_ratings: int
     ingredient_score: float
     weighted_rating: float
-    pantry_used: int = 0  # distinct pantry items this recipe uses
-    pantry_usage: float = 0.0  # pantry_used / number of non-staple pantry items
+    pantry_used: float = 0.0  # distinct pantry items this recipe uses, weighted
+    pantry_usage: float = 0.0  # pantry_used / weighted number of non-staple pantry items
     semantic_score: float | None = None  # set by the semantic step (0..1 within the pool)
     final_score: float | None = None  # set by the semantic step; else = ingredient_score
 
@@ -58,10 +69,30 @@ def ingredient_score(
     return (1 - usage_weight) * coverage_part(have_key, total_key) + usage_weight * usage
 
 
-def pantry_usage(have_names: list[str], covered: dict[str, str]) -> int:
-    """Distinct pantry items behind the recipe's matched names (an item that covers two
-    names, like "pasta" for "spaghetti" and "pasta noodle", counts once)."""
-    return len({covered[name] for name in have_names if name in covered})
+def pantry_usage(
+    have_names: list[str], covered: dict[str, str], weights: dict[str, float] | None = None
+) -> float:
+    """Distinct pantry items behind the recipe's matched names, each counted with its
+    weight (default 1). An item that covers two names, like "pasta" for "spaghetti" and
+    "pasta noodle", counts once."""
+    items = {covered[name] for name in have_names if name in covered}
+    return sum((weights or {}).get(item, 1.0) for item in items)
+
+
+def is_high_protein(protein_pdv: float | None, meat_or_fish_key: bool) -> bool:
+    return meat_or_fish_key or (protein_pdv is not None and protein_pdv >= HIGH_PROTEIN_PDV)
+
+
+def goal_penalty(
+    goals: list[NutritionGoal], protein_pdv: float | None, meat_or_fish: bool
+) -> float:
+    """Points subtracted from the ingredient score for each nutrition goal the recipe misses."""
+    missed = [
+        goal
+        for goal in goals
+        if goal is NutritionGoal.HIGH_PROTEIN and not is_high_protein(protein_pdv, meat_or_fish)
+    ]
+    return GOAL_PENALTY * len(missed)
 
 
 def weighted_rating(avg: float | None, n: int, overall_mean: float) -> float:
@@ -81,12 +112,18 @@ WITH have AS (
     GROUP BY ri.recipe_id
 )
 SELECT r.id, r.name, r.minutes, r.n_key AS total_key, h.have_key, h.have_names,
-       s.avg_rating, COALESCE(s.n_ratings, 0) AS n_ratings
+       s.avg_rating, COALESCE(s.n_ratings, 0) AS n_ratings, r.protein_pdv,
+       {meat_or_fish} AS meat_or_fish_key
 FROM have h
 JOIN recipes r ON r.id = h.recipe_id
 LEFT JOIN recipe_stats s ON s.recipe_id = r.id
 WHERE {conditions}
 """
+# Only computed when a goal needs it (one indexed lookup per candidate recipe).
+MEAT_OR_FISH_KEY_SQL = """EXISTS (
+    SELECT 1 FROM recipe_ingredients ri JOIN ingredients i ON i.id = ri.ingredient_id
+    WHERE ri.recipe_id = r.id AND ri.is_key = 1 AND i.category = 'protein'
+      AND (i.contains_meat = 1 OR i.contains_fish = 1))"""
 
 
 def rank_by_coverage(
@@ -96,27 +133,37 @@ def rank_by_coverage(
     params: dict[str, object],
     limit: int | None = None,
     usage_weight: float = 0.0,
-    pantry_size: int | None = None,
+    pantry_weights: dict[str, float] | None = None,
+    goals: list[NutritionGoal] | None = None,
 ) -> tuple[list[CoverageRow], int]:
     """Recipes sorted by ingredient score (the first `limit`, or all), and how many passed
     the filters.
 
     `pantry` is canonical names, or {covered name: pantry item it comes from} when the
-    pantry was expanded. `pantry_size` is the number of non-staple pantry items.
+    pantry was expanded. `pantry_weights` gives each non-staple pantry item its weight
+    (see CATEGORY_WEIGHTS); without it every distinct item counts 1.
     """
     covered = pantry if isinstance(pantry, dict) else {name: name for name in pantry}
-    size = max(pantry_size if pantry_size is not None else len(set(covered.values())), 1)
+    goals = goals or []
+    if pantry_weights is not None:
+        size = max(sum(pantry_weights.values()), 1.0)
+    else:
+        size = max(len(set(covered.values())), 1)
     overall_mean = (
         conn.execute("SELECT AVG(avg_rating) FROM recipe_stats WHERE n_ratings > 0").fetchone()[0]
         or 0.0
     )
-    sql = COVERAGE_SQL.format(conditions=" AND ".join(conditions))
+    sql = COVERAGE_SQL.format(
+        conditions=" AND ".join(conditions),
+        meat_or_fish=MEAT_OR_FISH_KEY_SQL if goals else "0",
+    )
     rows = conn.execute(sql, {**params, "pantry": json.dumps(sorted(covered))}).fetchall()
 
     ranked = []
     for row in rows:
-        used = pantry_usage((row["have_names"] or "").split(","), covered)
+        used = pantry_usage((row["have_names"] or "").split(","), covered, pantry_weights)
         usage = min(used / size, 1.0)
+        penalty = goal_penalty(goals, row["protein_pdv"], bool(row["meat_or_fish_key"]))
         ranked.append(
             CoverageRow(
                 recipe_id=row["id"],
@@ -128,7 +175,8 @@ def rank_by_coverage(
                 n_ratings=row["n_ratings"],
                 ingredient_score=ingredient_score(
                     row["have_key"], row["total_key"], usage, usage_weight
-                ),
+                )
+                - penalty,
                 weighted_rating=weighted_rating(row["avg_rating"], row["n_ratings"], overall_mean),
                 pantry_used=used,
                 pantry_usage=usage,

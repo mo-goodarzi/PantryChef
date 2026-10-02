@@ -115,3 +115,98 @@ def test_pantry_size_ignores_staples(enriched_conn):
     )
     poached = next(c for c in result.candidates if c.recipe_id == 118761)
     assert poached.ingredient_score == pytest.approx(1.0)  # uses 1 of 1 non-staple item
+
+
+# --- protein weight and nutrition goals ------------------------------------------------
+
+CALZONES, EGG_FOO_YUNG, FETTUCCINE = 402, 133513, 361
+
+
+def test_weighted_pantry_usage_counts_each_item_with_its_weight():
+    from pantry_chef.search.coverage import pantry_usage
+
+    covered = {"beef": "beef", "onion": "onion", "garlic": "garlic", "ground beef": "beef"}
+    weights = {"beef": 2.0, "onion": 1.0, "garlic": 1.0}
+    assert pantry_usage(["onion", "garlic"], covered, weights) == 2.0
+    assert pantry_usage(["beef", "ground beef", "onion"], covered, weights) == 3.0  # beef once
+    assert pantry_usage(["beef"], covered) == 1.0  # no weights: every item counts 1
+
+
+def test_pantry_weights_double_protein_items_and_skip_staples(enriched_conn):
+    from pantry_chef.search.engine import pantry_weights
+
+    covered = {"beef": "beef", "mushroom": "mushroom", "salt": "salt"}
+    assert pantry_weights(enriched_conn, covered) == {"beef": 2.0, "mushroom": 1.0}
+
+
+def test_unknown_pantry_item_takes_the_category_of_the_names_it_covers(enriched_conn):
+    from pantry_chef.search.engine import pantry_weights
+
+    # "meat steak" is not a dataset name; the matcher expanded it to "beef" (protein).
+    covered = {"meat steak": "meat steak", "beef": "meat steak", "nonsense": "nonsense"}
+    assert pantry_weights(enriched_conn, covered) == {"meat steak": 2.0, "nonsense": 1.0}
+
+
+def test_protein_item_counts_double_in_usage(enriched_conn):
+    # Pantry beef + mushroom + onion + butter. Calzones use beef + mushroom; chicken supreme
+    # uses mushroom + onion + butter. Unweighted, chicken supreme uses more of the pantry;
+    # weighted, beef counts double and the two tie on usage (3 of 5).
+    from pantry_chef.search.engine import pantry_weights
+
+    pantry = ["beef", "mushroom", "onion", "butter"]
+    conditions, params = filter_conditions(RecipeQuery(ingredients=pantry))
+    weights = pantry_weights(enriched_conn, {n: n for n in pantry})
+    rows, _ = rank_by_coverage(
+        enriched_conn, pantry, conditions, params, usage_weight=0.5, pantry_weights=weights
+    )
+    by_id = {r.recipe_id: r for r in rows}
+    assert by_id[CALZONES].pantry_used == 3.0 and by_id[174].pantry_used == 3.0
+    assert by_id[CALZONES].pantry_usage == pytest.approx(0.6)
+
+
+@pytest.mark.parametrize(
+    ("protein_pdv", "meat_or_fish", "penalty"),
+    [
+        (63.0, True, 0.0),  # chicken dish
+        (0.0, True, 0.0),  # steak the nutrition data could not count
+        (40.0, False, 0.0),  # exactly the threshold (eggs, beans, tofu dishes)
+        (39.9, False, 0.25),
+        (None, False, 0.25),  # unknown nutrition is not high protein
+    ],
+)
+def test_high_protein_penalty(protein_pdv, meat_or_fish, penalty):
+    from pantry_chef.models.query import NutritionGoal
+    from pantry_chef.search.coverage import goal_penalty
+
+    goals = [NutritionGoal.HIGH_PROTEIN]
+    assert goal_penalty(goals, protein_pdv, meat_or_fish) == pytest.approx(penalty)
+    assert goal_penalty([], protein_pdv, meat_or_fish) == 0.0
+
+
+def test_high_protein_goal_lowers_only_recipes_that_miss_it(enriched_conn):
+    from pantry_chef.models.query import NutritionGoal
+
+    pantry = ["beef", "egg", "butter", "mushroom", "scallion"]
+    conditions, params = filter_conditions(RecipeQuery(ingredients=pantry))
+
+    def scores(goals):
+        rows, _ = rank_by_coverage(enriched_conn, pantry, conditions, params, goals=goals)
+        return {r.recipe_id: r.ingredient_score for r in rows}
+
+    plain, goal = scores([]), scores([NutritionGoal.HIGH_PROTEIN])
+    assert goal[CALZONES] == plain[CALZONES]  # beef counts although protein_pdv is 6%
+    assert goal[EGG_FOO_YUNG] == plain[EGG_FOO_YUNG]  # 45% protein, no meat
+    assert goal[FETTUCCINE] == pytest.approx(plain[FETTUCCINE] - 0.25)  # 38%: just below
+    assert goal[118761] == pytest.approx(plain[118761] - 0.25)  # poached eggs: 12%
+
+
+def test_search_passes_the_query_goals_to_the_ranking(enriched_conn):
+    from pantry_chef.models.query import NutritionGoal
+    from pantry_chef.search.engine import search
+
+    query = RecipeQuery(ingredients=["egg"])
+    plain = {c.recipe_id: c.ingredient_score for c in search(enriched_conn, query).candidates}
+    query = query.model_copy(update={"nutrition_goals": [NutritionGoal.HIGH_PROTEIN]})
+    goal = {c.recipe_id: c.ingredient_score for c in search(enriched_conn, query).candidates}
+    assert goal[118761] == pytest.approx(plain[118761] - 0.25)
+    assert goal[EGG_FOO_YUNG] == plain[EGG_FOO_YUNG]

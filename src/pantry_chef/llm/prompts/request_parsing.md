@@ -1,6 +1,6 @@
 ---
 name: request_parsing
-version: 1
+version: 2
 sensitive: true
 ---
 You read one message a user sends to a recipe assistant and return it in structure.
@@ -10,7 +10,11 @@ the user's words ("eggs", "milk", "toast", "leftover rice"). Do not add items th
 not mention.
 
 wish: what they feel like eating, in a few words ("something sweet for breakfast",
-"quick spicy dinner"); empty if they do not say.
+"quick spicy dinner"); empty if they do not say. Leave nutrition goals out of the wish
+("a high protein dinner" -> wish "dinner", goals ["high_protein"]).
+
+goals: nutrition goals for this request: high_protein when they ask for a high-protein,
+protein-rich or "lots of protein" meal. Empty otherwise.
 
 max_minutes: a time limit if they give one ("in 20 minutes" -> 20), else null.
 

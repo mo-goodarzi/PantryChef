@@ -33,6 +33,13 @@ NUTRITION_LIMITS: dict[Diet, tuple[str, float]] = {
 }
 
 
+class NutritionGoal(StrEnum):
+    """Nutrition wishes that change the ranking, never the filters (unlike Diet, which is a
+    restriction the verifier enforces). Scored in search/coverage.py."""
+
+    HIGH_PROTEIN = "high_protein"
+
+
 class RecipeQuery(BaseModel):
     ingredients: list[str] = Field(description="What the user has at home (any wording).")
     preferences_text: str = ""
@@ -46,6 +53,7 @@ class RecipeQuery(BaseModel):
     # word (any plural), in the SQL filter and again in the verifier.
     other_allergies: list[str] = Field(default_factory=list)
     diets: list[Diet] = Field(default_factory=list)
+    nutrition_goals: list[NutritionGoal] = Field(default_factory=list)
 
 
 class AmountStatus(StrEnum):

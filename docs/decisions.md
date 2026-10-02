@@ -546,3 +546,48 @@ gpt-5.4 is one setting away (`ALLERGY_REVIEW_MODEL`).
 **Also fixed:** `Conversation.close()` raises instead of silently keeping a conversation that
 must be deleted when the checkpointer cannot delete threads; `data/hf-cache/` (Hugging Face
 model cache written by the Docker setup into the mounted ./data) is git-ignored.
+
+## 2026-10-02 — Main protein and "high protein" in the ranking
+
+**Bug (owner report):** pantry "beef steak, potatoes, onion, garlic" + "high protein dish"
+showed only potato side dishes. Three causes stacked up:
+1. "High protein" only reached the embedding step, which compares the wish with name +
+   description + tags. Steak texts never say "protein"; home fries are tagged `low-protein`,
+   which the model reads as close to "high protein" (0.75 vs <= 0.59 for steak recipes).
+2. Pantry usage counted every item the same, so potato + onion + garlic (3 of 4) beat a
+   steak recipe using steak + garlic (2 of 4).
+3. "beef steak" did not cover the cut names ("flank steak", "sirloin steak", ...).
+
+**Fixes:**
+- `NutritionGoal.HIGH_PROTEIN` on `RecipeQuery.nutrition_goals`, set by the finder
+  (`request_parsing` v2 has a `goals` field and keeps the goal out of the wish) or
+  `--goal high-protein` in the CLI. It is a ranking penalty (0.25 off the ingredient score
+  for recipes that miss it), not a filter: it is a wish, not a restriction, and the
+  verifier does not check it.
+- A recipe counts as high protein when it has a key meat/fish ingredient **or**
+  `protein_pdv >= 40` (20 g). Food.com's nutrition is unreliable for meat it cannot count:
+  "world s best grilled steak" is 3% and "pan seared steak" 0%, so a `protein_pdv` filter
+  alone would have removed real steak dishes. Eggs, beans and tofu dishes rely on the number.
+- Pantry items in category `protein` weigh 2 in pantry usage (others 1). An item the
+  dataset does not know ("meat steak") takes the category of the names it covers.
+- Relations seed: 38 beef cuts have parent `beef steak`, which has parent `steak`. Fish,
+  pork, lamb, venison and ambiguous names (blade steak, steak fillet) are left out.
+
+**Measured** (52 cases = 50 + d13 steak, d14 tofu, both with the goal; before = `main` on the
+same cases, ignoring goals): `eval/reports/search_20261002-1822.md` -> `..._1828.md`
+
+| Variant | hit@5 | MRR | judge | allergen violations |
+|---|---|---|---|---|
+| semantic+matcher+usage, before | 90% | 0.75 | 4.02 | 0 |
+| semantic+matcher+usage, after | 96% | 0.78 | 4.09 | 0 |
+| semantic+matcher+usage+rerank (chat), before | 96% | 0.82 | 4.42 | 0 |
+| semantic+matcher+usage+rerank (chat), after | 98% | 0.83 | 4.45 | 0 |
+
+d13 went from miss to hit; d12, l01 and r02 also stopped missing; no case got worse.
+CLI with `--match`: steak dishes in the top 5 went from 0-1 to 4-5 for "beef steak" and
+"meat steak".
+
+**Known limits:** more candidates fail verification with the goal (meat-and-potato dishes
+with a meat the user lacks rank higher; 19 of 50 pass instead of 46). The LLM matcher still
+counts "minced beef" as covered by "beef steak" (a cached answer), so "tuscan beef pasta"
+can appear; "meat steak" may match pork steaks, which is fair for an ambiguous name.
