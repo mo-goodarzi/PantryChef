@@ -46,6 +46,7 @@ def test_build_query_parses_lists_and_aliases():
         pref="sweet breakfast",
         allergy="shellfish, Peanut",
         diet="gluten-free",
+        goal="high-protein",
         exclude="mushrooms",
         max_minutes=30,
         meal_type=None,
@@ -55,4 +56,5 @@ def test_build_query_parses_lists_and_aliases():
     assert query.ingredients == ["eggs", "milk", "bread"]
     assert {a.value for a in query.required_allergen_free} == {"crustaceans", "molluscs", "peanuts"}
     assert [d.value for d in query.diets] == ["gluten_free"]
+    assert [g.value for g in query.nutrition_goals] == ["high_protein"]
     assert query.preferences_text == "sweet breakfast"

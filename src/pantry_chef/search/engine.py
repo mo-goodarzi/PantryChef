@@ -11,7 +11,11 @@ from dataclasses import dataclass, replace
 from pantry_chef.agents.allergy_review import AllergyReviewer, ReviewOutcome, code_only_outcomes
 from pantry_chef.agents.verifier import Verifier
 from pantry_chef.config import Settings
-from pantry_chef.db.repository import load_nutrition, load_recipe_ingredients
+from pantry_chef.db.repository import (
+    canonical_categories,
+    load_nutrition,
+    load_recipe_ingredients,
+)
 from pantry_chef.ingredients.normalize import normalize
 from pantry_chef.ingredients.staples import is_staple
 from pantry_chef.models.query import RecipeQuery
@@ -23,7 +27,7 @@ from pantry_chef.models.verification import (
     VerifiedCandidate,
 )
 from pantry_chef.observability import span
-from pantry_chef.search.coverage import CoverageRow, rank_by_coverage
+from pantry_chef.search.coverage import CATEGORY_WEIGHTS, CoverageRow, rank_by_coverage
 from pantry_chef.search.diversity import mmr
 from pantry_chef.search.expansion import PantryExpander
 from pantry_chef.search.filters import filter_conditions
@@ -63,6 +67,23 @@ class SearchResult:
 
 def pantry_names(query: RecipeQuery) -> list[str]:
     return sorted({normalize(name) for name in query.ingredients if name.strip()})
+
+
+def pantry_weights(conn: sqlite3.Connection, covered: dict[str, str]) -> dict[str, float]:
+    """Usage weight of each non-staple pantry item, from its category (CATEGORY_WEIGHTS).
+    An item the dataset does not know ("meat steak") takes the most common category of the
+    recipe names it covers ("steak")."""
+    categories = canonical_categories(conn, list(covered))
+    weights = {}
+    for item in sorted(set(covered.values())):
+        if is_staple(item):
+            continue
+        category = categories.get(item)
+        if category is None:
+            found = [categories[n] for n, i in covered.items() if i == item and n in categories]
+            category = max(set(found), key=found.count) if found else None
+        weights[item] = CATEGORY_WEIGHTS.get(category or "", 1.0)
+    return weights
 
 
 def missing_key_names(ingredients: list[RecipeIngredient], pantry: set[str]) -> list[str]:
@@ -120,11 +141,17 @@ def search(
         with span("search.expand_pantry", pantry_size=len(pantry)):
             for name, match in expander.expand(pantry).items():
                 covered.setdefault(name, match.user_term or name)
-    pantry_size = sum(not is_staple(name) for name in pantry)
+    weights = pantry_weights(conn, covered)
 
     with span("search.coverage", pantry_size=len(covered), filters=len(conditions)):
         rows, matched = rank_by_coverage(
-            conn, covered, conditions, params, usage_weight=usage_weight, pantry_size=pantry_size
+            conn,
+            covered,
+            conditions,
+            params,
+            usage_weight=usage_weight,
+            pantry_weights=weights,
+            goals=query.nutrition_goals,
         )
     if semantic is not None and query.preferences_text.strip():
         with span("search.semantic", pool=min(len(rows), semantic.coverage_pool)):

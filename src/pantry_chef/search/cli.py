@@ -10,6 +10,7 @@ Usage:
     uv run python -m pantry_chef.search.cli --have "egg,milk,bread" --pref "sweet breakfast"
     uv run python -m pantry_chef.search.cli --have "egg,milk,bread" --allergy peanuts \\
         --diet vegetarian --max-minutes 30 --pref "something savory" --rerank --show-failed
+    uv run python -m pantry_chef.search.cli --have "steak,potato,onion" --goal high-protein
 """
 
 import argparse
@@ -20,7 +21,7 @@ from pathlib import Path
 from pantry_chef.config import get_settings
 from pantry_chef.db.connection import connect
 from pantry_chef.ingredients.allergens import Allergen, parse_user_allergy
-from pantry_chef.models.query import Diet, RecipeQuery
+from pantry_chef.models.query import Diet, NutritionGoal, RecipeQuery
 from pantry_chef.models.recipe import Candidate, RecipeIngredient
 from pantry_chef.models.verification import VerificationResult, VerificationStatus
 from pantry_chef.observability import configure_logging
@@ -50,6 +51,7 @@ def build_query(args: argparse.Namespace) -> RecipeQuery:
         exclude_ingredients=split_list(args.exclude),
         required_allergen_free=sorted(allergens),
         diets=[Diet(d.replace("-", "_")) for d in split_list(args.diet)],
+        nutrition_goals=[NutritionGoal(g.replace("-", "_")) for g in split_list(args.goal)],
     )
 
 
@@ -98,6 +100,7 @@ def main() -> None:
     parser.add_argument(
         "--diet", help="comma-separated: vegetarian, vegan, gluten-free, low-sugar, low-salt"
     )
+    parser.add_argument("--goal", help="ranking goal, comma-separated: high-protein")
     parser.add_argument("--exclude", help="comma-separated ingredients to avoid")
     parser.add_argument("--max-minutes", type=int)
     parser.add_argument("--meal-type", help="e.g. breakfast, main-dish, dessert")
