@@ -71,7 +71,7 @@ def export_sample(
             {
                 "row": number,
                 "case_id": case.id,
-                "wish": case.preferences,
+                "wish": case.judged_wish,
                 "pantry": ", ".join(case.pantry),
                 "recipe_id": item["recipe_id"],
                 "recipe_name": summary["name"],
