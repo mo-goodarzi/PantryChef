@@ -61,6 +61,20 @@ def test_parents_from_seed():
     assert parents_from_seed(seed) == {"a": {"b"}}
 
 
+def test_reviewed_seed_relates_beef_steak_cuts_but_not_fish_or_pork_steaks():
+    from pantry_chef.ingredients.relations import load_seed
+
+    matcher = ExactMatcher(parents_from_seed(load_seed()))
+    recipe = ["flank steak", "steak", "sirloin steak", "tuna steak", "ham steak", "pork steak"]
+    result = labels(matcher.match(["beef steak"], recipe))
+    assert result["flank steak"] == ("beef steak", "substitute", "hierarchy")
+    assert result["sirloin steak"] == ("beef steak", "substitute", "hierarchy")
+    assert result["steak"] == ("beef steak", "same", "hierarchy")
+    assert {result[n][1] for n in ["tuna steak", "ham steak", "pork steak"]} == {"different"}
+    # A specific cut covers a recipe that only says "steak".
+    assert labels(matcher.match(["rib eye steak"], ["steak"]))["steak"][1] == "same"
+
+
 # --- LLM and composite ---------------------------------------------------------------
 
 # What a sensible LLM would answer, keyed by (user term, recipe term).

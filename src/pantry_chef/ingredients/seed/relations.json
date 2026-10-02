@@ -360,6 +360,90 @@
       }
     ]
   },
+  "beef chuck steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
+  "beef cube steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
+  "beef flank steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
+  "beef round steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
+  "beef round tip steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
+  "beef sirloin steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
+  "beef steak": {
+    "parents": [
+      "steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
+  "beef t-bone steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
+  "beef tenderloin steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
+  "beef top loin steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
+  "beef top round steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
+  "beef top sirloin steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
   "beer": {
     "parents": [],
     "contains": [],
@@ -485,6 +569,13 @@
         "note": "Use heated water as needed"
       }
     ]
+  },
+  "bottom round steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
   },
   "bread": {
     "parents": [],
@@ -1034,6 +1125,20 @@
         "note": "Sweeter result"
       }
     ]
+  },
+  "chuck eye steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
+  "chuck steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
   },
   "cider vinegar": {
     "parents": [
@@ -1596,6 +1701,13 @@
       }
     ]
   },
+  "cube steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
   "cucumber": {
     "parents": [
       "vegetable"
@@ -2009,6 +2121,13 @@
       }
     ]
   },
+  "eye of round beef steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
   "feta cheese": {
     "parents": [
       "cheese"
@@ -2024,6 +2143,13 @@
         "note": "Mild, crumbly alternative"
       }
     ]
+  },
+  "filet mignon steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
   },
   "fish sauce": {
     "parents": [],
@@ -2041,6 +2167,20 @@
         "note": "Use with a squeeze of lime."
       }
     ]
+  },
+  "flank steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
+  "flat iron steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
   },
   "flat leaf parsley": {
     "parents": [
@@ -2897,6 +3037,13 @@
       }
     ]
   },
+  "lean flank steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
   "lean ground beef": {
     "parents": [
       "ground beef"
@@ -2912,6 +3059,20 @@
         "note": "Slightly richer but similar"
       }
     ]
+  },
+  "lean round steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
+  "lean sirloin steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
   },
   "leek": {
     "parents": [],
@@ -3244,6 +3405,13 @@
       }
     ]
   },
+  "minute steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
   "molasses": {
     "parents": [],
     "contains": [],
@@ -3331,6 +3499,13 @@
         "note": "Similar flavor and texture."
       }
     ]
+  },
+  "new york strip steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
   },
   "nut": {
     "parents": [],
@@ -3859,6 +4034,13 @@
       }
     ]
   },
+  "porterhouse steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
   "potato": {
     "parents": [
       "vegetable"
@@ -4099,6 +4281,20 @@
       }
     ]
   },
+  "rib eye steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
+  "rib-eye steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
   "rice": {
     "parents": [],
     "contains": [],
@@ -4218,6 +4414,20 @@
         "note": "Use less if dried"
       }
     ]
+  },
+  "round steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
+  "rump steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
   },
   "russet potato": {
     "parents": [
@@ -4496,6 +4706,13 @@
       }
     ]
   },
+  "shell steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
   "shortening": {
     "parents": [
       "vegetable shortening"
@@ -4526,6 +4743,27 @@
       }
     ]
   },
+  "sirloin steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
+  "sirloin strip steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
+  "sirloin tip steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
   "skim milk": {
     "parents": [
       "milk"
@@ -4541,6 +4779,13 @@
         "note": "Same fat-free purpose"
       }
     ]
+  },
+  "skirt steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
   },
   "slivered almond": {
     "parents": [
@@ -4641,6 +4886,13 @@
         "note": "Use in sweet fillings"
       }
     ]
+  },
+  "strip steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
   },
   "sugar": {
     "parents": [],
@@ -4826,6 +5078,27 @@
         "note": "Add seasoning as needed"
       }
     ]
+  },
+  "top round steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
+  "top sirloin steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
+  },
+  "tri-tip steak": {
+    "parents": [
+      "beef steak"
+    ],
+    "contains": [],
+    "substitutes": []
   },
   "turmeric": {
     "parents": [
