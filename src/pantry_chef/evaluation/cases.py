@@ -6,7 +6,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 from pantry_chef.ingredients.allergens import Allergen, parse_user_allergy
-from pantry_chef.models.query import Diet, RecipeQuery
+from pantry_chef.models.query import Diet, NutritionGoal, RecipeQuery
 
 
 class SearchCase(BaseModel):
@@ -17,6 +17,7 @@ class SearchCase(BaseModel):
     max_minutes: int | None = None
     allergies: list[str] = Field(default_factory=list)
     diets: list[Diet] = Field(default_factory=list)
+    goals: list[NutritionGoal] = Field(default_factory=list)
 
     def to_query(self) -> RecipeQuery:
         allergens: set[Allergen] = set()
@@ -28,6 +29,7 @@ class SearchCase(BaseModel):
             max_minutes=self.max_minutes,
             required_allergen_free=sorted(allergens),
             diets=self.diets,
+            nutrition_goals=self.goals,
         )
 
 

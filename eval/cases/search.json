@@ -267,6 +267,42 @@
   "diets": []
  },
  {
+  "id": "d13",
+  "group": "dinner",
+  "pantry": [
+   "beef steak",
+   "potato",
+   "onion",
+   "garlic"
+  ],
+  "preferences": "a high protein dish",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [],
+  "goals": [
+   "high_protein"
+  ]
+ },
+ {
+  "id": "d14",
+  "group": "dinner",
+  "pantry": [
+   "tofu",
+   "broccoli",
+   "soy sauce",
+   "rice"
+  ],
+  "preferences": "a protein-rich vegetarian dinner",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [
+   "vegetarian"
+  ],
+  "goals": [
+   "high_protein"
+  ]
+ },
+ {
   "id": "l01",
   "group": "lunch",
   "pantry": [
