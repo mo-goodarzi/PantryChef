@@ -591,3 +591,28 @@ CLI with `--match`: steak dishes in the top 5 went from 0-1 to 4-5 for "beef ste
 with a meat the user lacks rank higher; 19 of 50 pass instead of 46). The LLM matcher still
 counts "minced beef" as covered by "beef steak" (a cached answer), so "tuscan beef pasta"
 can appear; "meat steak" may match pork steaks, which is fair for an ambiguous name.
+
+## 2026-10-02 — Nutrition goals reach the reranker; eval cases match the finder
+
+**Gap in the protein fix (review):** `request_parsing` v2 takes "high protein" out of the
+wish, but the LLM reranker (the last step in chat, it picks the top 5 of 20) only saw the
+wish. In chat it was told "dinner" and nothing about protein, so potato side dishes left
+in the shortlist could win again. The eval did not show this: d13/d14 kept "a high
+protein dish" in `preferences` AND set `goals`, so the semantic step and the reranker saw
+the phrase that the chat no longer sends.
+
+**Fixes:**
+- `rerank` v2 has a `Goals:` line (`goals_text()`, "none" without goals) and treats goals
+  as part of the wish ("high protein": dishes built around meat, fish, eggs, tofu, beans
+  or lentils over sides, breads and desserts).
+- Eval cases write `preferences` the way the finder does (d13 "a dish", d14 "a vegetarian
+  dinner"); the goal is only in `goals`.
+- The judge (and the calibration export) rate `SearchCase.judged_wish` = preferences plus
+  the goals in words ("a dish (high protein)"), because the user did ask for protein.
+  Without goals it equals `preferences`, so cached judgments of the other 50 cases stay
+  valid.
+
+**Measured:** to do. The 98% / 0.83 / 4.45 for the chat variant in the entry above was
+measured with the old d13/d14 wording; re-run
+`uv run python eval/run_eval.py --suite search` (needs the database and API keys) and
+put the before/after here.
