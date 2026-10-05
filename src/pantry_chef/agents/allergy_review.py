@@ -41,6 +41,11 @@ class Verdict(StrEnum):
     UNSAFE = "unsafe"
 
 
+# Most serious last: when the model returns several verdicts for one recipe (e.g. one per
+# allergen), the most serious one decides.
+SEVERITY = [Verdict.SAFE, Verdict.OPTIONAL, Verdict.UNCERTAIN, Verdict.UNSAFE]
+
+
 class AllergyReview(BaseModel):
     recipe_id: int
     verdict: Verdict
@@ -50,6 +55,10 @@ class AllergyReview(BaseModel):
 
 class AllergyReviewBatch(BaseModel):
     reviews: list[AllergyReview]
+
+
+def most_serious(reviews: list[AllergyReview]) -> AllergyReview:
+    return max(reviews, key=lambda r: SEVERITY.index(r.verdict))
 
 
 @dataclass(frozen=True)
@@ -114,6 +123,8 @@ class AllergyReviewer:
         batch_size: int = 10,
     ):
         self.llm = llm
+        # Part of the cache key: verdicts from one model are not reused for another.
+        self.model_name = getattr(llm, "model_name", "unknown")
         self.conn = conn
         self.cache_path = cache_path
         self.batch_size = batch_size
@@ -125,7 +136,7 @@ class AllergyReviewer:
     def key(self, recipe_id: int, query: RecipeQuery) -> str:
         codes = ",".join(sorted(a.value for a in query.required_allergen_free))
         words = ",".join(sorted(query.other_allergies))
-        return f"{recipe_id}|{codes}|{words}|v{self.prompt.version}"
+        return f"{recipe_id}|{codes}|{words}|v{self.prompt.version}|{self.model_name}"
 
     def recipe_payload(self, candidate: Candidate, query: RecipeQuery) -> dict:
         row = self.conn.execute(
@@ -156,9 +167,13 @@ class AllergyReviewer:
                 other_allergies=", ".join(query.other_allergies) or "none",
                 recipes=json.dumps([self.recipe_payload(c, query) for c in batch], indent=1),
             )
+            answered: dict[int, list[AllergyReview]] = {}
             for review in result.reviews:
                 if review.recipe_id in wanted:  # ignore ids that were not asked about
-                    self.cache[self.key(review.recipe_id, query)] = review.model_dump(mode="json")
+                    answered.setdefault(review.recipe_id, []).append(review)
+            for recipe_id, reviews in answered.items():
+                decided = most_serious(reviews)  # never let a later "safe" hide an "unsafe"
+                self.cache[self.key(recipe_id, query)] = decided.model_dump(mode="json")
             self.save()
 
         outcomes = {}

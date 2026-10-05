@@ -190,3 +190,53 @@ def test_verdicts_never_remove_recipes_without_allergies(enriched_conn, verdict)
 def test_quotes_from_the_model_are_not_doubled():
     outcome = outcome_for(review(1, Verdict.OPTIONAL, evidence='"top with almonds"'), "x")
     assert outcome.warning == 'Leave out the peanuts: "top with almonds".'
+
+
+# --- several answers for one recipe, and the cache key ---------------------------------
+
+
+class ScriptedReviewLLM:
+    """Returns the given reviews for every batch."""
+
+    def __init__(self, reviews, model_name="model-a"):
+        self.reviews = reviews
+        self.model_name = model_name
+        self.calls = 0
+
+    def generate(self, prompt, schema, **variables):
+        self.calls += 1
+        return AllergyReviewBatch(reviews=self.reviews)
+
+
+@pytest.mark.parametrize("order", [[Verdict.UNSAFE, Verdict.SAFE], [Verdict.SAFE, Verdict.UNSAFE]])
+def test_the_most_serious_of_several_verdicts_wins(enriched_conn, order):
+    # e.g. one entry per allergen: required peanuts, no sesame. Order must not matter.
+    cands = [c for c in candidates(enriched_conn, PEANUTS) if c.recipe_id == QUICK_MIX]
+    llm = ScriptedReviewLLM([review(QUICK_MIX, verdict) for verdict in order])
+    outcome = AllergyReviewer(llm, enriched_conn).review(PEANUTS, cands)[QUICK_MIX]
+    assert not outcome.keep
+
+
+def test_severity_order():
+    from pantry_chef.agents.allergy_review import most_serious
+
+    reviews = [review(1, v) for v in (Verdict.SAFE, Verdict.OPTIONAL, Verdict.UNCERTAIN)]
+    assert most_serious(reviews).verdict is Verdict.UNCERTAIN
+    assert most_serious([*reviews, review(1, Verdict.UNSAFE)]).verdict is Verdict.UNSAFE
+
+
+def test_cached_verdicts_belong_to_the_model_that_gave_them(enriched_conn, tmp_path):
+    cands = [c for c in candidates(enriched_conn, PEANUTS) if c.recipe_id == QUICK_MIX]
+    mini = ScriptedReviewLLM([review(QUICK_MIX, Verdict.SAFE)], model_name="mini")
+    AllergyReviewer(mini, enriched_conn, tmp_path / "r.json").review(PEANUTS, cands)
+    large = ScriptedReviewLLM([review(QUICK_MIX, Verdict.UNSAFE)], model_name="large")
+    outcome = AllergyReviewer(large, enriched_conn, tmp_path / "r.json").review(PEANUTS, cands)
+    assert large.calls == 1  # switching ALLERGY_REVIEW_MODEL asks again
+    assert not outcome[QUICK_MIX].keep
+
+
+def test_prompt_asks_for_the_most_serious_verdict():
+    from pantry_chef.llm.prompt_loader import load_prompt
+
+    text = load_prompt("allergy_review").template
+    assert "most serious" in text
