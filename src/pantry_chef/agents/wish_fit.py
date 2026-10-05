@@ -155,9 +155,11 @@ class WishFitChecker:
             "high_protein": high_protein,
         }
 
-    def check(self, query: RecipeQuery, candidates: list[Candidate]) -> dict[int, FitOutcome]:
-        if not needs_check(query) or not candidates:
-            return {c.recipe_id: FitOutcome(keep=True) for c in candidates}
+    def verdicts(
+        self, query: RecipeQuery, candidates: list[Candidate]
+    ) -> dict[int, WishFitReview | None]:
+        """The model's verdict per recipe (None = not answered), asking only for recipes
+        that are not cached. Used by check() and by the eval."""
         todo = [c for c in candidates if self.key(c.recipe_id, query) not in self.cache]
         for start in range(0, len(todo), self.batch_size):
             batch = todo[start : start + self.batch_size]
@@ -177,13 +179,16 @@ class WishFitChecker:
                 decided = least_fitting(reviews)
                 self.cache[self.key(recipe_id, query)] = decided.model_dump(mode="json")
             self.save()
+        found = {c.recipe_id: self.cache.get(self.key(c.recipe_id, query)) for c in candidates}
+        return {rid: WishFitReview.model_validate(r) if r else None for rid, r in found.items()}
 
-        outcomes = {}
-        for c in candidates:
-            cached = self.cache.get(self.key(c.recipe_id, query))
-            found = WishFitReview.model_validate(cached) if cached else None
-            outcomes[c.recipe_id] = outcome_for(found, c.name)
-        outcomes = never_empty(outcomes)
+    def check(self, query: RecipeQuery, candidates: list[Candidate]) -> dict[int, FitOutcome]:
+        if not needs_check(query) or not candidates:
+            return {c.recipe_id: FitOutcome(keep=True) for c in candidates}
+        verdicts = self.verdicts(query, candidates)
+        outcomes = never_empty(
+            {c.recipe_id: outcome_for(verdicts[c.recipe_id], c.name) for c in candidates}
+        )
         removed = sum(not o.keep for o in outcomes.values())
         score("wish_fit_removed", removed)
         log.info(
