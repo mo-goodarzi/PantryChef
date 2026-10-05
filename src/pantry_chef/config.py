@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import SecretStr
+from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,7 +34,11 @@ class Settings(BaseSettings):
     youtube_api_key: SecretStr | None = None
     langfuse_public_key: SecretStr | None = None
     langfuse_secret_key: SecretStr | None = None
-    langfuse_host: str = "https://cloud.langfuse.com"
+    # LANGFUSE_HOST, or LANGFUSE_BASE_URL (the name Langfuse's own docs use)
+    langfuse_host: str = Field(
+        default="https://cloud.langfuse.com",
+        validation_alias=AliasChoices("langfuse_host", "langfuse_base_url"),
+    )
 
     # Search
     embedding_model: str = "BAAI/bge-small-en-v1.5"
