@@ -103,6 +103,8 @@ def render_question(question: Question) -> str:
             lines.append(f"    uses: {', '.join(o.uses)}")
         for warning in o.warnings:
             lines.append(f"    ALLERGY: {warning}")
+        if o.fit_note:
+            lines.append(f"    note: {o.fit_note}")
         if o.adaptations:
             lines.append(f"    adapt: {'; '.join(o.adaptations)}")
         if o.also_needs:

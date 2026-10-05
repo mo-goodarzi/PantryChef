@@ -41,6 +41,8 @@ def option_markdown(option: RecipeOption) -> str:
     if option.uses:
         lines.append(f"Uses: {', '.join(option.uses)}")
     lines += [f":warning: **Allergy:** {warning}" for warning in option.warnings]
+    if option.fit_note:
+        lines.append(f"_{option.fit_note}_")
     if option.adaptations:
         lines.append(f"Adapt: {'; '.join(option.adaptations)}")
     if option.also_needs:
