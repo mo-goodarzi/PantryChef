@@ -3,7 +3,7 @@ import json
 import numpy as np
 import pytest
 
-from pantry_chef.models.query import RecipeQuery
+from pantry_chef.models.query import NutritionGoal, RecipeQuery
 from pantry_chef.models.recipe import Candidate
 from pantry_chef.search.diversity import mmr
 from pantry_chef.search.engine import SearchOptions, SemanticSearch, find_recipes, find_verified
@@ -75,6 +75,7 @@ class FakeRerankLLM:
     def generate(self, prompt, schema, **variables):
         assert prompt.name == "rerank" and schema is RerankResult
         self.seen = json.loads(variables["recipes"])
+        self.variables = variables
         assert variables["k"] == "2"
         return RerankResult(picks=[RankedPick(recipe_id=i, reason=f"pick {i}") for i in self.order])
 
@@ -89,6 +90,20 @@ def test_llm_reranker_can_only_choose_verified_candidates(enriched_conn):
     assert [c.recipe_id for c in result] == [31750, 5170]
     assert {r["recipe_id"] for r in llm.seen} == {5170, 31750, 118761}
     assert all("missing_key" in r for r in llm.seen)
+    assert llm.variables["goals"] == "none"
+
+
+def test_llm_reranker_sees_the_nutrition_goals(enriched_conn):
+    # The finder keeps goals out of the wish, so the reranker must get them separately.
+    llm = FakeRerankLLM(order=[31750])
+    query = RecipeQuery(
+        ingredients=["egg"],
+        preferences_text="breakfast",
+        nutrition_goals=[NutritionGoal.HIGH_PROTEIN],
+    )
+    LLMReranker(llm, enriched_conn).rerank(query, [cand(5170, 1.0), cand(31750, 1.0)], k=2)
+    assert llm.variables["wish"] == "breakfast"
+    assert llm.variables["goals"] == "high protein"
 
 
 # --- pipeline ------------------------------------------------------------------------

@@ -29,7 +29,7 @@ class JudgmentBatch(BaseModel):
 
 def case_key(case: SearchCase) -> str:
     """Changes when the case's wish or pantry changes, so old judgments are not reused."""
-    payload = json.dumps([case.preferences, sorted(case.pantry)])
+    payload = json.dumps([case.judged_wish, sorted(case.pantry)])
     return hashlib.sha1(payload.encode()).hexdigest()[:10]
 
 
@@ -56,7 +56,7 @@ class CachedJudge:
             result = self.llm.generate(
                 self.prompt,
                 JudgmentBatch,
-                wish=case.preferences,
+                wish=case.judged_wish,
                 pantry=", ".join(case.pantry),
                 recipes=json.dumps(list(summaries.values()), indent=1),
             )

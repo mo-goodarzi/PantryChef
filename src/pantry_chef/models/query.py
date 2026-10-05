@@ -40,6 +40,11 @@ class NutritionGoal(StrEnum):
     HIGH_PROTEIN = "high_protein"
 
 
+def goals_text(goals: list[NutritionGoal]) -> str:
+    """Goals in words for a prompt ("high protein"); empty without goals."""
+    return ", ".join(goal.value.replace("_", " ") for goal in goals)
+
+
 class RecipeQuery(BaseModel):
     ingredients: list[str] = Field(description="What the user has at home (any wording).")
     preferences_text: str = ""

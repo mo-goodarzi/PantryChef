@@ -275,7 +275,7 @@
    "onion",
    "garlic"
   ],
-  "preferences": "a high protein dish",
+  "preferences": "a dish",
   "max_minutes": null,
   "allergies": [],
   "diets": [],
@@ -292,7 +292,7 @@
    "soy sauce",
    "rice"
   ],
-  "preferences": "a protein-rich vegetarian dinner",
+  "preferences": "a vegetarian dinner",
   "max_minutes": null,
   "allergies": [],
   "diets": [

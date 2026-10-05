@@ -3,6 +3,7 @@ import json
 from pantry_chef.evaluation.cases import SearchCase
 from pantry_chef.evaluation.judge import CachedJudge, Judgment, JudgmentBatch, recipe_summaries
 from pantry_chef.evaluation.search_eval import evaluate_variant, summarize
+from pantry_chef.models.query import NutritionGoal
 from pantry_chef.search.engine import SearchOptions, find_recipes
 
 PANCAKES, WAFFLES = 5170, 31750
@@ -14,11 +15,13 @@ CASE = SearchCase(
 class FakeJudgeLLM:
     def __init__(self):
         self.calls = []
+        self.wishes = []
 
     def generate(self, prompt, schema, **variables):
         assert prompt.name == "preference_judge" and schema is JudgmentBatch
         recipes = json.loads(variables["recipes"])
         self.calls.append([r["recipe_id"] for r in recipes])
+        self.wishes.append(variables["wish"])
         return JudgmentBatch(
             judgments=[
                 Judgment(
@@ -87,3 +90,18 @@ def test_a_failing_case_is_recorded_and_the_run_continues(enriched_conn, tmp_pat
     assert results[1].hit == 1.0
     summary = summarize(results)
     assert summary["errors"] == 1 and summary["hit_at_5"] == 0.5
+
+
+def test_judge_rates_the_wish_with_its_goals_while_the_search_gets_them_apart(
+    enriched_conn, tmp_path
+):
+    case = CASE.model_copy(
+        update={"preferences": "breakfast", "goals": [NutritionGoal.HIGH_PROTEIN]}
+    )
+    assert case.to_query().preferences_text == "breakfast"  # as the finder writes it
+    assert case.to_query().nutrition_goals == [NutritionGoal.HIGH_PROTEIN]
+    llm = FakeJudgeLLM()
+    CachedJudge(llm, tmp_path / "j.json").judge(enriched_conn, case, [PANCAKES])
+    assert llm.wishes == ["breakfast (high protein)"]
+    assert CASE.judged_wish == "pancakes"  # no goals: unchanged, so old judgments still apply
+    assert case.model_copy(update={"preferences": ""}).judged_wish == "high protein"
