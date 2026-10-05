@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from pantry_chef.ingredients.allergens import Allergen
@@ -116,3 +118,36 @@ def test_other_allergy_words_match_plurals_in_raw_names(enriched_conn):
     # the apple salad lists "seedless grapes"
     assert APPLE_SALAD not in allowed(enriched_conn, other_allergies=["grape"])
     assert APPLE_SALAD in allowed(enriched_conn, other_allergies=["grapefruit"])
+
+
+TRICKY_NAMES = [
+    "kiwi",
+    "kiwis",
+    "kiwi fruit",
+    "kiwi/strawberry juice",
+    "kiwi (peeled)",
+    "fresh kiwi, sliced",
+    "kiwi-lime sorbet",
+    "strawberry kiwi gelatin powder",
+    "kiwifruit",
+    "bakiwi",
+    "kiwi's jam",
+    "kiwi.",
+]
+
+
+@pytest.mark.parametrize("name", TRICKY_NAMES)
+def test_sql_word_match_agrees_with_the_verifier(name):
+    """Both safety layers must treat an ingredient name the same way."""
+    import sqlite3
+
+    from pantry_chef.ingredients.allergens import allergy_word_variants, mentions_word
+    from pantry_chef.search.filters import words_sql
+
+    sql = (
+        "SELECT EXISTS (SELECT 1 FROM json_each(:words) w "
+        f"WHERE {words_sql(':name')} LIKE '% ' || w.value || ' %')"
+    )
+    params = {"words": json.dumps(allergy_word_variants("kiwi")), "name": name}
+    in_sql = bool(sqlite3.connect(":memory:").execute(sql, params).fetchone()[0])
+    assert in_sql == mentions_word(name, "kiwi")
