@@ -97,7 +97,7 @@ def test_repository_eval_cases_are_valid():
     from pathlib import Path
 
     cases = load_cases(Path(__file__).parents[1] / "eval" / "cases" / "search.json")
-    assert len(cases) == 52
+    assert len(cases) == 55
     for case in cases:
         case.to_query()  # allergy words must all be known
 
