@@ -76,7 +76,7 @@ def chat_from_settings(settings: Settings, threaded: bool = False) -> ChatApp:
         use_semantic=True,
         use_matcher=True,
         use_rerank=True,
-        use_wish_fit=True,
+        use_wish_fit=settings.wish_fit_enabled,
         usage_weight=settings.usage_weight,
     )
 

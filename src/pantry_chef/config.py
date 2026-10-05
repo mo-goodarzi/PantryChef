@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     # Model for the final allergy review (one call per turn, ~10 recipes); can be stronger.
     allergy_review_model: str = "gpt-5.4-mini"
     wish_fit_model: str = "gpt-5.4-mini"  # the wish-fit check (agents/wish_fit.py)
+    wish_fit_enabled: bool = True  # chat: remove recipes that clearly miss the wish
     llm_reasoning_effort: Literal["minimal", "low", "medium", "high"] = "low"
     llm_timeout_seconds: float = 120
     anthropic_api_key: SecretStr | None = None
