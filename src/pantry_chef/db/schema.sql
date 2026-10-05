@@ -14,7 +14,10 @@ CREATE TABLE recipes (
   cuisine TEXT,                      -- derived from tags
   meal_type TEXT,                    -- derived from tags (breakfast, main-dish, dessert...)
   is_vegetarian INTEGER, is_vegan INTEGER, is_gluten_free INTEGER, -- derived in Phase 2
-  n_key INTEGER                      -- distinct key ingredients (canonical), for search
+  -- n_key: distinct key ingredients by canonical name, for search.
+  -- is_high_protein: for the high protein goal, see ingredients/protein.py.
+  n_key INTEGER,
+  is_high_protein INTEGER
 );
 
 CREATE TABLE ingredients (

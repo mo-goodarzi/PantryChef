@@ -19,6 +19,11 @@ import json
 import sqlite3
 from dataclasses import dataclass
 
+from pantry_chef.ingredients.protein import (  # noqa: F401  (re-exported for callers)
+    ProteinFacts,
+    is_high_protein,
+    protein_calorie_share,
+)
 from pantry_chef.models.query import NutritionGoal
 
 MISSING_KEY_PENALTY = 0.1
@@ -27,14 +32,7 @@ MISSING_KEY_PENALTY = 0.1
 RATING_PRIOR_WEIGHT = 10
 # Weight of a pantry item in the usage part, by ingredient category (default 1).
 CATEGORY_WEIGHTS = {"protein": 2.0}
-# High protein (see is_high_protein). Food.com's nutrition misses meat it cannot count
-# ("4 steaks" -> 0%), so a key meat or fish ingredient is enough. Other protein sources (eggs,
-# tofu, beans, lentils, nuts) need the numbers: >= 20% of the daily value per serving (the
-# US "high in" level, 10 g) and >= 20% of calories from protein, which keeps out egg
-# desserts (cookies 5%, cheesecake 7%) whatever their serving size.
-HIGH_PROTEIN_PDV = 20.0
-HIGH_PROTEIN_CALORIE_SHARE = 0.20
-PROTEIN_KCAL_PER_PDV = 2.0  # 1% of the 50 g daily value = 0.5 g = 2 kcal
+# Subtracted from the ingredient score for each nutrition goal a recipe misses.
 GOAL_PENALTY = 0.25
 
 
@@ -84,42 +82,10 @@ def pantry_usage(
     return sum((weights or {}).get(item, 1.0) for item in items)
 
 
-@dataclass(frozen=True)
-class ProteinFacts:
-    """What the high-protein goal looks at for one recipe."""
-
-    protein_pdv: float | None = None
-    calories: float | None = None
-    meat_or_fish_key: bool = False  # a key ingredient is meat or fish
-    protein_source_key: bool = False  # a key ingredient has category protein (any kind)
-
-
-def protein_calorie_share(protein_pdv: float | None, calories: float | None) -> float | None:
-    if protein_pdv is None or not calories or calories <= 0:
-        return None
-    return protein_pdv * PROTEIN_KCAL_PER_PDV / calories
-
-
-def is_high_protein(facts: ProteinFacts) -> bool:
-    """Built around meat or fish, or around another protein source with the numbers to
-    show it (an egg in a cake is a protein source, but the cake fails the calorie share)."""
-    if facts.meat_or_fish_key:
-        return True
-    share = protein_calorie_share(facts.protein_pdv, facts.calories)
-    return (
-        facts.protein_source_key
-        and facts.protein_pdv is not None
-        and facts.protein_pdv >= HIGH_PROTEIN_PDV
-        and share is not None
-        and share >= HIGH_PROTEIN_CALORIE_SHARE
-    )
-
-
-def goal_penalty(goals: list[NutritionGoal], facts: ProteinFacts) -> float:
-    """Points subtracted from the ingredient score for each nutrition goal the recipe misses."""
-    missed = [
-        goal for goal in goals if goal is NutritionGoal.HIGH_PROTEIN and not is_high_protein(facts)
-    ]
+def goal_penalty(goals: list[NutritionGoal], high_protein: bool) -> float:
+    """Points subtracted from the ingredient score for each nutrition goal the recipe misses
+    (high_protein is recipes.is_high_protein, computed at enrich time)."""
+    missed = [goal for goal in goals if goal is NutritionGoal.HIGH_PROTEIN and not high_protein]
     return GOAL_PENALTY * len(missed)
 
 
@@ -140,21 +106,12 @@ WITH have AS (
     GROUP BY ri.recipe_id
 )
 SELECT r.id, r.name, r.minutes, r.n_key AS total_key, h.have_key, h.have_names,
-       s.avg_rating, COALESCE(s.n_ratings, 0) AS n_ratings, r.protein_pdv, r.calories,
-       {meat_or_fish} AS meat_or_fish_key, {protein_source} AS protein_source_key
+       s.avg_rating, COALESCE(s.n_ratings, 0) AS n_ratings, {high_protein} AS high_protein
 FROM have h
 JOIN recipes r ON r.id = h.recipe_id
 LEFT JOIN recipe_stats s ON s.recipe_id = r.id
 WHERE {conditions}
 """
-# Only computed when a goal needs them (indexed lookups per candidate recipe).
-PROTEIN_KEY_SQL = """EXISTS (
-    SELECT 1 FROM recipe_ingredients ri JOIN ingredients i ON i.id = ri.ingredient_id
-    WHERE ri.recipe_id = r.id AND ri.is_key = 1 AND i.category = 'protein'{extra})"""
-MEAT_OR_FISH_KEY_SQL = PROTEIN_KEY_SQL.format(
-    extra=" AND (i.contains_meat = 1 OR i.contains_fish = 1)"
-)
-PROTEIN_SOURCE_KEY_SQL = PROTEIN_KEY_SQL.format(extra="")
 
 
 def rank_by_coverage(
@@ -186,22 +143,25 @@ def rank_by_coverage(
     )
     sql = COVERAGE_SQL.format(
         conditions=" AND ".join(conditions),
-        meat_or_fish=MEAT_OR_FISH_KEY_SQL if goals else "0",
-        protein_source=PROTEIN_SOURCE_KEY_SQL if goals else "0",
+        # Read only when a goal needs it, so databases enriched before the column existed
+        # still work without goals.
+        high_protein="r.is_high_protein" if goals else "0",
     )
-    rows = conn.execute(sql, {**params, "pantry": json.dumps(sorted(covered))}).fetchall()
+    try:
+        rows = conn.execute(sql, {**params, "pantry": json.dumps(sorted(covered))}).fetchall()
+    except sqlite3.OperationalError as error:
+        if "is_high_protein" in str(error):
+            raise RuntimeError(
+                "this database has no recipes.is_high_protein yet; "
+                "run scripts/enrich_db.py again (labels are cached, it is quick)"
+            ) from error
+        raise
 
     ranked = []
     for row in rows:
         used = pantry_usage((row["have_names"] or "").split(","), covered, pantry_weights)
         usage = min(used / size, 1.0)
-        facts = ProteinFacts(
-            protein_pdv=row["protein_pdv"],
-            calories=row["calories"],
-            meat_or_fish_key=bool(row["meat_or_fish_key"]),
-            protein_source_key=bool(row["protein_source_key"]),
-        )
-        penalty = goal_penalty(goals, facts)
+        penalty = goal_penalty(goals, bool(row["high_protein"]))
         ranked.append(
             CoverageRow(
                 recipe_id=row["id"],

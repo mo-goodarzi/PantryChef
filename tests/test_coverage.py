@@ -182,17 +182,18 @@ def test_protein_item_counts_double_in_usage(enriched_conn):
     ],
 )
 def test_high_protein_rule(facts, high):
+    from pantry_chef.ingredients.protein import ProteinFacts, is_high_protein
     from pantry_chef.models.query import NutritionGoal
-    from pantry_chef.search.coverage import ProteinFacts, goal_penalty, is_high_protein
+    from pantry_chef.search.coverage import goal_penalty
 
     recipe = ProteinFacts(**facts)
     assert is_high_protein(recipe) is high
-    assert goal_penalty([NutritionGoal.HIGH_PROTEIN], recipe) == (0.0 if high else 0.25)
-    assert goal_penalty([], recipe) == 0.0
+    assert goal_penalty([NutritionGoal.HIGH_PROTEIN], high) == (0.0 if high else 0.25)
+    assert goal_penalty([], high) == 0.0
 
 
 def test_protein_calorie_share():
-    from pantry_chef.search.coverage import protein_calorie_share
+    from pantry_chef.ingredients.protein import protein_calorie_share
 
     assert protein_calorie_share(25.0, 250.0) == pytest.approx(0.2)  # 12.5 g = 50 of 250 kcal
     assert protein_calorie_share(25.0, 0.0) is None
@@ -200,10 +201,12 @@ def test_protein_calorie_share():
 
 
 def test_high_protein_goal_lowers_only_recipes_that_miss_it(enriched_conn):
+    from pantry_chef.ingredients.enrich import derive_high_protein
     from pantry_chef.models.query import NutritionGoal
 
     # Poached eggs: 2 eggs instead of 1 per serving (24% DV, 143 kcal -> 34% from protein).
     enriched_conn.execute("UPDATE recipes SET protein_pdv = 24, calories = 143 WHERE id = 118761")
+    derive_high_protein(enriched_conn)  # the flag is computed at enrich time
     pantry = ["beef", "egg", "butter", "mushroom", "scallion"]
     conditions, params = filter_conditions(RecipeQuery(ingredients=pantry))
 
@@ -231,3 +234,36 @@ def test_search_passes_the_query_goals_to_the_ranking(enriched_conn):
     goal = {c.recipe_id: c.ingredient_score for c in search(enriched_conn, query).candidates}
     assert goal[118761] == pytest.approx(plain[118761] - 0.25)  # one egg: 12% DV
     assert goal[CALZONES] == plain[CALZONES]
+
+
+def test_high_protein_is_computed_once_at_enrich_time(enriched_conn):
+    flags = dict(enriched_conn.execute("SELECT id, is_high_protein FROM recipes").fetchall())
+    assert flags[CALZONES] == 1  # beef
+    assert flags[PANCAKES] == 0  # eggs, but 11% DV
+    assert set(flags.values()) <= {0, 1}  # never unknown after enrichment
+
+
+def test_enrich_adds_the_column_to_an_older_database(enriched_conn):
+    from pantry_chef.ingredients.enrich import derive_high_protein
+
+    enriched_conn.execute("ALTER TABLE recipes DROP COLUMN is_high_protein")
+    assert derive_high_protein(enriched_conn) >= 1
+    assert (
+        enriched_conn.execute(
+            "SELECT is_high_protein FROM recipes WHERE id = ?", (CALZONES,)
+        ).fetchone()[0]
+        == 1
+    )
+
+
+def test_a_goal_on_a_database_without_the_flag_explains_what_to_do(enriched_conn):
+    from pantry_chef.models.query import NutritionGoal
+
+    enriched_conn.execute("ALTER TABLE recipes DROP COLUMN is_high_protein")
+    pantry = ["beef", "egg"]
+    conditions, params = filter_conditions(RecipeQuery(ingredients=pantry))
+    rank_by_coverage(enriched_conn, pantry, conditions, params)  # no goal: still works
+    with pytest.raises(RuntimeError, match="enrich_db.py"):
+        rank_by_coverage(
+            enriched_conn, pantry, conditions, params, goals=[NutritionGoal.HIGH_PROTEIN]
+        )
