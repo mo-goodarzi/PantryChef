@@ -699,3 +699,36 @@ Five cases is a small set; the full suite now has 55 cases.
   subqueries per candidate in every goal search. Same rule (now in
   `ingredients/protein.py`). Existing databases: run `scripts/enrich_db.py` once (labels
   are cached, so it is quick); a goal search on a database without the flag says so.
+
+## 2026-10-05 — Wish-fit check (separate agent)
+
+**Problem:** the reranker can only reorder; it never says "this does not fit", and it tops
+up its picks with the remaining candidates. So a pepperoni pizza could fill a slot for "a
+high-protein dinner" when fewer than 5 recipes really fit.
+
+**Owner decision: a separate agent** (`agents/wish_fit.py`, prompt `wish_fit` v1,
+`WISH_FIT_MODEL`), not a field in the reranker: its own prompt version, trace span,
+`wish_fit_removed` score, cache and eval make it easier to debug and to measure. Cost: one
+more LLM call per search, kept down by one batched call for the shortlist (20), a cache per
+recipe + wish + goals + prompt version + model, and skipping it without a wish or goals.
+
+**Where:** search -> verify -> allergy review -> **wish fit** -> rerank, so the reranker only
+sees fitting recipes. **The LLM judges, code decides:** fits -> kept; partly -> kept with a
+note on the recipe card; no -> removed as `preference_mismatch` (the retry excludes it); no
+verdict -> kept (a wish is not safety, unlike the allergy review); every recipe "no" -> all
+kept with "may not match what you asked for" (a wish never leaves the user with nothing).
+Code passes `recipes.is_high_protein` as a fact, so the model does not guess protein from a
+recipe name. Several verdicts for one recipe: the least fitting wins. The prompt is not
+marked sensitive (wishes are food preferences; the reranker already sends them).
+
+**Not measured yet.** The judge calibration showed the LLM is stricter than the owner (56%
+agreement, stricter 9 vs 2), so a filter built on it can hide acceptable recipes. Before
+trusting it: `eval/wish_fit_calibration.py export` writes a blind sheet (top and bottom of
+the chat shortlist for 12 probe wishes, including pepperoni-pizza and bacon-potato traps),
+the owner labels fits / partly / no, and `score` reports misfits removed and **good recipes
+wrongly removed** per model. `run_eval.py` has a `...+wishfit+rerank` variant for the
+before/after search numbers. `WISH_FIT_ENABLED=false` turns it off in chat.
+
+**Security fix (same day):** `.env.example` contained a Langfuse key pair (committed in
+8e70238 to a public repository). The owner revoked it; the file has empty placeholders
+again, and `tests/test_config.py` fails if any `*_KEY` there has a value.

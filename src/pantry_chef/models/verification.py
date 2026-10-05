@@ -49,6 +49,8 @@ class VerificationResult(BaseModel):
     notes: list[str] = Field(default_factory=list)
     # Allergy warnings from the final review ("Leave out the peanuts: ...").
     warnings: list[str] = Field(default_factory=list)
+    # From the wish-fit check: "Partly fits: a side dish, not a dinner."
+    fit_note: str | None = None
     # ingredient name -> staple | available | substitute | optional | missing | extra
     ingredient_status: dict[str, str] = Field(default_factory=dict)
 

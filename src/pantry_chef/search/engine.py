@@ -10,6 +10,7 @@ from dataclasses import dataclass, replace
 
 from pantry_chef.agents.allergy_review import AllergyReviewer, ReviewOutcome, code_only_outcomes
 from pantry_chef.agents.verifier import Verifier
+from pantry_chef.agents.wish_fit import FitOutcome, WishFitChecker
 from pantry_chef.config import Settings
 from pantry_chef.db.repository import (
     canonical_categories,
@@ -195,6 +196,7 @@ class SearchOptions:
     use_diversity: bool = False  # needs semantic (recipe vectors)
     use_rerank: bool = False
     use_matcher: bool = False  # pantry expansion + matcher-based verification
+    use_wish_fit: bool = False  # LLM check that each recipe fits the wish (needs a checker)
     usage_weight: float = 0.5  # weight of pantry usage in the ingredient score (0 = off)
     shortlist_size: int = 20  # verified recipes passed to diversity / rerank
     mmr_lambda: float = 0.7
@@ -225,10 +227,11 @@ def find_recipes(
     verifier: Verifier | None = None,
     expander: PantryExpander | None = None,
     allergy_reviewer: AllergyReviewer | None = None,
+    wish_checker: WishFitChecker | None = None,
 ) -> list[Candidate]:
     """The top verified candidates only (see find_verified for their verification)."""
     result = find_verified(
-        conn, query, options, semantic, reranker, verifier, expander, allergy_reviewer
+        conn, query, options, semantic, reranker, verifier, expander, allergy_reviewer, wish_checker
     )
     return [vc.candidate for vc in result.top]
 
@@ -247,6 +250,20 @@ def apply_review(vc: VerifiedCandidate, outcome: ReviewOutcome | None) -> Verifi
     return VerifiedCandidate(candidate=vc.candidate, verification=v)
 
 
+def apply_fit(vc: VerifiedCandidate, outcome: FitOutcome | None) -> VerifiedCandidate:
+    """Record the wish-fit check: a removal becomes a failed check (preference_mismatch,
+    so a retry excludes it), a note is kept for display."""
+    if outcome is None:
+        return vc
+    v = vc.verification
+    if not outcome.keep and outcome.reason is not None:
+        check = CheckResult(check="wish_fit", passed=False, reasons=[outcome.reason])
+        v = v.model_copy(update={"status": VerificationStatus.FAIL, "checks": [*v.checks, check]})
+    elif outcome.note:
+        v = v.model_copy(update={"fit_note": outcome.note})
+    return VerifiedCandidate(candidate=vc.candidate, verification=v)
+
+
 def find_verified(
     conn: sqlite3.Connection,
     query: RecipeQuery,
@@ -256,8 +273,10 @@ def find_verified(
     verifier: Verifier | None = None,
     expander: PantryExpander | None = None,
     allergy_reviewer: AllergyReviewer | None = None,
+    wish_checker: WishFitChecker | None = None,
 ) -> FindResult:
-    """Full pipeline: search -> verify -> allergy review -> (diversity) -> (rerank) -> top k.
+    """Full pipeline: search -> verify -> allergy review -> (wish fit) -> (diversity) ->
+    (rerank) -> top k.
 
     The allergy review (users with allergies only) reads each shortlisted recipe in full;
     removed recipes become failures (so a retry excludes them), kept ones may get a
@@ -271,6 +290,8 @@ def find_verified(
         raise ValueError("use_semantic / use_diversity need a SemanticSearch")
     if options.use_rerank and reranker is None:
         raise ValueError("use_rerank=True needs a Reranker")
+    if options.use_wish_fit and wish_checker is None:
+        raise ValueError("use_wish_fit=True needs a WishFitChecker")
     if options.use_matcher and (expander is None or verifier is None):
         raise ValueError("use_matcher=True needs a PantryExpander and a matcher Verifier")
     result = search(
@@ -300,6 +321,11 @@ def find_verified(
             outcomes = code_only_outcomes(conn, query, shortlist)
     found.checked = [apply_review(vc, outcomes.get(vc.candidate.recipe_id)) for vc in found.checked]
     shortlist = [c for c in shortlist if outcomes[c.recipe_id].keep]
+    if options.use_wish_fit and wish_checker is not None:
+        with span("search.wish_fit", candidates=len(shortlist)):
+            fits = wish_checker.check(query, shortlist)
+        found.checked = [apply_fit(vc, fits.get(vc.candidate.recipe_id)) for vc in found.checked]
+        shortlist = [c for c in shortlist if fits[c.recipe_id].keep]
     verification = {vc.candidate.recipe_id: vc.verification for vc in found.checked}
 
     if options.use_diversity and semantic is not None:

@@ -55,6 +55,7 @@ REASON_WORDS = {
     "hidden_allergen": "may contain one of your allergens",
     "diet_violation": "did not fit your diet",
     "too_long": "took too long",
+    "preference_mismatch": "did not match what you asked for",
 }
 
 
@@ -105,6 +106,7 @@ def recipe_option(number: int, vc: VerifiedCandidate) -> RecipeOption:
         adaptations=vc.verification.adaptations,
         also_needs=ingredients_with_status(vc, {"missing", "extra"}),
         warnings=vc.verification.warnings,
+        fit_note=vc.verification.fit_note,
     )
 
 

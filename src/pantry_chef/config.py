@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import SecretStr
+from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-5.4-mini"
     # Model for the final allergy review (one call per turn, ~10 recipes); can be stronger.
     allergy_review_model: str = "gpt-5.4-mini"
+    wish_fit_model: str = "gpt-5.4-mini"  # the wish-fit check (agents/wish_fit.py)
+    wish_fit_enabled: bool = True  # chat: remove recipes that clearly miss the wish
     llm_reasoning_effort: Literal["minimal", "low", "medium", "high"] = "low"
     llm_timeout_seconds: float = 120
     anthropic_api_key: SecretStr | None = None
@@ -32,7 +34,11 @@ class Settings(BaseSettings):
     youtube_api_key: SecretStr | None = None
     langfuse_public_key: SecretStr | None = None
     langfuse_secret_key: SecretStr | None = None
-    langfuse_host: str = "https://cloud.langfuse.com"
+    # LANGFUSE_HOST, or LANGFUSE_BASE_URL (the name Langfuse's own docs use)
+    langfuse_host: str = Field(
+        default="https://cloud.langfuse.com",
+        validation_alias=AliasChoices("langfuse_host", "langfuse_base_url"),
+    )
 
     # Search
     embedding_model: str = "BAAI/bge-small-en-v1.5"

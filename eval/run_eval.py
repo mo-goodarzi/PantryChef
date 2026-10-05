@@ -9,6 +9,7 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 
+from pantry_chef.agents.wish_fit import WishFitChecker
 from pantry_chef.config import get_settings
 from pantry_chef.db.connection import connect
 from pantry_chef.db.state import open_state_db
@@ -49,6 +50,10 @@ VARIANTS = {
     "semantic+matcher+usage+rerank": SearchOptions(
         use_semantic=True, use_matcher=True, use_rerank=True
     ),
+    # the chat pipeline with the wish-fit check before the reranker
+    "semantic+matcher+usage+wishfit+rerank": SearchOptions(
+        use_semantic=True, use_matcher=True, use_rerank=True, use_wish_fit=True
+    ),
 }
 
 
@@ -76,6 +81,12 @@ def main() -> None:
     needs_semantic = any(VARIANTS[v].use_semantic for v in variants)
     semantic = semantic_from_settings(settings) if needs_semantic else None
     reranker = LLMReranker(create_llm(settings), conn)
+    wish_checker = None
+    if any(VARIANTS[v].use_wish_fit for v in variants):
+        wish_llm = create_llm(settings.model_copy(update={"llm_model": settings.wish_fit_model}))
+        wish_checker = WishFitChecker(
+            wish_llm, conn, cache_path=Path("data/processed/eval_cache/wish_fit.json")
+        )
     expander, verifier = (None, None)
     if semantic is not None and any(VARIANTS[v].use_matcher for v in variants):
         state = open_state_db(settings.state_db_path)
@@ -99,6 +110,7 @@ def main() -> None:
                     reranker=reranker,
                     verifier=verifier,
                     expander=expander,
+                    wish_checker=wish_checker,
                 ),
                 judge,
                 vectors=semantic.store.get_vectors if semantic else None,

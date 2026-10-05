@@ -7,6 +7,7 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph.state import CompiledStateGraph
 
 from pantry_chef.agents.allergy_review import AllergyReviewer
+from pantry_chef.agents.wish_fit import WishFitChecker
 from pantry_chef.config import Settings
 from pantry_chef.db.connection import connect
 from pantry_chef.db.repository import load_steps
@@ -67,16 +68,29 @@ def chat_from_settings(settings: Settings, threaded: bool = False) -> ChatApp:
     allergy_reviewer = AllergyReviewer(
         review_llm, conn, cache_path=settings.db_path.parent / "allergy_reviews.json"
     )
+    wish_llm = create_llm(settings.model_copy(update={"llm_model": settings.wish_fit_model}))
+    wish_checker = WishFitChecker(
+        wish_llm, conn, cache_path=settings.state_db_path.parent / "wish_fit.json"
+    )
     options = SearchOptions(
         use_semantic=True,
         use_matcher=True,
         use_rerank=True,
+        use_wish_fit=settings.wish_fit_enabled,
         usage_weight=settings.usage_weight,
     )
 
     def find(query: RecipeQuery) -> FindResult:
         return find_verified(
-            conn, query, options, semantic, reranker, verifier, expander, allergy_reviewer
+            conn,
+            query,
+            options,
+            semantic,
+            reranker,
+            verifier,
+            expander,
+            allergy_reviewer,
+            wish_checker,
         )
 
     profiles = ProfileStore(state)

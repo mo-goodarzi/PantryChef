@@ -1,0 +1,14 @@
+[
+ {"id": "w01", "group": "goal", "pantry": ["beef steak", "potato", "onion", "garlic"], "preferences": "dinner", "goals": ["high_protein"]},
+ {"id": "w02", "group": "goal-trap", "pantry": ["potato", "bacon", "onion", "mayonnaise"], "preferences": "dinner", "goals": ["high_protein"]},
+ {"id": "w03", "group": "goal-trap", "pantry": ["pizza dough", "pepperoni", "mozzarella cheese", "tomato sauce"], "preferences": "dinner", "goals": ["high_protein"]},
+ {"id": "w04", "group": "goal", "pantry": ["red lentils", "onion", "tomato", "rice"], "preferences": "dinner", "goals": ["high_protein"]},
+ {"id": "w05", "group": "goal", "pantry": ["egg", "spinach", "cheddar cheese", "bread"], "preferences": "breakfast", "goals": ["high_protein"]},
+ {"id": "w06", "group": "goal", "pantry": ["chicken breast", "pasta", "cream", "parmesan cheese"], "preferences": "dinner", "goals": ["high_protein"]},
+ {"id": "w07", "group": "wish", "pantry": ["egg", "milk", "bread", "butter"], "preferences": "something sweet for breakfast"},
+ {"id": "w08", "group": "wish", "pantry": ["chicken breast", "rice", "onion", "garlic"], "preferences": "a soup"},
+ {"id": "w09", "group": "wish", "pantry": ["lettuce", "tomato", "cucumber", "feta cheese"], "preferences": "a light lunch salad"},
+ {"id": "w10", "group": "wish", "pantry": ["flour", "butter", "sugar", "egg"], "preferences": "a dessert"},
+ {"id": "w11", "group": "wish", "pantry": ["ground beef", "tortilla", "cheddar cheese", "tomato"], "preferences": "a mexican dinner"},
+ {"id": "w12", "group": "vague", "pantry": ["egg", "potato", "onion", "cheese"], "preferences": "anything"}
+]

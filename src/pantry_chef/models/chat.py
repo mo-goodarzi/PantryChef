@@ -29,6 +29,7 @@ class RecipeOption(BaseModel):
     adaptations: list[str] = Field(default_factory=list)  # "use your toast instead of bread"
     also_needs: list[str] = Field(default_factory=list)  # missing non-key / key items
     warnings: list[str] = Field(default_factory=list)  # allergy review: leave out / check
+    fit_note: str | None = None  # wish-fit check: "Partly fits: ..."
 
 
 class Question(BaseModel):
