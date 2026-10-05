@@ -612,7 +612,20 @@ the phrase that the chat no longer sends.
   Without goals it equals `preferences`, so cached judgments of the other 50 cases stay
   valid.
 
-**Measured:** to do. The 98% / 0.83 / 4.45 for the chat variant in the entry above was
-measured with the old d13/d14 wording; re-run
-`uv run python eval/run_eval.py --suite search` (needs the database and API keys) and
-put the before/after here.
+**Measured** (52 cases, new d13/d14 wording; both runs use this branch's cases and judge,
+so only the reranker differs): `eval/reports/search_20261005-0944.md` (before) ->
+`..._0948.md` (after)
+
+| Variant | hit@5 | MRR | judge | allergen violations |
+|---|---|---|---|---|
+| semantic+matcher+usage (no rerank, code unchanged) | 96% -> 96% | 0.78 -> 0.78 | 4.07 -> 4.07 | 0 |
+| semantic+matcher+usage+rerank (chat) | 96% -> 98% | 0.81 -> 0.88 | 4.45 -> 4.43 | 0 |
+
+What the fix itself changed: **d14** (tofu) put a side dish first before (vegan cheesy
+broccoli rice, judge 4) and a tofu main first after (tofu cutlets, 5); reciprocal rank
+0.50 -> 1.00. **d13** (steak) was already five steak dishes rated 5 in both runs: the
+coverage penalty keeps potato sides out of the reranker's shortlist, so the gap did not
+show there. Most of the MRR gain comes from cases without goals (b04, l01, l04, v03 up;
+l05, s07 down), which the change does not affect apart from a "Goals: none" line, so it is
+mostly run-to-run LLM variation; only d14's +0.01 of the +0.07 is attributable. The old
+chat numbers (98% / 0.83 / 4.45, entry above) were measured with the old d13/d14 wording.
