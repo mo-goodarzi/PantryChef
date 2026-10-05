@@ -2,6 +2,7 @@
 
 Usage:
     uv run python eval/run_eval.py --suite search --variants coverage
+    uv run python eval/run_eval.py --variants semantic+matcher+usage+rerank --repeats 3
 """
 
 import argparse
@@ -58,6 +59,9 @@ def main() -> None:
     parser.add_argument("--variants", default=",".join(VARIANTS))
     parser.add_argument("--cases", type=Path, default=ROOT / "cases" / "search.json")
     parser.add_argument("--limit", type=int, default=None, help="only the first N cases")
+    parser.add_argument(
+        "--repeats", type=int, default=1, help="run each variant N times (LLM steps vary)"
+    )
     parser.add_argument("--db", type=Path, default=settings.db_path)
     parser.add_argument(
         "--judge-cache", type=Path, default=Path("data/processed/eval_cache/judgments.json")
@@ -78,30 +82,35 @@ def main() -> None:
         expander, verifier = matching_from_settings(settings, conn, semantic.embedder, state)
 
     all_results = {}
+    repeats: dict[str, list] = {}
     for variant in variants:
         options = VARIANTS[variant]
-        all_results[variant] = evaluate_variant(
-            conn,
-            cases,
-            variant,
-            lambda q, o=options: find_recipes(
+        for run in range(1, args.repeats + 1):
+            name = variant if args.repeats == 1 else f"{variant} #{run}"
+            all_results[name] = evaluate_variant(
                 conn,
-                q,
-                o,
-                semantic=semantic,
-                reranker=reranker,
-                verifier=verifier,
-                expander=expander,
-            ),
-            judge,
-            vectors=semantic.store.get_vectors if semantic else None,
-        )
-        s = summarize(all_results[variant])
-        print(
-            f"{variant:>10}: hit@5 {s['hit_at_5']:.0%}  MRR {s['mrr']:.2f}  "
-            f"judge {s['mean_judge_score']:.2f}  allergen violations {s['allergen_violations']}  "
-            f"similarity {s['intra_list_similarity'] or 0:.3f}"
-        )
+                cases,
+                variant,
+                lambda q, o=options: find_recipes(
+                    conn,
+                    q,
+                    o,
+                    semantic=semantic,
+                    reranker=reranker,
+                    verifier=verifier,
+                    expander=expander,
+                ),
+                judge,
+                vectors=semantic.store.get_vectors if semantic else None,
+            )
+            repeats.setdefault(variant, []).append(all_results[name])
+            s = summarize(all_results[name])
+            print(
+                f"{name:>10}: hit@5 {s['hit_at_5']:.0%}  MRR {s['mrr']:.2f}  "
+                f"judge {s['mean_judge_score']:.2f}  "
+                f"allergen violations {s['allergen_violations']}  "
+                f"similarity {s['intra_list_similarity'] or 0:.3f}"
+            )
 
     meta = {
         "timestamp": datetime.now().strftime("%Y%m%d-%H%M"),
@@ -109,8 +118,11 @@ def main() -> None:
         "judge_model": settings.llm_model,
         "judge_prompt_version": judge.prompt.version,
         "variants": list(all_results),
+        "repeats": args.repeats,
     }
-    md_path, _ = write_report(all_results, ROOT / "reports", meta)
+    md_path, _ = write_report(
+        all_results, ROOT / "reports", meta, repeats if args.repeats > 1 else None
+    )
     print(f"\nReport: {md_path}  (judge calls this run: {judge.calls})")
 
 
