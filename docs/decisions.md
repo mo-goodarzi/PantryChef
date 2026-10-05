@@ -629,3 +629,55 @@ show there. Most of the MRR gain comes from cases without goals (b04, l01, l04, 
 l05, s07 down), which the change does not affect apart from a "Goals: none" line, so it is
 mostly run-to-run LLM variation; only d14's +0.01 of the +0.07 is attributable. The old
 chat numbers (98% / 0.83 / 4.45, entry above) were measured with the old d13/d14 wording.
+
+## 2026-10-05 — High protein includes eggs, tofu, beans, lentils; repeated eval runs
+
+**Owner decision:** eggs, tofu, beans, lentils and other protein sources count as high
+protein, not only meat and fish.
+
+**Rule** (`search/coverage.py`, `is_high_protein`): a key meat or fish ingredient, **or** a
+key protein-source ingredient (category `protein`) with >= 20% of the daily value per
+serving (the US "high in" level, 10 g) **and** >= 20% of calories from protein
+(`protein_pdv * 2 kcal / calories`). Why the calorie share: eggs are a key ingredient of
+most cakes, and per-serving numbers alone let egg desserts in (eggnog 38%, butter cookies
+30%, cheesecake 20% of DV), but their calorie share is low (14%, 5%, 7%), while lentil dhal
+(21%), black beans (24%) and scrambled eggs (36%) pass. A protein-source ingredient is
+required because the numbers alone are noisy (a pizza dough at 363% DV). Dairy does not
+count as a protein source: it mostly added cheese pizzas and dips. The old fallback
+"protein_pdv >= 40, no ingredient needed" counted 3,369 desserts as high protein; removed.
+Meat and fish still count without numbers (Food.com cannot count "4 steaks"). The
+`rerank` prompt (v3) uses the same definition.
+
+**Repeated runs** (owner: "do what is better"): the models are reasoning models without a
+temperature setting, so the reranker cannot be made deterministic. `run_eval.py --repeats N`
+runs each variant N times; the report adds mean and min-max of hit@5, MRR and judge score.
+A difference only counts when it is larger than that spread. Without the reranker the
+pipeline is deterministic (all repeats identical: the matcher's answers are cached).
+
+**Measured** (3 repeats each; before = `main`'s search code with this branch's eval code):
+
+All 52 cases (`search_20261005-1012.md` -> `..._1022.md`):
+
+| Variant | hit@5 | MRR | judge |
+|---|---|---|---|
+| no rerank, before / after | 96% / 96% | 0.78 / 0.77 | 4.07 / 4.09 |
+| rerank (chat), before | 98% (98-98%) | 0.86 (0.85-0.87) | 4.45 (4.45-4.46) |
+| rerank (chat), after | 97% (96-98%) | 0.83 (0.81-0.85) | 4.45 (4.45-4.46) |
+
+The 50 cases without goals only changed through the reranker prompt (within the spread).
+The deterministic d14 (tofu) moved from rank 1 to 3 without the reranker: more dishes now
+qualify (vegan cheesy broccoli rice, vegan bacon) and outrank mock chicken tofu on ingredient
+and wish scores; the rule itself passes the tofu dishes.
+
+The 5 high-protein cases, with new d15 (red lentils), d16 (eggs, breakfast) and d17 (black
+beans, quick lunch) (`search_20261005-1025.md` -> `..._1027.md`):
+
+| Variant | hit@5 | MRR | judge |
+|---|---|---|---|
+| no rerank, before / after | 80% / 100% | 0.70 / 0.63 | 3.50 / 4.12 |
+| rerank (chat), before | 80% (80-80%) | 0.60 (0.60-0.60) | 4.29 (4.29-4.29) |
+| rerank (chat), after | 100% (100-100%) | 0.80 (0.80-0.80) | 4.51 (4.44-4.56) |
+
+d17 before: plain rice sides, a sauce and elephant ears (a dessert); after: black bean
+soup, vegetarian black bean soup and chili. Lentils and eggs were good before and stay good.
+Five cases is a small set; the full suite now has 55 cases.

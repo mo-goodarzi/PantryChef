@@ -165,27 +165,45 @@ def test_protein_item_counts_double_in_usage(enriched_conn):
 
 
 @pytest.mark.parametrize(
-    ("protein_pdv", "meat_or_fish", "penalty"),
+    ("facts", "high"),
     [
-        (63.0, True, 0.0),  # chicken dish
-        (0.0, True, 0.0),  # steak the nutrition data could not count
-        (40.0, False, 0.0),  # exactly the threshold (eggs, beans, tofu dishes)
-        (39.9, False, 0.25),
-        (None, False, 0.25),  # unknown nutrition is not high protein
+        # meat or fish: enough on its own, whatever the nutrition data says
+        ({"protein_pdv": 63.0, "calories": 400.0, "meat_or_fish_key": True}, True),
+        ({"protein_pdv": 0.0, "calories": 0.0, "meat_or_fish_key": True}, True),  # "4 steaks"
+        # other protein sources (eggs, tofu, beans, lentils) need >= 20% DV and >= 20% kcal
+        ({"protein_pdv": 26.0, "calories": 220.0, "protein_source_key": True}, True),  # lentils
+        ({"protein_pdv": 20.0, "calories": 200.0, "protein_source_key": True}, True),  # edges
+        ({"protein_pdv": 19.9, "calories": 100.0, "protein_source_key": True}, False),
+        ({"protein_pdv": 30.0, "calories": 1200.0, "protein_source_key": True}, False),  # cookies
+        ({"protein_pdv": 30.0, "calories": None, "protein_source_key": True}, False),
+        # no protein source: the numbers alone are too noisy (pizza dough at 363%)
+        ({"protein_pdv": 363.0, "calories": 1000.0}, False),
+        ({}, False),  # unknown nutrition is not high protein
     ],
 )
-def test_high_protein_penalty(protein_pdv, meat_or_fish, penalty):
+def test_high_protein_rule(facts, high):
     from pantry_chef.models.query import NutritionGoal
-    from pantry_chef.search.coverage import goal_penalty
+    from pantry_chef.search.coverage import ProteinFacts, goal_penalty, is_high_protein
 
-    goals = [NutritionGoal.HIGH_PROTEIN]
-    assert goal_penalty(goals, protein_pdv, meat_or_fish) == pytest.approx(penalty)
-    assert goal_penalty([], protein_pdv, meat_or_fish) == 0.0
+    recipe = ProteinFacts(**facts)
+    assert is_high_protein(recipe) is high
+    assert goal_penalty([NutritionGoal.HIGH_PROTEIN], recipe) == (0.0 if high else 0.25)
+    assert goal_penalty([], recipe) == 0.0
+
+
+def test_protein_calorie_share():
+    from pantry_chef.search.coverage import protein_calorie_share
+
+    assert protein_calorie_share(25.0, 250.0) == pytest.approx(0.2)  # 12.5 g = 50 of 250 kcal
+    assert protein_calorie_share(25.0, 0.0) is None
+    assert protein_calorie_share(None, 250.0) is None
 
 
 def test_high_protein_goal_lowers_only_recipes_that_miss_it(enriched_conn):
     from pantry_chef.models.query import NutritionGoal
 
+    # Poached eggs: 2 eggs instead of 1 per serving (24% DV, 143 kcal -> 34% from protein).
+    enriched_conn.execute("UPDATE recipes SET protein_pdv = 24, calories = 143 WHERE id = 118761")
     pantry = ["beef", "egg", "butter", "mushroom", "scallion"]
     conditions, params = filter_conditions(RecipeQuery(ingredients=pantry))
 
@@ -195,18 +213,21 @@ def test_high_protein_goal_lowers_only_recipes_that_miss_it(enriched_conn):
 
     plain, goal = scores([]), scores([NutritionGoal.HIGH_PROTEIN])
     assert goal[CALZONES] == plain[CALZONES]  # beef counts although protein_pdv is 6%
-    assert goal[EGG_FOO_YUNG] == plain[EGG_FOO_YUNG]  # 45% protein, no meat
-    assert goal[FETTUCCINE] == pytest.approx(plain[FETTUCCINE] - 0.25)  # 38%: just below
-    assert goal[118761] == pytest.approx(plain[118761] - 0.25)  # poached eggs: 12%
+    assert goal[118761] == plain[118761]  # eggs with the numbers to show it
+    assert goal[PANCAKES] == pytest.approx(plain[PANCAKES] - 0.25)  # eggs, 11% DV
+    # eggs and 45% DV, but 852 kcal of ramen and butter: 11% of calories from protein
+    assert goal[EGG_FOO_YUNG] == pytest.approx(plain[EGG_FOO_YUNG] - 0.25)
+    # 38% DV and 21% of calories, but from dairy only: no protein-source ingredient
+    assert goal[FETTUCCINE] == pytest.approx(plain[FETTUCCINE] - 0.25)
 
 
 def test_search_passes_the_query_goals_to_the_ranking(enriched_conn):
     from pantry_chef.models.query import NutritionGoal
     from pantry_chef.search.engine import search
 
-    query = RecipeQuery(ingredients=["egg"])
+    query = RecipeQuery(ingredients=["egg", "beef"])
     plain = {c.recipe_id: c.ingredient_score for c in search(enriched_conn, query).candidates}
     query = query.model_copy(update={"nutrition_goals": [NutritionGoal.HIGH_PROTEIN]})
     goal = {c.recipe_id: c.ingredient_score for c in search(enriched_conn, query).candidates}
-    assert goal[118761] == pytest.approx(plain[118761] - 0.25)
-    assert goal[EGG_FOO_YUNG] == plain[EGG_FOO_YUNG]
+    assert goal[118761] == pytest.approx(plain[118761] - 0.25)  # one egg: 12% DV
+    assert goal[CALZONES] == plain[CALZONES]

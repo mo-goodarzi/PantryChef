@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from pantry_chef.evaluation.cases import SearchCase
 from pantry_chef.evaluation.judge import CachedJudge, Judgment, JudgmentBatch, recipe_summaries
 from pantry_chef.evaluation.search_eval import evaluate_variant, summarize
@@ -105,3 +107,45 @@ def test_judge_rates_the_wish_with_its_goals_while_the_search_gets_them_apart(
     assert llm.wishes == ["breakfast (high protein)"]
     assert CASE.judged_wish == "pancakes"  # no goals: unchanged, so old judgments still apply
     assert case.model_copy(update={"preferences": ""}).judged_wish == "high protein"
+
+
+def run_of(*relevant_lists):
+    from pantry_chef.evaluation.search_eval import CaseResult
+
+    return [
+        CaseResult(
+            case_id=f"c{i}",
+            group="g",
+            variant="v",
+            recipes=[
+                {"name": "r", "judge_score": 5 if ok else 2, "hard_rule_failures": []}
+                for ok in relevant
+            ],
+            relevant=list(relevant),
+        )
+        for i, relevant in enumerate(relevant_lists)
+    ]
+
+
+def test_repeated_runs_report_mean_and_range():
+    from pantry_chef.evaluation.search_eval import summarize_repeats
+
+    first = run_of([True], [False])  # hit@5 50%, MRR 0.5, judge 3.5
+    second = run_of([False, True], [True])  # hit@5 100%, MRR 0.75, judge 4.0
+    spread = summarize_repeats([first, second])
+    assert spread["hit_at_5"] == pytest.approx((0.75, 0.5, 1.0))
+    assert spread["mrr"] == pytest.approx((0.625, 0.5, 0.75))
+    assert spread["mean_judge_score"] == pytest.approx((3.75, 3.5, 4.0))
+
+
+def test_report_has_a_repeats_table_only_with_repeats(tmp_path):
+    from pantry_chef.evaluation.search_eval import write_report
+
+    runs = [run_of([True], [False]), run_of([False, True], [True])]
+    meta = {"timestamp": "t1", "cases": 2, "judge_model": "m", "judge_prompt_version": "1"}
+    md, data = write_report({"v #1": runs[0], "v #2": runs[1]}, tmp_path, meta, {"v": runs})
+    text = md.read_text()
+    assert "| v | 2 | 75% (50%-100%) | 0.62 (0.50-0.75) | 3.75 (3.50-4.00) |" in text
+    assert json.loads(data.read_text())["repeats"]["v"]["mrr"] == [0.625, 0.5, 0.75]
+    md, _ = write_report({"v": runs[0]}, tmp_path, {**meta, "timestamp": "t2"})
+    assert "Repeats" not in md.read_text()

@@ -129,6 +129,21 @@ def summarize(results: list[CaseResult]) -> dict:
     }
 
 
+REPEAT_METRICS = ("hit_at_5", "mrr", "mean_judge_score")
+
+
+def summarize_repeats(runs: list[list[CaseResult]]) -> dict[str, tuple[float, float, float]]:
+    """Mean, min and max of the main metrics over repeated runs of one variant. The LLM
+    steps (rerank, matcher, judge on new recipes) answer differently from run to run, so a
+    difference between variants only counts when it is larger than this spread."""
+    summaries = [summarize(results) for results in runs]
+    spread = {}
+    for metric in REPEAT_METRICS:
+        values = [s[metric] for s in summaries]
+        spread[metric] = (sum(values) / len(values), min(values), max(values))
+    return spread
+
+
 def by_group(results: list[CaseResult]) -> dict[str, float]:
     groups: dict[str, list[float]] = defaultdict(list)
     for r in results:
@@ -137,9 +152,14 @@ def by_group(results: list[CaseResult]) -> dict[str, float]:
 
 
 def write_report(
-    all_results: dict[str, list[CaseResult]], out_dir: Path, meta: dict
+    all_results: dict[str, list[CaseResult]],
+    out_dir: Path,
+    meta: dict,
+    repeats: dict[str, list[list[CaseResult]]] | None = None,
 ) -> tuple[Path, Path]:
-    """Markdown report (committed) and full JSON results (git-ignored)."""
+    """Markdown report (committed) and full JSON results (git-ignored).
+
+    `repeats` (variant -> its runs) adds a table with each variant's mean and min-max."""
     out_dir.mkdir(parents=True, exist_ok=True)
     stamp = meta["timestamp"]
     md_path = out_dir / f"search_{stamp}.md"
@@ -167,6 +187,23 @@ def write_report(
             f"| {s['cases_without_results']} | {s['errors']} | {s['latency_p50_s']:.2f} "
             f"| {s['latency_p95_s']:.2f} |"
         )
+    spreads = {v: summarize_repeats(runs) for v, runs in (repeats or {}).items()}
+    if spreads:
+        lines += [
+            "",
+            "## Repeats (mean, min-max over runs)",
+            "",
+            "| Variant | runs | hit@5 | MRR | mean judge score |",
+            "|---|---|---|---|---|",
+        ]
+        for variant, spread in spreads.items():
+            hit, mrr, judge = (spread[m] for m in REPEAT_METRICS)
+            lines.append(
+                f"| {variant} | {len((repeats or {})[variant])} "
+                f"| {hit[0]:.0%} ({hit[1]:.0%}-{hit[2]:.0%}) "
+                f"| {mrr[0]:.2f} ({mrr[1]:.2f}-{mrr[2]:.2f}) "
+                f"| {judge[0]:.2f} ({judge[1]:.2f}-{judge[2]:.2f}) |"
+            )
     groups = sorted({g for r in all_results.values() for g in by_group(r)})
     lines += [
         "",
@@ -194,6 +231,7 @@ def write_report(
             {
                 "meta": meta,
                 "summaries": summaries,
+                "repeats": spreads,
                 "results": {v: [asdict(r) for r in rs] for v, rs in all_results.items()},
             },
             indent=1,

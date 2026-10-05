@@ -303,6 +303,58 @@
   ]
  },
  {
+  "id": "d15",
+  "group": "dinner",
+  "pantry": [
+   "red lentil",
+   "onion",
+   "garlic",
+   "canned tomato"
+  ],
+  "preferences": "a warm dinner",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [],
+  "goals": [
+   "high_protein"
+  ]
+ },
+ {
+  "id": "d16",
+  "group": "breakfast",
+  "pantry": [
+   "egg",
+   "spinach",
+   "cheddar cheese",
+   "bread"
+  ],
+  "preferences": "breakfast",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [],
+  "goals": [
+   "high_protein"
+  ]
+ },
+ {
+  "id": "d17",
+  "group": "lunch",
+  "pantry": [
+   "black bean",
+   "rice",
+   "bell pepper",
+   "onion",
+   "flour tortilla"
+  ],
+  "preferences": "a quick lunch",
+  "max_minutes": 30,
+  "allergies": [],
+  "diets": [],
+  "goals": [
+   "high_protein"
+  ]
+ },
+ {
   "id": "l01",
   "group": "lunch",
   "pantry": [
