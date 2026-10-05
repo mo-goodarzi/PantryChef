@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from pantry_chef.ingredients.allergens import Allergen, detect_allergens
 from pantry_chef.ingredients.diet import detect_meat
 from pantry_chef.ingredients.normalize import normalize
+from pantry_chef.ingredients.protein import ProteinFacts, is_high_protein
 from pantry_chef.ingredients.relations import load_seed
 from pantry_chef.ingredients.staples import is_staple
 from pantry_chef.models.ingredient import Category, IngredientLabel, QuantityLabel
@@ -148,6 +149,45 @@ def derive_recipe_data(conn: sqlite3.Connection) -> None:
     )
 
 
+HIGH_PROTEIN_FACTS_SQL = """
+SELECT r.id, r.protein_pdv, r.calories,
+       COALESCE(MAX(ri.is_key = 1 AND i.category = 'protein'
+                    AND (i.contains_meat = 1 OR i.contains_fish = 1)), 0) AS meat_or_fish_key,
+       COALESCE(MAX(ri.is_key = 1 AND i.category = 'protein'), 0) AS protein_source_key
+FROM recipes r
+LEFT JOIN recipe_ingredients ri ON ri.recipe_id = r.id
+LEFT JOIN ingredients i ON i.id = ri.ingredient_id
+GROUP BY r.id
+"""
+
+
+def derive_high_protein(conn: sqlite3.Connection) -> int:
+    """recipes.is_high_protein from the rule in ingredients/protein.py, computed once here
+    instead of during every search. Adds the column to databases built before it existed.
+    Returns the number of high-protein recipes."""
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(recipes)")}
+    if "is_high_protein" not in columns:
+        conn.execute("ALTER TABLE recipes ADD COLUMN is_high_protein INTEGER")
+    flags = [
+        (
+            int(
+                is_high_protein(
+                    ProteinFacts(
+                        protein_pdv=row["protein_pdv"],
+                        calories=row["calories"],
+                        meat_or_fish_key=bool(row["meat_or_fish_key"]),
+                        protein_source_key=bool(row["protein_source_key"]),
+                    )
+                )
+            ),
+            row["id"],
+        )
+        for row in conn.execute(HIGH_PROTEIN_FACTS_SQL)
+    ]
+    conn.executemany("UPDATE recipes SET is_high_protein = ? WHERE id = ?", flags)
+    return sum(flag for flag, _ in flags)
+
+
 def write_relations(conn: sqlite3.Connection, seed: dict[str, dict]) -> int:
     """Store the reviewed relation seed (keyed by canonical name) for every ingredient id.
 
@@ -200,9 +240,11 @@ def enrich_database(
     with conn:
         write_ingredient_facts(conn, facts)
         derive_recipe_data(conn)
+        high_protein = derive_high_protein(conn)
         relation_rows = write_relations(conn, seed)
     return {
         "relation_rows": relation_rows,
+        "high_protein_recipes": high_protein,
         "ingredients": len(facts),
         "labeled": sum(f.category is not None for f in facts.values()),
         "staples": sum(f.is_staple for f in facts.values()),

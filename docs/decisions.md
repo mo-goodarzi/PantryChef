@@ -681,3 +681,21 @@ beans, quick lunch) (`search_20261005-1025.md` -> `..._1027.md`):
 d17 before: plain rice sides, a sauce and elephant ears (a dessert); after: black bean
 soup, vegetarian black bean soup and chili. Lentils and eggs were good before and stay good.
 Five cases is a small set; the full suite now has 55 cases.
+
+## 2026-10-05 — Review fixes: allergy review, allergy words, high protein flag
+
+- **The most serious allergy verdict wins.** When the review returned several verdicts for
+  one recipe (e.g. one per allergen), the last one was kept, so a later "safe" could hide
+  an "unsafe" and the recipe was shown (reproduced). Code now keeps the most serious one
+  (unsafe > uncertain > optional > safe), and `allergy_review` v2 asks for it.
+- **Review verdicts are cached per model**, so switching `ALLERGY_REVIEW_MODEL` reviews
+  again instead of reusing the other model's answers. (The prompt version change also
+  re-reviews every cached recipe once.)
+- **One word-matching rule for both safety layers.** The SQL filter for non-EU allergies
+  only treated "," and "-" as separators, the verifier all punctuation, so
+  "kiwi/strawberry juice" passed the SQL layer. `filters.words_sql()` is built from the
+  same `PUNCTUATION` constant; a test checks both layers agree on tricky names.
+- **`recipes.is_high_protein` is computed once by `enrich_db.py`** instead of two
+  subqueries per candidate in every goal search. Same rule (now in
+  `ingredients/protein.py`). Existing databases: run `scripts/enrich_db.py` once (labels
+  are cached, so it is quick); a goal search on a database without the flag says so.

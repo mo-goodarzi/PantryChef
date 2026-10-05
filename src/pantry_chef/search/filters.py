@@ -6,7 +6,7 @@ and read with json_each, so the SQL never changes with the number of items.
 
 import json
 
-from pantry_chef.ingredients.allergens import allergy_word_variants
+from pantry_chef.ingredients.allergens import PUNCTUATION, allergy_word_variants
 from pantry_chef.ingredients.normalize import normalize
 from pantry_chef.models.query import NUTRITION_LIMITS, Diet, RecipeQuery
 
@@ -19,6 +19,16 @@ DIET_COLUMNS = {
     Diet.VEGAN: "is_vegan",
     Diet.GLUTEN_FREE: "is_gluten_free",
 }
+
+
+def words_sql(expr: str) -> str:
+    """SQL that turns a name into ' word word ' for whole-word LIKE matching, exactly like
+    allergens.mentions_word (lowercase; the same punctuation and '-' become spaces), so
+    the SQL filter and the verifier cannot disagree about a name."""
+    sql = f"lower({expr})"
+    for ch in PUNCTUATION + "-":
+        sql = f"replace({sql}, '{ch.replace(chr(39), chr(39) * 2)}', ' ')"
+    return f"(' ' || {sql} || ' ')"
 
 
 def filter_conditions(query: RecipeQuery) -> tuple[list[str], dict[str, object]]:
@@ -64,9 +74,8 @@ def filter_conditions(query: RecipeQuery) -> tuple[list[str], dict[str, object]]
             "JOIN ingredients i3 ON i3.id = ri3.ingredient_id "
             "JOIN json_each(:other_allergy_words) w "
             "WHERE ri3.recipe_id = r.id AND ("
-            "(' ' || replace(replace(lower(i3.name), ',', ' '), '-', ' ') || ' ') "
-            "LIKE '% ' || w.value || ' %' "
-            "OR (' ' || i3.canonical_name || ' ') LIKE '% ' || w.value || ' %'))"
+            f"{words_sql('i3.name')} LIKE '% ' || w.value || ' %' "
+            f"OR {words_sql('i3.canonical_name')} LIKE '% ' || w.value || ' %'))"
         )
         params["other_allergy_words"] = json.dumps(
             sorted({v for word in query.other_allergies for v in allergy_word_variants(word)})
