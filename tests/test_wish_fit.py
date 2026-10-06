@@ -112,7 +112,7 @@ def test_the_prompt_is_versioned_and_not_marked_sensitive():
     from pantry_chef.llm.prompt_loader import load_prompt
 
     prompt = load_prompt("wish_fit")
-    assert prompt.version == "1" and not prompt.sensitive  # wishes are not health data
+    assert prompt.version == "2" and not prompt.sensitive  # wishes are not health data
 
 
 def test_unanswered_recipes_are_kept_and_unknown_ids_ignored(enriched_conn):
