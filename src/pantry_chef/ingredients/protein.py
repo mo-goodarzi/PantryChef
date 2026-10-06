@@ -1,11 +1,15 @@
 """When does a recipe count as high protein? Computed once per recipe at enrich time
 (recipes.is_high_protein) and used by the "high protein" goal in the ranking.
 
-Food.com's nutrition misses meat it cannot count ("4 steaks" -> 0%), so a key meat or fish
-ingredient is enough. Other protein sources (eggs, tofu, beans, lentils, nuts) need the
-numbers: >= 20% of the daily value per serving (the US "high in" level, 10 g) and >= 20% of
-calories from protein, which keeps out egg desserts (cookies 5%, cheesecake 7%) whatever
-their serving size.
+A key meat or fish ingredient needs >= 20% of the daily value per serving (the US "high in"
+level, 10 g), or no protein number at all: Food.com's nutrition misses meat it cannot count
+("4 steaks" -> 0%). Meat as a topping has real, low numbers (pizza snacks 8%, bacon potatoes
+13%) and does not count. No calorie share for meat: fat would drop hearty dishes such as
+beef stroganoff.
+
+Other protein sources (eggs, tofu, beans, lentils, nuts) need >= 20% of the daily value and
+>= 20% of calories from protein, which keeps out egg desserts (cookies 5%, cheesecake 7%)
+whatever their serving size.
 """
 
 from dataclasses import dataclass
@@ -32,10 +36,11 @@ def protein_calorie_share(protein_pdv: float | None, calories: float | None) -> 
 
 
 def is_high_protein(facts: ProteinFacts) -> bool:
-    """Built around meat or fish, or around another protein source with the numbers to
-    show it (an egg in a cake is a protein source, but the cake fails the calorie share)."""
+    """Built around meat or fish with enough protein (or no number to check), or around
+    another protein source with the numbers to show it (an egg in a cake is a protein
+    source, but the cake fails the calorie share)."""
     if facts.meat_or_fish_key:
-        return True
+        return not facts.protein_pdv or facts.protein_pdv >= HIGH_PROTEIN_PDV
     share = protein_calorie_share(facts.protein_pdv, facts.calories)
     return (
         facts.protein_source_key
