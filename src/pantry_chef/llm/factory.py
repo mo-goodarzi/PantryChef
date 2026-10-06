@@ -36,6 +36,10 @@ class LangChainStructuredLLM:
         self.model = model
         self.model_name = model_name
         self.parse_attempts = parse_attempts
+        # running totals, so an eval can report what a model cost
+        self.calls = 0
+        self.input_tokens = 0
+        self.output_tokens = 0
 
     def generate(self, prompt: Prompt, schema: type[T], **variables: str) -> T:
         text = prompt.render(**variables)
@@ -65,6 +69,9 @@ class LangChainStructuredLLM:
             usage = getattr(result["raw"], "usage_metadata", None) or {}
             record.input_tokens = usage.get("input_tokens")
             record.output_tokens = usage.get("output_tokens")
+            self.calls += 1
+            self.input_tokens += usage.get("input_tokens") or 0
+            self.output_tokens += usage.get("output_tokens") or 0
             parsed = result.get("parsed")
             record.output = (
                 parsed.model_dump(mode="json") if isinstance(parsed, BaseModel) else None

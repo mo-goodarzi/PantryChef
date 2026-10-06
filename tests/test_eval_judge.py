@@ -149,3 +149,13 @@ def test_report_has_a_repeats_table_only_with_repeats(tmp_path):
     assert json.loads(data.read_text())["repeats"]["v"]["mrr"] == [0.625, 0.5, 0.75]
     md, _ = write_report({"v": runs[0]}, tmp_path, {**meta, "timestamp": "t2"})
     assert "Repeats" not in md.read_text()
+
+
+def test_another_judge_model_does_not_reuse_cached_verdicts(enriched_conn, tmp_path):
+    first = FakeJudgeLLM()
+    first.model_name = "gpt-5.4-mini"
+    CachedJudge(first, tmp_path / "j.json").judge(enriched_conn, CASE, [PANCAKES])
+    second = FakeJudgeLLM()
+    second.model_name = "gpt-5.4-nano"
+    CachedJudge(second, tmp_path / "j.json").judge(enriched_conn, CASE, [PANCAKES])
+    assert second.calls == [[PANCAKES]]  # asked again: a new ruler, new verdicts

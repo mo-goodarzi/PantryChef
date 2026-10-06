@@ -374,5 +374,9 @@ def matching_from_settings(
         log_path=Path("data/processed/match_log.jsonl"),
     )
     expander = PantryExpander(embedder, ChromaNameIndex(settings.chroma_path), matcher)
-    hidden = HiddenAllergenChecker(llm, Path("data/processed/hidden_allergens.json"))
+    # a safety check: its own model setting, so a cheaper LLM_MODEL never reaches it
+    hidden_llm = create_llm(
+        settings.model_copy(update={"llm_model": settings.hidden_allergen_model})
+    )
+    hidden = HiddenAllergenChecker(hidden_llm, Path("data/processed/hidden_allergens.json"))
     return expander, Verifier(conn, matcher, hidden)

@@ -79,3 +79,10 @@ def test_each_call_is_traced_as_a_generation(monkeypatch):
     assert fields["model"] == "m1" and fields["prompt_version"] == "1"
     assert fields["sensitive"] is True
     assert calls[1] == ("usage", 12, 3)
+
+
+def test_token_totals_add_up_over_calls():
+    llm = LangChainStructuredLLM(FakeChatModel([OK, BROKEN, OK]), "m")
+    llm.generate(PROMPT, Answer, what="7")
+    llm.generate(PROMPT, Answer, what="7")  # one retry: both attempts are paid for
+    assert (llm.calls, llm.input_tokens, llm.output_tokens) == (3, 36, 9)
