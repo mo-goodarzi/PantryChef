@@ -112,14 +112,27 @@ def score(models: list[str]) -> None:
         llm = create_llm(settings.model_copy(update={"llm_model": model}))
         checker = WishFitChecker(llm, conn)  # no cache: every model answers fresh
         pairs = []
+        per_row = []  # every verdict, so a disagreement can be traced to its recipe
         for probe_id, rows in by_probe.items():
             query = probes[probe_id].to_query()
-            verdicts = checker.verdicts(query, [candidate(conn, r.recipe_id) for r in rows])
+            candidates = {r.recipe_id: candidate(conn, r.recipe_id) for r in rows}
+            verdicts = checker.verdicts(query, list(candidates.values()))
             for r in rows:
                 verdict = verdicts[r.recipe_id]
-                pairs.append((r.label, verdict.fit.value if verdict else "none"))
+                fit = verdict.fit.value if verdict else "none"
+                pairs.append((r.label, fit))
+                per_row.append(
+                    {
+                        "row_id": r.row_id,
+                        "probe_id": probe_id,
+                        "recipe": candidates[r.recipe_id].name,
+                        "human": r.label,
+                        "model": fit,
+                        "reason": verdict.reason if verdict else None,
+                    }
+                )
         s = summarize(pairs)
-        results[model] = s
+        results[model] = {**s, "per_row": per_row}
         removed = f"{s['misfits_removed']:.0%}" if s["misfits_removed"] is not None else "-"
         lines.append(
             f"| {model} | {s['agreement']:.0%} | {removed} | {s['misfits_kept']} "
@@ -128,6 +141,14 @@ def score(models: list[str]) -> None:
     lines += ["", "Counts (human label / model verdict):", ""]
     for model, s in results.items():
         lines.append(f"- {model}: " + ", ".join(f"{k} {v}" for k, v in s["table"].items()))
+    for model, s in results.items():
+        lines += ["", f"Disagreements, {model} (human -> model):", ""]
+        lines += [
+            f"- {r['probe_id']} {r['recipe']}: {r['human']} -> {r['model']}"
+            + (f" ({r['reason']})" if r["reason"] else "")
+            for r in s["per_row"]
+            if r["human"] != r["model"]
+        ]
 
     stamp = datetime.now().strftime("%Y%m%d-%H%M")
     path = ROOT / "reports" / f"wish_fit_{stamp}.md"
