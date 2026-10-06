@@ -732,3 +732,47 @@ before/after search numbers. `WISH_FIT_ENABLED=false` turns it off in chat.
 **Security fix (same day):** `.env.example` contained a Langfuse key pair (committed in
 8e70238 to a public repository). The owner revoked it; the file has empty placeholders
 again, and `tests/test_config.py` fails if any `*_KEY` there has a value.
+
+## 2026-10-06 — Wish-fit measured; meat counts as high protein only with the numbers
+
+**Blind labels** (`eval/reports/wish_fit_labels.csv`, 48 rows from 12 probe wishes: 30
+fits, 4 partly, 14 no). First score (`wish_fit_20261006-1058.md`): 71% agreement, **no good
+recipe removed**, but only 6 of 14 misfits removed (gpt-5.4-mini). Cause: 10 of the 12
+"no" recipes for "high-protein dinner" had `is_high_protein = 1`, and the prompt tells the
+model to trust it. The meat shortcut flagged every recipe with a key meat or fish
+ingredient, also meat as a topping with real, low numbers (pizza cuppers 8% DV, bacon
+wrapped potatoes 13%).
+
+**Owner decision (option C of three):** meat or fish counts only with >= 20% DV per
+serving, or with no protein number at all (Food.com's "4 steaks" -> 0%). No calorie
+share for meat: it would also drop 18,554 hearty dishes with plenty of protein (beef
+stroganoff) because of their fat. Rejected: keep the shortcut (traps stay "high
+protein"); the full numbers rule (drops the stroganoffs). Database: 92,773 -> 80,725
+high-protein recipes.
+
+**Side effect, then the fix (owner decision, option b).** Food.com also undercounts some
+real meat dishes without reaching 0% (filipino beef steak 6% DV at 76 kcal, paprika
+goulash 8%), and the model removed both as "not high protein per recipe data"
+(`wish_fit_20261006-1218.md`: misfits removed 43% -> 86%, good removed 0 -> 2). Code
+cannot separate them from the traps by numbers (goulash 8%/280 kcal vs bacon potatoes
+13%/251 kcal), so `wish_fit` v2 says the flag can undercount meat: when a dish is clearly
+built around meat or fish, the model judges the protein itself; meat as a topping or for
+flavor does not count. Rejected: a "main meat" list in code (always incomplete).
+
+| gpt-5.4-mini | before | rule C | rule C + prompt v2 |
+|---|---|---|---|
+| agreement | 71% | 79% | 81% |
+| misfits removed | 43% | 86% | 86% |
+| good recipes removed | 0 | 2 | **0** |
+
+gpt-5.4 is no better (79% / 79% / 0), so `WISH_FIT_MODEL` stays gpt-5.4-mini and
+`WISH_FIT_ENABLED` stays true. Search eval on the 11 high-protein cases (d13–d17 + the
+w01–w06 probes, one run each, `search_20261006-1215.md` -> `..._1217.md`): mean judge
+3.98 -> 4.04 (plain) and 4.26 -> 4.39 (chat pipeline), within one-run noise; the trap
+recipes move down, but a bacon-and-potato pantry has no real high-protein dinner to find.
+
+**Known disagreement, kept on purpose:** the owner labeled lentil soups "no" for a
+dinner (soup is not dinner for them); both models say "fits". The prompt is left alone:
+many people eat soup for dinner, and tuning the filter to one labeler's taste would
+overfit. These are the 2 misfits still kept. Caveats: 48 rows, one labeler, one run per
+model; the report now lists every disagreement with the model's reason.

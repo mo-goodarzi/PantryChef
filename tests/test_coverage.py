@@ -167,9 +167,16 @@ def test_protein_item_counts_double_in_usage(enriched_conn):
 @pytest.mark.parametrize(
     ("facts", "high"),
     [
-        # meat or fish: enough on its own, whatever the nutrition data says
+        # meat or fish: >= 20% DV, or no number (Food.com cannot count "4 steaks")
         ({"protein_pdv": 63.0, "calories": 400.0, "meat_or_fish_key": True}, True),
         ({"protein_pdv": 0.0, "calories": 0.0, "meat_or_fish_key": True}, True),  # "4 steaks"
+        ({"protein_pdv": None, "meat_or_fish_key": True}, True),
+        ({"protein_pdv": 20.0, "calories": 200.0, "meat_or_fish_key": True}, True),  # edge
+        # meat as a topping: real, low numbers (pizza snacks 8%, bacon potatoes 13%)
+        ({"protein_pdv": 8.0, "calories": 56.0, "meat_or_fish_key": True}, False),
+        ({"protein_pdv": 19.9, "calories": 250.0, "meat_or_fish_key": True}, False),
+        # no calorie share for meat: a fatty stroganoff with plenty of protein still counts
+        ({"protein_pdv": 45.0, "calories": 900.0, "meat_or_fish_key": True}, True),
         # other protein sources (eggs, tofu, beans, lentils) need >= 20% DV and >= 20% kcal
         ({"protein_pdv": 26.0, "calories": 220.0, "protein_source_key": True}, True),  # lentils
         ({"protein_pdv": 20.0, "calories": 200.0, "protein_source_key": True}, True),  # edges
@@ -215,7 +222,7 @@ def test_high_protein_goal_lowers_only_recipes_that_miss_it(enriched_conn):
         return {r.recipe_id: r.ingredient_score for r in rows}
 
     plain, goal = scores([]), scores([NutritionGoal.HIGH_PROTEIN])
-    assert goal[CALZONES] == plain[CALZONES]  # beef counts although protein_pdv is 6%
+    assert goal[CALZONES] == pytest.approx(plain[CALZONES] - 0.25)  # beef filling, 6% DV
     assert goal[118761] == plain[118761]  # eggs with the numbers to show it
     assert goal[PANCAKES] == pytest.approx(plain[PANCAKES] - 0.25)  # eggs, 11% DV
     # eggs and 45% DV, but 852 kcal of ramen and butter: 11% of calories from protein
@@ -225,9 +232,13 @@ def test_high_protein_goal_lowers_only_recipes_that_miss_it(enriched_conn):
 
 
 def test_search_passes_the_query_goals_to_the_ranking(enriched_conn):
+    from pantry_chef.ingredients.enrich import derive_high_protein
     from pantry_chef.models.query import NutritionGoal
     from pantry_chef.search.engine import search
 
+    # Food.com could not count the beef (0%): the meat decides.
+    enriched_conn.execute(f"UPDATE recipes SET protein_pdv = 0 WHERE id = {CALZONES}")
+    derive_high_protein(enriched_conn)
     query = RecipeQuery(ingredients=["egg", "beef"])
     plain = {c.recipe_id: c.ingredient_score for c in search(enriched_conn, query).candidates}
     query = query.model_copy(update={"nutrition_goals": [NutritionGoal.HIGH_PROTEIN]})
@@ -238,7 +249,7 @@ def test_search_passes_the_query_goals_to_the_ranking(enriched_conn):
 
 def test_high_protein_is_computed_once_at_enrich_time(enriched_conn):
     flags = dict(enriched_conn.execute("SELECT id, is_high_protein FROM recipes").fetchall())
-    assert flags[CALZONES] == 1  # beef
+    assert flags[CALZONES] == 0  # beef, but only 6% DV per serving
     assert flags[PANCAKES] == 0  # eggs, but 11% DV
     assert set(flags.values()) <= {0, 1}  # never unknown after enrichment
 
@@ -247,6 +258,7 @@ def test_enrich_adds_the_column_to_an_older_database(enriched_conn):
     from pantry_chef.ingredients.enrich import derive_high_protein
 
     enriched_conn.execute("ALTER TABLE recipes DROP COLUMN is_high_protein")
+    enriched_conn.execute(f"UPDATE recipes SET protein_pdv = 0 WHERE id = {CALZONES}")
     assert derive_high_protein(enriched_conn) >= 1
     assert (
         enriched_conn.execute(
