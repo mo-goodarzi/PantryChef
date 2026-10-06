@@ -24,9 +24,11 @@ class Settings(BaseSettings):
     # eval judge stay fixed (docs/decisions.md, "Model per role").
     # Request parsing, safety intake, rerank and the ingredient matcher:
     llm_model: str = "gpt-5.4-mini"
-    # Safety checks: the final allergy review and the hidden-allergen check.
+    # Safety: the final allergy review, the hidden-allergen check and ingredient labels.
     allergy_review_model: str = "gpt-5.4-mini"
     hidden_allergen_model: str = "gpt-5.4-mini"
+    # Ingredient labels (scripts/label_ingredients.py): their allergens feed the SQL filter.
+    label_model: str = "gpt-5.4-mini"
     wish_fit_model: str = "gpt-5.4-mini"  # the wish-fit check (agents/wish_fit.py)
     judge_model: str = "gpt-5.4-mini"  # eval only: the preference judge (keep it fixed)
     wish_fit_enabled: bool = True  # chat: remove recipes that clearly miss the wish
