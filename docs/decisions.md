@@ -776,3 +776,41 @@ dinner (soup is not dinner for them); both models say "fits". The prompt is left
 many people eat soup for dinner, and tuning the filter to one labeler's taste would
 overfit. These are the 2 misfits still kept. Caveats: 48 rows, one labeler, one run per
 model; the report now lists every disagreement with the model's reason.
+
+## 2026-10-06 — Model per role (cheaper steps, fixed safety and judge)
+
+**Why:** Phase 7 runs every case through the pipeline many times (ablations, repeats). At
+gpt-5.4-mini prices that is about $45–60; gpt-5.4-nano costs about a quarter
+($0.20 / $1.25 per 1M tokens vs $0.75 / $4.50). Not every step needs the same model.
+
+**Owner decision:** one model setting per role:
+
+| Setting | Steps | Model |
+|---|---|---|
+| `LLM_MODEL` | request parsing, safety intake, rerank, ingredient matcher | mini now; nano if its evals hold up |
+| `WISH_FIT_MODEL` | wish-fit check | mini now; nano if its eval holds up |
+| `ALLERGY_REVIEW_MODEL` | final allergy review | mini, fixed (safety) |
+| `HIDDEN_ALLERGEN_MODEL` (new) | hidden-allergen check | mini, fixed (safety) |
+| `JUDGE_MODEL` (new) | preference judge, eval only | mini, fixed (the ruler) |
+
+Before this, the hidden-allergen check and the judge used `LLM_MODEL`, so a cheaper
+`LLM_MODEL` would have changed a safety check and the eval's ruler at the same time. The
+judge cache key now includes the model (one re-judge of cached cases, a few cents).
+
+**When a role moves to nano** (measured, not assumed):
+- `LLM_MODEL`: `eval/run_parsing_eval.py --models gpt-5.4-mini,gpt-5.4-nano` shows
+  **0 missed allergens** and a pass rate within 5 points of mini; and the search eval with
+  `LLM_MODEL=gpt-5.4-nano` keeps hit@5 and the mean judge score within one-run noise.
+- `WISH_FIT_MODEL`: `eval/wish_fit_calibration.py score --models gpt-5.4-mini,gpt-5.4-nano`
+  shows **0 good recipes removed** and agreement within 5 points.
+- The safety models change only after `eval/run_allergy_review.py` shows the new model
+  never shows a required allergen silently.
+
+**Parsing eval** (`eval/cases/parsing.json`, 22 intake + 25 request cases, hand-written):
+scored on the profile and query that code builds, so the alias table's extra codes count.
+A missed allergen code is critical; extra codes (over-strict) are mistakes but safe. The
+report adds tokens and cost per model (`PRICES` in `evaluation/parsing_eval.py`, dated).
+
+**Rejected:** OpenRouter for the main runs (5.5% top-up fee, same token prices for OpenAI
+models; worth it later only to compare non-OpenAI models); Anthropic for the "large model"
+ablation for now (needs a second provider in `llm/factory.py`; gpt-5.4 needs nothing).

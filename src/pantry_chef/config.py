@@ -20,10 +20,15 @@ class Settings(BaseSettings):
 
     # LLM
     llm_provider: Literal["openai"] = "openai"
+    # One model per role, so cheap steps can use a small model while safety checks and the
+    # eval judge stay fixed (docs/decisions.md, "Model per role").
+    # Request parsing, safety intake, rerank and the ingredient matcher:
     llm_model: str = "gpt-5.4-mini"
-    # Model for the final allergy review (one call per turn, ~10 recipes); can be stronger.
+    # Safety checks: the final allergy review and the hidden-allergen check.
     allergy_review_model: str = "gpt-5.4-mini"
+    hidden_allergen_model: str = "gpt-5.4-mini"
     wish_fit_model: str = "gpt-5.4-mini"  # the wish-fit check (agents/wish_fit.py)
+    judge_model: str = "gpt-5.4-mini"  # eval only: the preference judge (keep it fixed)
     wish_fit_enabled: bool = True  # chat: remove recipes that clearly miss the wish
     llm_reasoning_effort: Literal["minimal", "low", "medium", "high"] = "low"
     llm_timeout_seconds: float = 120

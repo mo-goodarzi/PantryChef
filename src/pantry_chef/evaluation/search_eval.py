@@ -173,6 +173,10 @@ def write_report(
         f"(prompt preference_judge v{meta['judge_prompt_version']}) | "
         f"good = hard rules pass AND judge score >= {GOOD_SCORE}",
         "",
+    ]
+    if meta.get("pipeline_models"):  # older runs did not record it
+        lines += [f"Models: {meta['pipeline_models']}", ""]
+    lines += [
         "| Variant | hit@5 | MRR | mean judge score | hard-rule pass | allergen violations "
         "| top-5 similarity (lower = more varied) | no results | errors | p50 s | p95 s |",
         "|---|---|---|---|---|---|---|---|---|---|---|",

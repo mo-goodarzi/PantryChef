@@ -38,13 +38,14 @@ class CachedJudge:
         self.llm = llm
         self.cache_path = cache_path
         self.prompt = load_prompt(PROMPT_NAME)
+        self.model_name = getattr(llm, "model_name", "unknown")  # another judge, new verdicts
         self.cache: dict[str, dict] = (
             json.loads(cache_path.read_text()) if cache_path.exists() else {}
         )
         self.calls = 0
 
     def key(self, case: SearchCase, recipe_id: int) -> str:
-        return f"{case.id}:{case_key(case)}:{recipe_id}:v{self.prompt.version}"
+        return f"{case.id}:{case_key(case)}:{recipe_id}:v{self.prompt.version}:{self.model_name}"
 
     def judge(
         self, conn: sqlite3.Connection, case: SearchCase, recipe_ids: list[int]

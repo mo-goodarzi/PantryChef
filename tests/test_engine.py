@@ -89,3 +89,30 @@ def test_candidates_carry_the_nutrition_the_verifier_checks(enriched_conn):
     result = search(enriched_conn, RecipeQuery(ingredients=["flour", "butter", "eggs", "milk"]))
     pancakes = next(c for c in result.candidates if c.recipe_id == PANCAKES)
     assert (pancakes.sugar_pdv, pancakes.sodium_pdv) == (17.0, 13.0)
+
+
+def test_the_hidden_allergen_check_keeps_its_own_model(monkeypatch, tmp_path, state_conn):
+    """A cheaper LLM_MODEL must never reach a safety check."""
+    from pantry_chef.config import Settings
+    from pantry_chef.llm import factory
+    from pantry_chef.search import engine, semantic
+
+    created = []
+
+    class Recorded:
+        def __init__(self, model):
+            self.model_name = model
+
+    monkeypatch.setattr(
+        factory, "create_llm", lambda s: created.append(s.llm_model) or Recorded(s.llm_model)
+    )
+    monkeypatch.setattr(semantic, "ChromaNameIndex", lambda path: None)
+    settings = Settings(
+        _env_file=None,
+        db_path=tmp_path / "pantry.db",
+        llm_model="gpt-5.4-nano",
+        hidden_allergen_model="gpt-5.4-mini",
+    )
+    _, verifier = engine.matching_from_settings(settings, None, None, state_conn)
+    assert verifier.hidden_checker.llm.model_name == "gpt-5.4-mini"
+    assert created == ["gpt-5.4-nano", "gpt-5.4-mini"]  # matcher, hidden-allergen check

@@ -3,6 +3,7 @@
 Usage:
     uv run python eval/run_eval.py --suite search --variants coverage
     uv run python eval/run_eval.py --variants semantic+matcher+usage+rerank --repeats 3
+    LLM_MODEL=gpt-5.4-nano WISH_FIT_MODEL=gpt-5.4-nano uv run python eval/run_eval.py ...
 """
 
 import argparse
@@ -10,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 from pantry_chef.agents.wish_fit import WishFitChecker
-from pantry_chef.config import get_settings
+from pantry_chef.config import Settings, get_settings
 from pantry_chef.db.connection import connect
 from pantry_chef.db.state import open_state_db
 from pantry_chef.evaluation.cases import load_cases
@@ -57,6 +58,14 @@ VARIANTS = {
 }
 
 
+def pipeline_models(settings: Settings) -> str:
+    """The models behind the variants, written into the report so runs can be compared."""
+    return (
+        f"llm {settings.llm_model}, wish-fit {settings.wish_fit_model}, "
+        f"hidden allergens {settings.hidden_allergen_model}"
+    )
+
+
 def main() -> None:
     settings = get_settings()
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -76,7 +85,9 @@ def main() -> None:
     configure_logging("WARNING")
     conn = connect(args.db)
     cases = load_cases(args.cases)[: args.limit]
-    judge = CachedJudge(create_llm(settings), args.judge_cache)
+    # the judge has its own model, so LLM_MODEL=gpt-5.4-nano changes the pipeline, not the ruler
+    judge_llm = create_llm(settings.model_copy(update={"llm_model": settings.judge_model}))
+    judge = CachedJudge(judge_llm, args.judge_cache)
     variants = args.variants.split(",")
     needs_semantic = any(VARIANTS[v].use_semantic for v in variants)
     semantic = semantic_from_settings(settings) if needs_semantic else None
@@ -127,7 +138,8 @@ def main() -> None:
     meta = {
         "timestamp": datetime.now().strftime("%Y%m%d-%H%M"),
         "cases": len(cases),
-        "judge_model": settings.llm_model,
+        "judge_model": settings.judge_model,
+        "pipeline_models": pipeline_models(settings),
         "judge_prompt_version": judge.prompt.version,
         "variants": list(all_results),
         "repeats": args.repeats,
