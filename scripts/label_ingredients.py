@@ -53,14 +53,16 @@ def main() -> None:
     with trace("label_ingredients"):
         summary = label_ingredients(
             names,
-            create_llm(settings),
+            # LABEL_MODEL, not LLM_MODEL: the allergen labels feed the SQL allergen filter,
+            # so a cheaper LLM_MODEL must never reach them
+            create_llm(settings.model_copy(update={"llm_model": settings.label_model})),
             args.cache or default_cache,
             task=task,
             batch_size=args.batch_size,
             limit=args.limit,
             workers=args.workers,
         )
-    print(f"\nTask: {args.task} | model: {settings.llm_model}")
+    print(f"\nTask: {args.task} | model: {settings.label_model}")
     print(f"  ingredients       {summary.requested:>7,}")
     print(f"  already cached    {summary.already_cached:>7,}")
     print(f"  newly labeled     {summary.labeled:>7,}")

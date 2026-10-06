@@ -791,6 +791,7 @@ gpt-5.4-mini prices that is about $45–60; gpt-5.4-nano costs about a quarter
 | `WISH_FIT_MODEL` | wish-fit check | mini now; nano if its eval holds up |
 | `ALLERGY_REVIEW_MODEL` | final allergy review | mini, fixed (safety) |
 | `HIDDEN_ALLERGEN_MODEL` (new) | hidden-allergen check | mini, fixed (safety) |
+| `LABEL_MODEL` (added in review) | ingredient labels (`scripts/label_ingredients.py`) | mini, fixed (safety) |
 | `JUDGE_MODEL` (new) | preference judge, eval only | mini, fixed (the ruler) |
 
 Before this, the hidden-allergen check and the judge used `LLM_MODEL`, so a cheaper
