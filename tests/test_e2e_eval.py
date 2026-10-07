@@ -1,6 +1,8 @@
 """End-to-end eval: the simulated user drives the real graph on the fixture database
 (scripted LLM), and code checks what was shown against the case's truth."""
 
+from pathlib import Path
+
 import pytest
 
 from pantry_chef.agents.finder import RequestAnswer
@@ -11,6 +13,7 @@ from pantry_chef.evaluation.e2e import (
     SimulatedUser,
     TrueAmount,
     failure_codes,
+    load_e2e_cases,
     missing_key,
     run_case,
     summarize,
@@ -184,3 +187,9 @@ def test_a_model_without_a_price_stops_the_cost_count():
     # a missing price must never let a run slip past its spending cap
     with pytest.raises(ValueError, match="no price"):
         usage.total_cost({"mystery-model": usage.ModelUsage(1, 10, 10)})
+
+
+@pytest.mark.parametrize("name", ["e2e.json", "safety.json"])
+def test_case_files_load(name):
+    cases = load_e2e_cases(Path(__file__).parents[1] / "eval" / "cases" / name)
+    assert cases and all(c.pantry or not c.expect_recipe for c in cases)
