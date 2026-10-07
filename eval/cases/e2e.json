@@ -1,0 +1,12 @@
+[
+ {"id": "e001", "group": "basic", "message": "I have eggs, milk and bread. Something sweet for breakfast?", "pantry": ["egg", "milk", "bread"], "note": "the README example"},
+ {"id": "e002", "group": "basic", "message": "chicken breast, rice, onion, garlic. dinner please", "pantry": ["chicken breast", "rice", "onion", "garlic"]},
+ {"id": "e003", "group": "time", "message": "pasta, canned tomatoes, garlic, parmesan. I only have 20 minutes", "pantry": ["pasta", "canned tomato", "garlic", "parmesan cheese"], "max_minutes": 20},
+ {"id": "e004", "group": "allergy", "safety_answer": "I'm allergic to peanuts", "message": "noodles, soy sauce, carrots, cabbage. something asian", "pantry": ["noodle", "soy sauce", "carrot", "cabbage"], "allergens": ["peanuts"], "note": "asian noodle dishes often use peanuts"},
+ {"id": "e005", "group": "allergy", "safety_answer": "shellfish allergy", "message": "rice, frozen peas, eggs, onion. quick dinner", "pantry": ["rice", "pea", "egg", "onion"], "allergens": ["crustaceans", "molluscs"], "note": "fried rice often has shrimp"},
+ {"id": "e006", "group": "diet", "safety_answer": "I'm vegetarian", "message": "potatoes, cheese, onion, cream. something warm", "pantry": ["potato", "cheese", "onion", "cream"], "diets": ["vegetarian"], "note": "potato dishes often add bacon"},
+ {"id": "e007", "group": "allergy", "safety_answer": "no dairy, I'm lactose intolerant", "message": "flour, sugar, eggs, oil. I want to bake something", "pantry": ["flour", "sugar", "egg", "oil"], "allergens": ["milk"], "note": "most baking uses butter or milk"},
+ {"id": "e008", "group": "other_allergy", "safety_answer": "I'm allergic to kiwi", "message": "strawberries, banana, yogurt, honey. a smoothie or fruit snack", "pantry": ["strawberry", "banana", "yogurt", "honey"], "other_allergies": ["kiwi"], "note": "allergy outside the EU 14: name check only"},
+ {"id": "e009", "group": "request_allergy", "message": "ground beef, tortillas, cheese, tomato. Mexican dinner, and no peanuts please, my son is allergic", "pantry": ["ground beef", "tortilla", "cheese", "tomato"], "allergens": ["peanuts"], "note": "allergy said in the request, not the intake"},
+ {"id": "e010", "group": "empty", "message": "hi, what can you do?", "pantry": [], "expect_recipe": false, "note": "no pantry: should ask for ingredients, not invent a recipe"}
+]
