@@ -1,7 +1,7 @@
 [
  {"id": "e001", "group": "basic", "message": "I have eggs, milk and bread. Something sweet for breakfast?", "pantry": ["egg", "milk", "bread"], "note": "the README example"},
  {"id": "e002", "group": "basic", "message": "chicken breast, rice, onion, garlic. dinner please", "pantry": ["chicken breast", "rice", "onion", "garlic"]},
- {"id": "e003", "group": "time", "message": "pasta, canned tomatoes, garlic, parmesan. I only have 20 minutes", "pantry": ["pasta", "canned tomato", "garlic", "parmesan cheese"], "max_minutes": 20},
+ {"id": "e003", "group": "time", "message": "pasta, canned tomatoes, garlic, parmesan. I only have 20 minutes", "pantry": ["pasta", "canned tomato", "garlic", "parmesan cheese"], "also_ok": ["spaghetti", "penne", "linguine", "fettuccine", "macaroni", "rigatoni", "fusilli", "angel hair pasta", "noodle"], "max_minutes": 20},
  {"id": "e004", "group": "allergy", "safety_answer": "I'm allergic to peanuts", "message": "noodles, soy sauce, carrots, cabbage. something asian", "pantry": ["noodle", "soy sauce", "carrot", "cabbage"], "allergens": ["peanuts"], "note": "asian noodle dishes often use peanuts"},
  {"id": "e005", "group": "allergy", "safety_answer": "shellfish allergy", "message": "rice, frozen peas, eggs, onion. quick dinner", "pantry": ["rice", "pea", "egg", "onion"], "allergens": ["crustaceans", "molluscs"], "note": "fried rice often has shrimp"},
  {"id": "e006", "group": "diet", "safety_answer": "I'm vegetarian", "message": "potatoes, cheese, onion, cream. something warm", "pantry": ["potato", "cheese", "onion", "cream"], "diets": ["vegetarian"], "note": "potato dishes often add bacon"},
