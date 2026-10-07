@@ -13,15 +13,9 @@ from pathlib import Path
 from pantry_chef.agents.finder import build_query
 from pantry_chef.agents.safety import SafetyIntake
 from pantry_chef.ingredients.normalize import normalize
+from pantry_chef.llm.usage import PRICES, cost_usd  # noqa: F401  (re-exported for the runner)
 from pantry_chef.models.profile import UserProfile
 from pantry_chef.models.query import RecipeQuery
-
-# USD per 1M tokens (input, output), checked 2026-10-06; update when prices change.
-PRICES: dict[str, tuple[float, float]] = {
-    "gpt-5.4": (2.50, 15.00),
-    "gpt-5.4-mini": (0.75, 4.50),
-    "gpt-5.4-nano": (0.20, 1.25),
-}
 
 
 @dataclass
@@ -128,13 +122,6 @@ def score_request(case: RequestCase, query: RecipeQuery) -> CaseResult:
 def request_query(answer) -> RecipeQuery:
     """The query code builds from a parsed message for a user with no saved profile."""
     return build_query(UserProfile(), answer)
-
-
-def cost_usd(model: str, input_tokens: int, output_tokens: int) -> float | None:
-    if model not in PRICES:
-        return None
-    price_in, price_out = PRICES[model]
-    return (input_tokens * price_in + output_tokens * price_out) / 1_000_000
 
 
 def summarize(results: list[CaseResult]) -> dict:
