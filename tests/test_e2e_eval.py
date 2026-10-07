@@ -1,0 +1,140 @@
+"""End-to-end eval: the simulated user drives the real graph on the fixture database
+(scripted LLM), and code checks what was shown against the case's truth."""
+
+import pytest
+
+from pantry_chef.agents.finder import RequestAnswer
+from pantry_chef.agents.safety import AllergyMention, SafetyAnswer
+from pantry_chef.evaluation.e2e import (
+    E2ECase,
+    E2EResult,
+    SimulatedUser,
+    TrueAmount,
+    failure_codes,
+    run_case,
+    summarize,
+)
+from pantry_chef.ingredients.allergens import Allergen
+from pantry_chef.llm import usage
+from pantry_chef.models.chat import (
+    AmountReply,
+    ChoiceReply,
+    ConfirmReply,
+    Question,
+    QuestionKind,
+    SafetyReply,
+)
+from pantry_chef.models.query import AmountStatus
+from tests.test_graph import BAKING, ScriptedLLM, conversation, make_deps
+
+MESSAGE = "I have flour, butter, eggs and milk, something for breakfast"
+PANTRY = ["flour", "butter", "eggs", "milk"]
+
+
+def case(**fields) -> E2ECase:
+    return E2ECase(**{"id": "t1", "group": "test", "message": MESSAGE, "pantry": PANTRY} | fields)
+
+
+def run(enriched_conn, state_conn, llm, test_case):
+    chat = conversation(make_deps(enriched_conn, state_conn, llm), user_id=None)
+    return run_case(chat, enriched_conn, test_case)
+
+
+# --- the simulated user ----------------------------------------------------------------
+
+
+def test_simulated_user_answers_each_question_the_same_way():
+    user = SimulatedUser(case(safety_answer="peanuts", amounts={"egg": TrueAmount(quantity=2)}))
+    assert user.answer(Question(kind=QuestionKind.SAFETY, text="?")) == SafetyReply(text="peanuts")
+    # confirms without reading: the worst case for safety, so intake mistakes count
+    assert user.answer(Question(kind=QuestionKind.SAFETY_CONFIRM, text="?")) == ConfirmReply(
+        correct=True, consent_to_store=False
+    )
+    assert user.answer(Question(kind=QuestionKind.CHOICE, text="?")) == ChoiceReply(choice=1)
+    reply = user.answer(Question(kind=QuestionKind.QUANTITIES, text="?", items=["egg", "milk"]))
+    assert reply.amounts["egg"] == AmountReply(quantity=2, status=AmountStatus.KNOWN)
+    assert reply.amounts["milk"].status is AmountStatus.UNKNOWN  # not in the hidden amounts
+
+
+# --- whole conversations ----------------------------------------------------------------
+
+
+def test_a_clean_conversation_ends_with_a_recipe_that_fits_the_truth(enriched_conn, state_conn):
+    llm = ScriptedLLM(safety_intake=SafetyAnswer(), request_parsing=BAKING)
+    result = run(enriched_conn, state_conn, llm, case())
+    assert result.error is None
+    assert result.recipe_id is not None and result.failures == []
+    assert result.success and not result.safety_violation
+    assert result.questions == {"safety": 1, "safety_confirm": 1, "choice": 1}
+    assert result.searches == 1
+
+
+def test_an_intake_mistake_is_caught_against_the_truth(enriched_conn, state_conn):
+    # The user said "eggs", but the (scripted) intake read nothing: the pipeline searches
+    # without the allergen, and only the check against the truth sees it.
+    llm = ScriptedLLM(safety_intake=SafetyAnswer(), request_parsing=BAKING)
+    result = run(
+        enriched_conn, state_conn, llm, case(safety_answer="eggs", allergens=[Allergen.EGGS])
+    )
+    assert result.safety_violation and not result.success
+    assert any("allergen: egg" in f for f in result.unsafe_shown)
+    assert failure_codes([result])["allergen"] >= 1
+
+
+def test_a_correct_intake_shows_nothing_unsafe(enriched_conn, state_conn):
+    llm = ScriptedLLM(
+        safety_intake=SafetyAnswer(allergies=[AllergyMention(said="egg")]),
+        request_parsing=BAKING,
+    )
+    result = run(
+        enriched_conn, state_conn, llm, case(safety_answer="eggs", allergens=[Allergen.EGGS])
+    )
+    assert result.unsafe_shown == [] and not result.safety_violation
+
+
+def test_no_recipe_is_a_success_when_none_is_expected(enriched_conn, state_conn):
+    llm = ScriptedLLM(safety_intake=SafetyAnswer(), request_parsing=RequestAnswer())
+    result = run(enriched_conn, state_conn, llm, case(message="hello", expect_recipe=False))
+    assert result.recipe_id is None and result.reply and result.success
+
+
+def test_an_error_is_recorded_not_raised(enriched_conn, state_conn):
+    llm = ScriptedLLM(safety_intake=SafetyAnswer())  # no answer for request parsing
+    result = run(enriched_conn, state_conn, llm, case())
+    assert result.error and "KeyError" in result.error and not result.success
+
+
+# --- summary and cost -------------------------------------------------------------------
+
+
+def test_summary_counts_success_safety_and_retries():
+    ok = E2EResult("a", "g", recipe_id=1, searches=1, questions={"choice": 1})
+    unsafe = E2EResult("b", "g", recipe_id=2, failures=["allergen: egg"], searches=3)
+    missing = E2EResult("c", "g", searches=3)  # no recipe although one was expected
+    broken = E2EResult("d", "g", error="TimeoutError: x")
+    s = summarize([ok, unsafe, missing, broken])
+    assert s["task_success"] == 0.25
+    assert s["safety_violations"] == 1
+    assert s["rule_violation_rate"] == 0.5  # of the 2 recipes given, 1 broke a rule
+    assert s["no_recipe"] == 1 and s["errors"] == 1
+    assert s["retries_per_request"] == pytest.approx(4 / 3)  # errors are not averaged in
+    assert failure_codes([ok, unsafe, missing, broken]) == {
+        "allergen": 1,
+        "no_recipe": 1,
+        "error": 1,
+    }
+
+
+def test_usage_meter_prices_each_model():
+    before = usage.snapshot()
+    usage.record("gpt-5.4-mini", 1_000_000, 0)
+    usage.record("gpt-5.4-nano", 0, 1_000_000)
+    spent = usage.since(before)
+    assert spent["gpt-5.4-mini"].calls == 1
+    assert usage.total_cost(spent) == pytest.approx(0.75 + 1.25)
+
+
+def test_a_model_without_a_price_stops_the_cost_count():
+    # a missing price must never let a run slip past its spending cap
+    with pytest.raises(ValueError, match="no price"):
+        usage.total_cost({"mystery-model": usage.ModelUsage(1, 10, 10)})
