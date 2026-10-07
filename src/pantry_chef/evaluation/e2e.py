@@ -17,9 +17,16 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-from pantry_chef.agents.verifier import check_other_allergies
+from pantry_chef.agents.verifier import (
+    check_allergens,
+    check_diet,
+    check_other_allergies,
+    check_time,
+    needs_match,
+)
 from pantry_chef.db.repository import load_nutrition, load_recipe_ingredients
-from pantry_chef.evaluation.metrics import hard_rule_failures, percentile
+from pantry_chef.evaluation.metrics import MAX_MISSING_KEY, percentile
+from pantry_chef.evaluation.parsing_eval import same_item
 from pantry_chef.graph.runner import Conversation
 from pantry_chef.ingredients.allergens import Allergen
 from pantry_chef.llm import usage
@@ -32,7 +39,7 @@ from pantry_chef.models.chat import (
     QuestionKind,
     SafetyReply,
 )
-from pantry_chef.models.query import AmountStatus, Diet, RecipeQuery
+from pantry_chef.models.query import AmountStatus, Diet
 from pantry_chef.models.recipe import Candidate
 
 MAX_TURNS = 10  # a conversation needing more is stuck (counted as an error)
@@ -50,6 +57,9 @@ class E2ECase(BaseModel):
     message: str  # the request, as the user types it
     # --- the truth, written by hand: what every recipe shown must respect ---
     pantry: list[str]  # what the user really has (for "can they make it")
+    # recipe ingredient names the pantry also covers, beyond the whole-word rule
+    # ("pasta" -> ["spaghetti", "penne"]); written by hand per case
+    also_ok: list[str] = Field(default_factory=list)
     allergens: list[Allergen] = Field(default_factory=list)
     other_allergies: list[str] = Field(default_factory=list)  # outside the EU 14 ("kiwi")
     diets: list[Diet] = Field(default_factory=list)
@@ -110,13 +120,19 @@ def load_candidate(conn: sqlite3.Connection, recipe_id: int) -> Candidate:
     )
 
 
-def truth_query(case: E2ECase) -> RecipeQuery:
-    return RecipeQuery(
-        ingredients=case.pantry,
-        required_allergen_free=case.allergens,
-        diets=case.diets,
-        max_minutes=case.max_minutes,
-    )
+def missing_key(candidate: Candidate, case: E2ECase) -> list[str]:
+    """Key ingredients the user does not have. Code only, independent of the pipeline's
+    LLM matcher: a pantry item covers a recipe ingredient when one is a whole-word part of
+    the other ("garlic" / "garlic clove", "tortilla" / "corn tortilla"), or when the case
+    lists it in also_ok ("pasta" -> "spaghetti"). Generous on purpose: it decides "can
+    they make it", never safety ("cheese" also covers "cream cheese")."""
+    have = case.pantry + case.also_ok
+    return [
+        i.canonical_name
+        for i in candidate.ingredients
+        if needs_match(i)
+        and not any(same_item(h, i.canonical_name) or same_item(h, i.name) for h in have)
+    ]
 
 
 SAFETY_PREFIXES = ("allergen", "diet_violation")
@@ -126,9 +142,17 @@ def truth_failures(conn: sqlite3.Connection, recipe_id: int, case: E2ECase) -> l
     """Hard rules the recipe breaks for this user's TRUE needs (empty = fine). Uses our
     ingredient labels, so a recipe the labels get wrong is not caught here either."""
     candidate = load_candidate(conn, recipe_id)
-    failures = hard_rule_failures(candidate, truth_query(case))
-    other = check_other_allergies(candidate, case.other_allergies)
-    return failures + [str(r) for r in other.reasons]
+    checks = [
+        check_allergens(candidate, set(case.allergens)),
+        check_other_allergies(candidate, case.other_allergies),
+        check_diet(candidate, set(case.diets)),
+        check_time(candidate, case.max_minutes),
+    ]
+    failures = [str(r) for c in checks for r in c.reasons]
+    missing = missing_key(candidate, case)
+    if len(missing) > MAX_MISSING_KEY:
+        failures.append(f"missing_key: {', '.join(missing)}")
+    return failures
 
 
 def is_safety_failure(failure: str) -> bool:

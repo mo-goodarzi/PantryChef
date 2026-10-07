@@ -11,6 +11,7 @@ from pantry_chef.evaluation.e2e import (
     SimulatedUser,
     TrueAmount,
     failure_codes,
+    missing_key,
     run_case,
     summarize,
 )
@@ -25,6 +26,7 @@ from pantry_chef.models.chat import (
     SafetyReply,
 )
 from pantry_chef.models.query import AmountStatus
+from pantry_chef.models.recipe import Candidate, RecipeIngredient
 from tests.test_graph import BAKING, ScriptedLLM, conversation, make_deps
 
 MESSAGE = "I have flour, butter, eggs and milk, something for breakfast"
@@ -54,6 +56,50 @@ def test_simulated_user_answers_each_question_the_same_way():
     reply = user.answer(Question(kind=QuestionKind.QUANTITIES, text="?", items=["egg", "milk"]))
     assert reply.amounts["egg"] == AmountReply(quantity=2, status=AmountStatus.KNOWN)
     assert reply.amounts["milk"].status is AmountStatus.UNKNOWN  # not in the hidden amounts
+
+
+# --- "can they make it": code only, generous ---------------------------------------------
+
+
+def recipe(*keys: str, staple: str = "salt") -> Candidate:
+    ingredients = [
+        RecipeIngredient(name=k, canonical_name=k, category="x", is_key=True) for k in keys
+    ]
+    ingredients.append(
+        RecipeIngredient(
+            name=staple, canonical_name=staple, category="x", is_key=True, is_staple=True
+        )
+    )
+    return Candidate(
+        recipe_id=1,
+        name="r",
+        minutes=10,
+        ingredients=ingredients,
+        have_key=0,
+        total_key=0,
+        coverage=0,
+        ingredient_score=0,
+        final_score=0,
+    )
+
+
+@pytest.mark.parametrize(
+    ("pantry", "also_ok", "keys", "missing"),
+    [
+        # the two false failures of the first real run
+        (["garlic", "parmesan cheese"], [], ["garlic clove", "parmesan cheese"], []),
+        (["cheese", "tortilla"], [], ["cheddar cheese", "corn tortilla"], []),
+        (["canned tomato"], [], ["tomato"], []),  # either way round
+        (["eggs"], [], ["egg"], []),  # plural
+        # a different word is not covered without also_ok ...
+        (["pasta"], [], ["spaghetti"], ["spaghetti"]),
+        (["pasta"], ["spaghetti"], ["spaghetti"], []),  # ... and is with it
+        # whole words only: "pea" is not "peanut"; staples are always there
+        (["pea"], [], ["peanut"], ["peanut"]),
+    ],
+)
+def test_missing_key_uses_whole_words_and_also_ok(pantry, also_ok, keys, missing):
+    assert missing_key(recipe(*keys), case(pantry=pantry, also_ok=also_ok)) == missing
 
 
 # --- whole conversations ----------------------------------------------------------------
