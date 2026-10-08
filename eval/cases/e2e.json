@@ -87,7 +87,7 @@
  {"id": "e086", "group": "tiny_pantry", "message": "just eggs and cheese", "pantry": ["egg", "cheese"]},
  {"id": "e087", "group": "tiny_pantry", "message": "only potatoes and butter", "pantry": ["potato", "butter"]},
  {"id": "e088", "group": "tiny_pantry", "message": "rice and beans", "pantry": ["rice", "bean"]},
- {"id": "e089", "group": "big_pantry", "message": "chicken, rice, onion, garlic, carrots, peas, eggs, soy sauce, ginger, spring onion, butter, milk. dinner", "pantry": ["chicken", "rice", "onion", "garlic", "carrot", "pea", "egg", "soy sauce", "ginger", "spring onion", "butter", "milk"]},
+ {"id": "e089", "group": "big_pantry", "message": "chicken, rice, onion, garlic, carrots, peas, eggs, soy sauce, ginger, spring onion, butter, milk. dinner", "pantry": ["chicken", "rice", "onion", "garlic", "carrot", "pea", "egg", "soy sauce", "ginger", "spring onion", "butter", "milk"], "also_ok": ["meat", "vegetable", "mixed vegetable"], "note": "generic key ingredients ('meat', 'vegetable') are covered by the pantry"},
  {"id": "e090", "group": "big_pantry", "message": "flour, sugar, eggs, butter, milk, cocoa, vanilla, baking soda, chocolate chips, cream. bake something special", "pantry": ["flour", "sugar", "egg", "butter", "milk", "cocoa", "vanilla", "baking soda", "chocolate chip", "cream"]},
  {"id": "e091", "group": "messy", "message": "hmm so i got like 3 eggs, some old bread, half a bag of spinach n cheese. idk breakfast?", "pantry": ["egg", "bread", "spinach", "cheese"], "amounts": {"egg": {"quantity": 3}}},
  {"id": "e092", "group": "messy", "message": "chiken, brocoli, rise, soy sause", "pantry": ["chicken", "broccoli", "rice", "soy sauce"], "note": "typos"},
