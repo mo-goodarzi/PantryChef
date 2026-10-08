@@ -25,7 +25,9 @@ from pantry_chef.agents.verifier import (
     needs_match,
 )
 from pantry_chef.db.repository import load_nutrition, load_recipe_ingredients
-from pantry_chef.evaluation.metrics import MAX_MISSING_KEY, percentile
+from pantry_chef.evaluation.cases import SearchCase
+from pantry_chef.evaluation.judge import CachedJudge
+from pantry_chef.evaluation.metrics import GOOD_SCORE, MAX_MISSING_KEY, percentile
 from pantry_chef.evaluation.parsing_eval import same_item
 from pantry_chef.graph.runner import Conversation
 from pantry_chef.ingredients.allergens import Allergen
@@ -178,6 +180,8 @@ class E2EResult:
     cost_usd: float = 0.0
     llm_calls: int = 0
     expect_recipe: bool = True
+    judge_score: int | None = None  # 1-5: how well the final recipe fits the request
+    judge_reason: str | None = None
     error: str | None = None
 
     @property
@@ -195,8 +199,19 @@ class E2EResult:
         return bool(self.unsafe_shown) or any(is_safety_failure(f) for f in self.failures)
 
 
-def run_case(conversation: Conversation, conn: sqlite3.Connection, case: E2ECase) -> E2EResult:
-    """Drive one conversation to its end and check what was shown and chosen."""
+def judged_case(case: E2ECase) -> SearchCase:
+    """The case as the judge sees it: the user's own message is the wish."""
+    return SearchCase(id=case.id, group=case.group, pantry=case.pantry, preferences=case.message)
+
+
+def run_case(
+    conversation: Conversation,
+    conn: sqlite3.Connection,
+    case: E2ECase,
+    judge: CachedJudge | None = None,
+) -> E2EResult:
+    """Drive one conversation to its end and check what was shown and chosen. The judge
+    (optional) rates the final recipe; its cost is not part of the case's cost."""
     result = E2EResult(case_id=case.id, group=case.group, expect_recipe=case.expect_recipe)
     user = SimulatedUser(case)
     before = usage.snapshot()
@@ -236,6 +251,16 @@ def run_case(conversation: Conversation, conn: sqlite3.Connection, case: E2ECase
         result.llm_calls = sum(u.calls for u in spent.values())
         result.cost_usd = usage.total_cost(spent)
         result.questions = dict(asked)
+    if judge is not None and result.recipe_id is not None and not result.error:
+        try:
+            judgment = judge.judge(conn, judged_case(case), [result.recipe_id]).get(
+                result.recipe_id
+            )
+        except Exception as error:  # the ruler failing must not lose the case
+            judgment = None
+            result.judge_reason = f"not judged: {type(error).__name__}"
+        if judgment is not None:
+            result.judge_score, result.judge_reason = judgment.score, judgment.reason
     return result
 
 
@@ -257,9 +282,14 @@ def failure_codes(results: list[E2EResult]) -> Counter[str]:
     return codes
 
 
+def mean(values: list[int]) -> float | None:
+    return sum(values) / len(values) if values else None
+
+
 def summarize(results: list[E2EResult]) -> dict:
     n = len(results)
     ran = [r for r in results if not r.error]
+    expected = [r for r in results if r.expect_recipe]
     latencies = [r.latency_s for r in ran] or [0.0]
     return {
         "cases": n,
@@ -275,6 +305,13 @@ def summarize(results: list[E2EResult]) -> dict:
         "quantity_items_per_request": sum(r.quantity_items_asked for r in ran) / max(1, len(ran)),
         "retries_per_request": sum(max(0, r.searches - 1) for r in ran) / max(1, len(ran)),
         "errors": n - len(ran),
+        "mean_judge_score": mean([r.judge_score for r in ran if r.judge_score is not None]),
+        # a recipe that is safe and makeable AND fits the request (judge >= GOOD_SCORE)
+        "good_answer_rate": (
+            sum(r.success and (r.judge_score or 0) >= GOOD_SCORE for r in expected) / len(expected)
+            if expected
+            else None
+        ),
         "latency_p50_s": percentile(latencies, 50),
         "latency_p95_s": percentile(latencies, 95),
         "cost_usd": sum(r.cost_usd for r in results),
@@ -286,57 +323,94 @@ def summarize(results: list[E2EResult]) -> dict:
 # --- report -----------------------------------------------------------------------------
 
 
-def write_report(results: list[E2EResult], meta: dict, out_dir: Path) -> tuple[Path, Path]:
-    """Markdown report (committed) and full JSON results (git-ignored)."""
+def summary_row(variant: str, s: dict) -> str:
+    judge = "-" if s["mean_judge_score"] is None else f"{s['mean_judge_score']:.2f}"
+    good = "-" if s["good_answer_rate"] is None else f"{s['good_answer_rate']:.0%}"
+    return (
+        f"| {variant} | {s['task_success']:.0%} | {good} | {judge} "
+        f"| {s['safety_violations']} | {s['unsafe_options_shown']} "
+        f"| {s['rule_violation_rate']:.0%} | {s['no_recipe']} "
+        f"| {s['questions_per_request']:.2f} | {s['retries_per_request']:.2f} "
+        f"| {s['errors']} | {s['latency_p50_s']:.1f} | {s['latency_p95_s']:.1f} "
+        f"| ${s['cost_usd']:.3f} | ${s['cost_per_case_usd']:.4f} |"
+    )
+
+
+def write_report(
+    all_results: dict[str, list[E2EResult]], meta: dict, out_dir: Path
+) -> tuple[Path, Path]:
+    """Markdown report (committed) and full JSON results (git-ignored); one row per
+    variant (pipeline configuration)."""
     out_dir.mkdir(parents=True, exist_ok=True)
     stamp = meta["timestamp"]
     md_path, json_path = out_dir / f"e2e_{stamp}.md", out_dir / f"e2e_{stamp}.json"
-    s = summarize(results)
+    summaries = {v: summarize(r) for v, r in all_results.items()}
+    n = max((s["cases"] for s in summaries.values()), default=0)
     lines = [
         f"# End-to-end evaluation — {stamp}",
         "",
-        f"Cases: {s['cases']} (`{meta['cases_file']}`) | models: {meta['models']} | "
-        "simulated user: confirms the safety read-back, answers amounts from the hidden "
-        "truth, picks option 1",
+        f"Cases: {n} (`{meta['cases_file']}`) | models: {meta['models']} | judge: "
+        f"{meta.get('judge', '-')} | simulated user: confirms the safety read-back, answers "
+        "amounts from the hidden truth, picks option 1",
     ]
     if meta.get("stopped"):
         lines += ["", f"**Stopped early:** {meta['stopped']}"]
     lines += [
         "",
-        "| task success | safety violations | unsafe options shown | rule violations "
-        "(of recipes given) | no recipe | questions / request | retries / request "
-        "| errors | p50 s | p95 s | cost | cost / case |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|",
-        f"| {s['task_success']:.0%} | {s['safety_violations']} | {s['unsafe_options_shown']} "
-        f"| {s['rule_violation_rate']:.0%} | {s['no_recipe']} "
-        f"| {s['questions_per_request']:.2f} | {s['retries_per_request']:.2f} "
-        f"| {s['errors']} | {s['latency_p50_s']:.1f} | {s['latency_p95_s']:.1f} "
-        f"| ${s['cost_usd']:.3f} | ${s['cost_per_case_usd']:.4f} |",
+        "| Variant | task success | good answer | mean judge | safety violations "
+        "| unsafe options shown | rule violations (of recipes given) | no recipe "
+        "| questions / request | retries / request | errors | p50 s | p95 s | cost "
+        "| cost / case |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+    ]
+    lines += [summary_row(v, s) for v, s in summaries.items()]
+    lines += [
         "",
         "Task success = a recipe that respects every true need (allergens, other "
         "allergies, diets, time, at most one missing key ingredient), or an honest "
         "reply when no recipe is right. Checked by code against the hand-written truth, "
-        "not against what the pipeline understood.",
-        "",
-        "## Failures by reason",
-        "",
+        "not against what the pipeline understood. Good answer = task success AND the "
+        f"judge rates the final recipe >= {GOOD_SCORE} for the user's message.",
     ]
-    codes = failure_codes(results)
-    lines += [f"- {code}: {n}" for code, n in codes.most_common()] or ["- none"]
-    lines += ["", "## Cases that failed", ""]
-    failed = [r for r in results if not r.success or r.safety_violation]
-    for r in failed:
-        what = r.error or (
-            f"{r.recipe_name} ({r.recipe_id})" if r.recipe_id else f"no recipe: {r.reply}"
-        )
-        lines.append(f"- **{r.case_id}** ({r.group}): {what}")
-        lines += [f"  - {f}" for f in r.failures]
-        lines += [f"  - SHOWN UNSAFE: {u}" for u in r.unsafe_shown]
-    if not failed:
-        lines.append("- none")
+    for variant, results in all_results.items():
+        lines += ["", f"## {variant}: failures by reason", ""]
+        codes = failure_codes(results)
+        lines += [f"- {code}: {k}" for code, k in codes.most_common()] or ["- none"]
+        lines += ["", f"## {variant}: cases that failed", ""]
+        failed = [r for r in results if not r.success or r.safety_violation]
+        for r in failed:
+            what = r.error or (
+                f"{r.recipe_name} ({r.recipe_id})" if r.recipe_id else f"no recipe: {r.reply}"
+            )
+            lines.append(f"- **{r.case_id}** ({r.group}): {what}")
+            lines += [f"  - {f}" for f in r.failures]
+            lines += [f"  - SHOWN UNSAFE: {u}" for u in r.unsafe_shown]
+        if not failed:
+            lines.append("- none")
+        weak = [
+            r
+            for r in results
+            if r.success and r.judge_score is not None and r.judge_score < GOOD_SCORE
+        ]
+        if weak:
+            lines += [
+                "",
+                f"## {variant}: safe and makeable, but a weak fit (judge < {GOOD_SCORE})",
+                "",
+            ]
+            lines += [
+                f"- {r.case_id}: {r.recipe_name} ({r.judge_score}: {r.judge_reason})" for r in weak
+            ]
     md_path.write_text("\n".join(lines) + "\n")
     json_path.write_text(
-        json.dumps({"meta": meta, "summary": s, "results": [asdict(r) for r in results]}, indent=1)
+        json.dumps(
+            {
+                "meta": meta,
+                "summaries": summaries,
+                "results": {v: [asdict(r) for r in rs] for v, rs in all_results.items()},
+            },
+            indent=1,
+        )
     )
     return md_path, json_path
 

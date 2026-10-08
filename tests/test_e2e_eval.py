@@ -1,6 +1,7 @@
 """End-to-end eval: the simulated user drives the real graph on the fixture database
 (scripted LLM), and code checks what was shown against the case's truth."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -13,11 +14,14 @@ from pantry_chef.evaluation.e2e import (
     SimulatedUser,
     TrueAmount,
     failure_codes,
+    judged_case,
     load_e2e_cases,
     missing_key,
     run_case,
     summarize,
+    write_report,
 )
+from pantry_chef.evaluation.judge import CachedJudge, Judgment, JudgmentBatch
 from pantry_chef.ingredients.allergens import Allergen
 from pantry_chef.llm import usage
 from pantry_chef.models.chat import (
@@ -193,3 +197,44 @@ def test_a_model_without_a_price_stops_the_cost_count():
 def test_case_files_load(name):
     cases = load_e2e_cases(Path(__file__).parents[1] / "eval" / "cases" / name)
     assert cases and all(c.pantry or not c.expect_recipe for c in cases)
+
+
+class OneScoreJudgeLLM:
+    model_name = "judge-model"
+
+    def __init__(self, score):
+        self.score = score
+        self.wishes = []
+
+    def generate(self, prompt, schema, **variables):
+        self.wishes.append(variables["wish"])
+        ids = [r["recipe_id"] for r in json.loads(variables["recipes"])]
+        return JudgmentBatch(
+            judgments=[Judgment(recipe_id=i, score=self.score, reason="r") for i in ids]
+        )
+
+
+def test_the_judge_rates_the_final_recipe_against_the_users_message(
+    enriched_conn, state_conn, tmp_path
+):
+    llm = ScriptedLLM(safety_intake=SafetyAnswer(), request_parsing=BAKING)
+    chat = conversation(make_deps(enriched_conn, state_conn, llm), user_id=None)
+    judge_llm = OneScoreJudgeLLM(3)
+    judge = CachedJudge(judge_llm, tmp_path / "judgments.json")
+    result = run_case(chat, enriched_conn, case(), judge)
+    assert result.success and result.judge_score == 3
+    assert judge_llm.wishes == [MESSAGE]  # the user's own words are the wish
+    s = summarize([result])
+    assert s["mean_judge_score"] == 3 and s["good_answer_rate"] == 0.0  # safe, weak fit
+    assert judged_case(case()).judged_wish == MESSAGE
+
+
+def test_report_has_one_row_per_variant(tmp_path):
+    good = E2EResult("a", "g", recipe_id=1, searches=1, judge_score=5)
+    weak = E2EResult("a", "g", recipe_id=2, searches=1, judge_score=2, judge_reason="a sauce")
+    meta = {"timestamp": "t", "cases_file": "c.json", "models": "m", "stopped": None}
+    md, _ = write_report({"chat": [good], "coverage-only": [weak]}, meta, tmp_path)
+    text = md.read_text()
+    assert "| chat | 100% | 100% | 5.00 |" in text
+    assert "| coverage-only | 100% | 0% | 2.00 |" in text
+    assert "a weak fit" in text and "a sauce" in text

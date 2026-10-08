@@ -4,6 +4,7 @@ Usage:
     uv run python eval/run_eval.py --suite search --variants coverage
     uv run python eval/run_eval.py --variants semantic+matcher+usage+rerank --repeats 3
     uv run python eval/run_eval.py --suite e2e --cases eval/cases/safety.json --max-cost 2
+    uv run python eval/run_eval.py --suite e2e --variants chat,no-verifier,coverage-only
     LLM_MODEL=gpt-5.4-nano WISH_FIT_MODEL=gpt-5.4-nano uv run python eval/run_eval.py ...
 """
 
@@ -23,6 +24,7 @@ from pantry_chef.evaluation.judge import CachedJudge
 from pantry_chef.evaluation.search_eval import evaluate_variant, summarize, write_report
 from pantry_chef.graph.app import chat_from_settings
 from pantry_chef.graph.runner import Conversation
+from pantry_chef.llm import usage
 from pantry_chef.llm.factory import create_llm
 from pantry_chef.observability import configure_logging
 from pantry_chef.search.engine import (
@@ -72,44 +74,87 @@ def pipeline_models(settings: Settings) -> str:
     )
 
 
-def run_e2e(settings: Settings, cases_path: Path, limit: int | None, max_cost: float | None):
+def e2e_variants(settings: Settings) -> dict[str, SearchOptions | None]:
+    """Pipeline configurations for the end-to-end comparison (None = the app's own)."""
+    full = dict(
+        use_semantic=True,
+        use_matcher=True,
+        use_rerank=True,
+        use_wish_fit=settings.wish_fit_enabled,
+        usage_weight=settings.usage_weight,
+    )
+    return {
+        "chat": None,
+        # every verifier verdict ignored; SQL filters and the allergy review still run
+        "no-verifier": SearchOptions(**full, use_verifier=False),
+        # the no-LLM search: SQL filters + ingredient coverage, exact-name verifier
+        "coverage-only": SearchOptions(usage_weight=settings.usage_weight),
+    }
+
+
+def run_e2e(
+    settings: Settings,
+    cases_path: Path,
+    variants: list[str],
+    limit: int | None,
+    max_cost: float | None,
+) -> None:
     """Whole conversations with the simulated user, through the chat pipeline as it runs
-    for real (chat_from_settings), with its own state database and caches."""
+    for real (chat_from_settings), with its own state database and caches. The cap
+    counts everything this run spends, judge included."""
     eval_state = Path("data/processed/eval_cache/state.db")
     eval_state.parent.mkdir(parents=True, exist_ok=True)
-    app = chat_from_settings(settings.model_copy(update={"state_db_path": eval_state}))
+    eval_settings = settings.model_copy(update={"state_db_path": eval_state})
     conn = connect(settings.db_path)
     cases = load_e2e_cases(cases_path)[:limit]
-    results, stopped = [], None
-    try:
-        for i, case in enumerate(cases, start=1):
-            spent = sum(r.cost_usd for r in results)
-            if max_cost is not None and spent >= max_cost:
-                stopped = f"spending cap ${max_cost:.2f} reached after {len(results)} cases"
-                break
-            chat = Conversation(app.graph)  # no user id: nothing is stored between cases
-            result = run_case(chat, conn, case)
-            chat.close()  # no consent: deletes the saved conversation
-            results.append(result)
-            mark = "ok" if result.success else ("UNSAFE" if result.safety_violation else "fail")
-            print(
-                f"[{i}/{len(cases)}] {case.id:>5} {mark:>6}  ${result.cost_usd:.4f}  "
-                f"{result.recipe_name or result.error or result.reply or ''}"[:120]
-            )
-    finally:
-        app.close()
+    judge_llm = create_llm(settings.model_copy(update={"llm_model": settings.judge_model}))
+    judge = CachedJudge(judge_llm, Path("data/processed/eval_cache/judgments.json"))
+    options = e2e_variants(settings)
+    run_start = usage.snapshot()
+    all_results: dict[str, list] = {}
+    stopped = None
+    for variant in variants:
+        app = chat_from_settings(eval_settings, options=options[variant])
+        results = all_results.setdefault(variant, [])
+        try:
+            for i, case in enumerate(cases, start=1):
+                spent = usage.total_cost(usage.since(run_start))
+                if max_cost is not None and spent >= max_cost:
+                    stopped = (
+                        f"spending cap ${max_cost:.2f} reached in {variant} "
+                        f"after {len(results)} cases"
+                    )
+                    break
+                chat = Conversation(app.graph)  # no user id: nothing is stored between cases
+                result = run_case(chat, conn, case, judge)
+                chat.close()  # no consent: deletes the saved conversation
+                results.append(result)
+                mark = "ok" if result.success else ("UNSAFE" if result.safety_violation else "fail")
+                print(
+                    f"[{variant} {i}/{len(cases)}] {case.id:>5} {mark:>6} "
+                    f"judge {result.judge_score or '-'}  ${result.cost_usd:.4f}  "
+                    f"{result.recipe_name or result.error or result.reply or ''}"[:130]
+                )
+        finally:
+            app.close()
+        if stopped:
+            break
     meta = {
         "timestamp": datetime.now().strftime("%Y%m%d-%H%M"),
         "cases_file": str(cases_path),
         "models": e2e_models(settings),
+        "judge": f"{settings.judge_model} (preference_judge v{judge.prompt.version})",
         "stopped": stopped,
+        "total_cost_usd": usage.total_cost(usage.since(run_start)),
     }
-    md_path, _ = write_e2e_report(results, meta, ROOT / "reports")
-    s = summarize_e2e(results)
-    print(
-        f"\nTask success {s['task_success']:.0%} | safety violations {s['safety_violations']} "
-        f"| cost ${s['cost_usd']:.3f} (${s['cost_per_case_usd']:.4f} per case)"
-    )
+    md_path, _ = write_e2e_report(all_results, meta, ROOT / "reports")
+    for variant, results in all_results.items():
+        s = summarize_e2e(results)
+        print(
+            f"{variant}: task success {s['task_success']:.0%} | safety violations "
+            f"{s['safety_violations']} | mean judge {s['mean_judge_score'] or 0:.2f}"
+        )
+    print(f"Total cost ${meta['total_cost_usd']:.3f}")
     if stopped:
         print(f"Stopped early: {stopped}")
     print(f"Report: {md_path}")
@@ -126,7 +171,11 @@ def main() -> None:
     settings = get_settings()
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--suite", choices=["search", "e2e"], default="search")
-    parser.add_argument("--variants", default=",".join(VARIANTS))
+    parser.add_argument(
+        "--variants",
+        default=None,
+        help="search: default all; e2e: chat, no-verifier, coverage-only",
+    )
     parser.add_argument(
         "--cases", type=Path, default=None, help="default: cases/search.json or cases/e2e.json"
     )
@@ -145,14 +194,20 @@ def main() -> None:
 
     configure_logging("WARNING")
     if args.suite == "e2e":
-        run_e2e(settings, args.cases or ROOT / "cases" / "e2e.json", args.limit, args.max_cost)
+        variants = args.variants.split(",") if args.variants else ["chat"]
+        unknown = set(variants) - set(e2e_variants(settings))
+        if unknown:
+            parser.error(f"unknown e2e variants: {sorted(unknown)}")
+        cases_path = args.cases or ROOT / "cases" / "e2e.json"
+        run_e2e(settings, cases_path, variants, args.limit, args.max_cost)
         return
     conn = connect(args.db)
     cases = load_cases(args.cases or ROOT / "cases" / "search.json")[: args.limit]
+    variants_arg = args.variants or ",".join(VARIANTS)
     # the judge has its own model, so LLM_MODEL=gpt-5.4-nano changes the pipeline, not the ruler
     judge_llm = create_llm(settings.model_copy(update={"llm_model": settings.judge_model}))
     judge = CachedJudge(judge_llm, args.judge_cache)
-    variants = args.variants.split(",")
+    variants = variants_arg.split(",")
     needs_semantic = any(VARIANTS[v].use_semantic for v in variants)
     semantic = semantic_from_settings(settings) if needs_semantic else None
     reranker = LLMReranker(create_llm(settings), conn)
