@@ -197,6 +197,9 @@ class SearchOptions:
     use_rerank: bool = False
     use_matcher: bool = False  # pantry expansion + matcher-based verification
     use_wish_fit: bool = False  # LLM check that each recipe fits the wish (needs a checker)
+    # False only for the eval's "verifier off" comparison: its verdicts are ignored (the
+    # SQL filters and the allergy review still run). Never off in the app.
+    use_verifier: bool = True
     usage_weight: float = 0.5  # weight of pantry usage in the ingredient score (0 = off)
     shortlist_size: int = 20  # verified recipes passed to diversity / rerank
     mmr_lambda: float = 0.7
@@ -313,7 +316,8 @@ def find_verified(
         ],
         matched_recipes=result.matched_recipes,
     )
-    shortlist = [vc.candidate for vc in found.approved[: options.shortlist_size]]
+    passed = found.approved if options.use_verifier else found.checked
+    shortlist = [vc.candidate for vc in passed[: options.shortlist_size]]
     with span("search.allergy_review", candidates=len(shortlist)):
         if allergy_reviewer is not None:
             outcomes = allergy_reviewer.review(query, shortlist)

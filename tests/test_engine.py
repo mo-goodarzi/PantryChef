@@ -116,3 +116,15 @@ def test_the_hidden_allergen_check_keeps_its_own_model(monkeypatch, tmp_path, st
     _, verifier = engine.matching_from_settings(settings, None, None, state_conn)
     assert verifier.hidden_checker.llm.model_name == "gpt-5.4-mini"
     assert created == ["gpt-5.4-nano", "gpt-5.4-mini"]  # matcher, hidden-allergen check
+
+
+def test_verifier_off_lets_failed_recipes_through_for_the_eval_only(enriched_conn):
+    from pantry_chef.search.engine import SearchOptions, find_verified
+
+    query = RecipeQuery(ingredients=["milk"])  # every recipe misses key ingredients
+    on = find_verified(enriched_conn, query, SearchOptions())
+    off = find_verified(enriched_conn, query, SearchOptions(use_verifier=False))
+    statuses = {vc.verification.status for vc in off.top}
+    assert all(vc.verification.status is not VerificationStatus.FAIL for vc in on.top)
+    assert VerificationStatus.FAIL in statuses  # the verdict is still recorded, not obeyed
+    assert SearchOptions().use_verifier  # the app default never turns it off
