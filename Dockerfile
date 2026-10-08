@@ -34,6 +34,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     fi
 COPY src ./src
 COPY ui ./ui
+COPY .streamlit ./.streamlit
 COPY scripts ./scripts
 # --inexact keeps the CPU torch installed above.
 RUN --mount=type=cache,target=/root/.cache/uv \

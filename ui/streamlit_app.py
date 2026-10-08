@@ -3,6 +3,9 @@
 It only talks to the API (PANTRY_CHEF_API_URL, default http://localhost:8000):
     uv run uvicorn pantry_chef.api.main:app        # terminal 1
     uv run streamlit run ui/streamlit_app.py       # terminal 2
+
+The look (colours, fonts, light/dark) lives in .streamlit/config.toml; this file only
+uses native Streamlit elements, badges and Material icons, so no custom CSS is needed.
 """
 
 import contextlib
@@ -29,48 +32,49 @@ from pantry_chef.models.query import AmountStatus
 API_URL = os.environ.get("PANTRY_CHEF_API_URL", "http://localhost:8000")
 AMOUNT_CHOICES = {"I have": AmountStatus.KNOWN, "Don't know": AmountStatus.UNKNOWN,
                   "Plenty": AmountStatus.PLENTY}  # fmt: skip
+AVATARS = {"assistant": ":material/skillet:", "user": ":material/person:"}
+EXAMPLES = [
+    "I have eggs, milk and toast. Something sweet for breakfast?",
+    "Chicken, rice and an onion. Quick dinner under 30 minutes.",
+    "Pasta, tomatoes and garlic, vegetarian please.",
+]
+# The steps of one request, shown as a progress row above the chat.
+STEPS = ["Pantry", "Safety", "Amounts", "Choose", "Cook"]
+STEP_OF_KIND = {
+    QuestionKind.SAFETY: 1,
+    QuestionKind.SAFETY_CONFIRM: 1,
+    QuestionKind.QUANTITIES: 2,
+    QuestionKind.CHOICE: 3,
+}
 
 
 # --- text for the chat ---------------------------------------------------------------
 
 
-def option_markdown(option: RecipeOption) -> str:
-    lines = [f"**{option.number}. {option.name}** · {option.minutes} min"]
-    if option.why:
-        lines.append(f"_{option.why}_")
-    if option.uses:
-        lines.append(f"Uses: {', '.join(option.uses)}")
-    lines += [f":warning: **Allergy:** {warning}" for warning in option.warnings]
-    if option.fit_note:
-        lines.append(f"_{option.fit_note}_")
-    if option.adaptations:
-        lines.append(f"Adapt: {'; '.join(option.adaptations)}")
-    if option.also_needs:
-        lines.append(f"Also needs: {', '.join(option.also_needs)}")
-    return "  \n".join(lines)
+def badges(items: list[str], color: str) -> str:
+    """Markdown badges; square brackets would end the badge early, so swap them out."""
+    clean = (item.replace("[", "(").replace("]", ")") for item in items)
+    return " ".join(f":{color}-badge[{item}]" for item in clean)
+
+
+def title(name: str) -> str:
+    """Food.com names are lower case ("french toast"); capitalise the first letter."""
+    return name[:1].upper() + name[1:]
+
+
+def minutes_badge(minutes: int) -> str:
+    return f":gray-badge[:material/schedule: {minutes} min]"
 
 
 def answer_markdown(answer: FinalAnswer) -> str:
-    parts = [
-        f"### {answer.name} · {answer.minutes} min",
-        f"**Why it fits:** {answer.why_it_fits}",
-        "**Ingredients:** " + ", ".join(answer.ingredients),
-    ]
-    parts += [f":warning: **Allergy:** {warning}" for warning in answer.warnings]
-    if answer.adaptations:
-        parts.append("**Adapt:** " + "; ".join(answer.adaptations))
-    if answer.also_needs:
-        parts.append("**You also need:** " + ", ".join(answer.also_needs))
-    parts.append("\n".join(f"{n}. {step}" for n, step in enumerate(answer.steps, start=1)))
-    parts += [f"_{note}_" for note in answer.notes]
-    if answer.disclaimer:
-        parts.append(f"⚠️ {answer.disclaimer}")
-    return "\n\n".join(parts)
+    """The headline of the final recipe; the rest is laid out by show_answer."""
+    return (
+        f"### {title(answer.name)}\n\n{minutes_badge(answer.minutes)}\n\n"
+        f"**Why it fits:** {answer.why_it_fits}"
+    )
 
 
 def turn_markdown(turn: TurnOut) -> str:
-    if turn.type is TurnType.FINAL and turn.answer is not None:
-        return answer_markdown(turn.answer)
     if turn.type is TurnType.CANDIDATES and turn.question is not None:
         note = f"\n\n_{turn.question.note}_" if turn.question.note else ""
         return f"I found {len(turn.question.options)} recipe(s) you can make.{note}"
@@ -82,16 +86,19 @@ def turn_markdown(turn: TurnOut) -> str:
 def profile_markdown(profile: UserProfile) -> str:
     lines = []
     if profile.allergens:
-        lines.append(
-            "Allergies: " + ", ".join(a.value.replace("_", " ") for a in profile.allergens)
-        )
+        names = ", ".join(a.value.replace("_", " ") for a in profile.allergens)
+        lines.append(f":material/no_food: Allergies: {names}")
     if profile.other_allergies:
-        lines.append("Also avoiding: " + ", ".join(profile.other_allergies))
+        lines.append(":material/block: Also avoiding: " + ", ".join(profile.other_allergies))
     if profile.diets:
-        lines.append("Diets: " + ", ".join(d.value.replace("_", " ") for d in profile.diets))
+        names = ", ".join(d.value.replace("_", " ") for d in profile.diets)
+        lines.append(f":material/eco: Diets: {names}")
     if profile.dislikes:
-        lines.append("Leaving out: " + ", ".join(profile.dislikes))
-    lines.append("Saved for next time" if profile.consent_to_store else "Not saved")
+        lines.append(":material/thumb_down: Leaving out: " + ", ".join(profile.dislikes))
+    if profile.consent_to_store:
+        lines.append(":material/bookmark_added: Saved for next time")
+    else:
+        lines.append(":material/visibility_off: Not saved")
     return "  \n".join(lines)
 
 
@@ -103,7 +110,7 @@ def init_state() -> None:
     if "client" not in ss:
         ss.client = PantryChefClient(API_URL)
     ss.setdefault("session_id", None)
-    ss.setdefault("history", [])  # (role, markdown)
+    ss.setdefault("history", [])  # (role, markdown or FinalAnswer)
     ss.setdefault("turn", None)  # the latest TurnOut
 
 
@@ -112,17 +119,22 @@ def client() -> PantryChefClient:
 
 
 def record(turn: TurnOut) -> None:
-    st.session_state.turn = turn
-    st.session_state.history.append(("assistant", turn_markdown(turn)))
+    ss = st.session_state
+    ss.turn = turn
+    if turn.type is TurnType.FINAL and turn.answer is not None:
+        ss.history.append(("assistant", turn.answer))
+    else:
+        ss.history.append(("assistant", turn_markdown(turn)))
 
 
 def send(text: str) -> None:
     ss = st.session_state
     ss.history.append(("user", text))
     try:
-        if ss.session_id is None:
-            ss.session_id = client().new_session()
-        record(client().send(ss.session_id, text, user_id=ss.get("user_name") or None))
+        with st.spinner("Looking through your pantry…"):
+            if ss.session_id is None:
+                ss.session_id = client().new_session()
+            record(client().send(ss.session_id, text, user_id=ss.get("user_name") or None))
     except ApiError as error:
         ss.history.append(("assistant", f"Sorry, that did not work: {error.message}"))
 
@@ -131,7 +143,8 @@ def answer(reply, shown: str) -> None:
     ss = st.session_state
     ss.history.append(("user", shown))
     try:
-        record(client().reply(ss.session_id, reply))
+        with st.spinner("Checking recipes…"):
+            record(client().reply(ss.session_id, reply))
     except ApiError as error:
         ss.history.pop()
         st.session_state.error = error.message
@@ -149,20 +162,31 @@ def reset_conversation(forget: bool = False) -> None:
 
 
 def safety_form(question: Question) -> None:
-    with st.form("safety"):
+    with st.form("safety", border=True):
         text = st.text_area(
-            "Allergies, diets, health", key="safety_text", placeholder="e.g. peanuts; vegetarian"
+            "Allergies, diets or health conditions",
+            key="safety_text",
+            placeholder="e.g. peanuts and shellfish; vegetarian",
+            help="Leave empty if there is nothing to avoid.",
         )
-        if st.form_submit_button("Send", key="safety_send"):
+        st.caption(
+            ":material/lock: Used only to filter recipes. "
+            "Nothing is stored unless you agree in the next step."
+        )
+        if st.form_submit_button("Send", key="safety_send", type="primary"):
             answer(SafetyReply(text=text or "none"), text or "none")
             st.rerun()
 
 
 def confirm_form(question: Question) -> None:
-    with st.form("confirm"):
+    with st.form("confirm", border=True):
         correct = st.radio("Is this right?", ["Yes", "No"], key="confirm_correct", horizontal=True)
-        consent = st.checkbox("Remember this for next time", key="confirm_consent")
-        if st.form_submit_button("Continue", key="confirm_send"):
+        consent = st.checkbox(
+            "Remember this for next time",
+            key="confirm_consent",
+            help="Saved under your name in the sidebar. You can delete it at any time.",
+        )
+        if st.form_submit_button("Continue", key="confirm_send", type="primary"):
             ok = correct == "Yes"
             reply = ConfirmReply(correct=ok, consent_to_store=ok and consent)
             shown = "Yes" + (", remember it" if reply.consent_to_store else "") if ok else "No"
@@ -171,34 +195,74 @@ def confirm_form(question: Question) -> None:
 
 
 def quantity_form(question: Question) -> None:
-    with st.form("quantities"):
+    with st.form("quantities", border=True):
+        st.caption("Only the amounts that change which recipes work.")
         amounts = {}
         for item in question.items:
-            left, middle, right = st.columns([2, 1, 1])
-            status = left.radio(
-                item, list(AMOUNT_CHOICES), key=f"qty_status_{item}", horizontal=True
+            st.markdown(f"**{item}**")
+            status_col, amount_col, unit_col = st.columns([2, 1, 1], vertical_alignment="bottom")
+            status = status_col.radio(
+                item,
+                list(AMOUNT_CHOICES),
+                key=f"qty_status_{item}",
+                horizontal=True,
+                label_visibility="collapsed",
             )
-            quantity = middle.number_input("Amount", min_value=0.0, key=f"qty_value_{item}")
-            unit = right.text_input("Unit (empty = count)", key=f"qty_unit_{item}")
+            quantity = amount_col.number_input(
+                "Amount", min_value=0.0, key=f"qty_value_{item}", label_visibility="collapsed"
+            )
+            unit = unit_col.text_input(
+                "Unit",
+                key=f"qty_unit_{item}",
+                placeholder="unit, e.g. g",
+                help="Leave empty for a count, e.g. 2 eggs.",
+                label_visibility="collapsed",
+            )
             known = AMOUNT_CHOICES[status] is AmountStatus.KNOWN
             amounts[item] = AmountReply(
                 quantity=quantity if known else None,
                 unit=(unit.strip() or None) if known else None,
                 status=AMOUNT_CHOICES[status],
             )
-        if st.form_submit_button("Continue", key="qty_send"):
+        st.caption("Amount and unit are used only when you pick **I have**.")
+        if st.form_submit_button("Continue", key="qty_send", type="primary"):
             answer(QuantityReply(amounts=amounts), "Here is what I have.")
             st.rerun()
 
 
+def option_card(option: RecipeOption) -> None:
+    with st.container(border=True):
+        st.markdown(f"**{option.number}. {title(option.name)}**  \n{minutes_badge(option.minutes)}")
+        if option.why:
+            st.caption(option.why)
+        for warning in option.warnings:
+            st.warning(f"**Allergy:** {warning}", icon=":material/warning:")
+        if option.fit_note:
+            st.caption(f":material/info: {option.fit_note}")
+        if option.uses:
+            st.markdown(":gray[:small[Uses]]  \n" + badges(option.uses, "green"))
+        if option.also_needs:
+            st.markdown(":gray[:small[Also needs]]  \n" + badges(option.also_needs, "orange"))
+        if option.adaptations:
+            st.caption(":material/swap_horiz: " + "; ".join(option.adaptations))
+        if st.button(
+            "Cook this",
+            key=f"choose_{option.number}",
+            type="primary",
+            icon=":material/restaurant:",
+            width="stretch",
+        ):
+            answer(ChoiceReply(choice=option.number), f"I'll make {option.name}.")
+            st.rerun()
+
+
 def choice_cards(question: Question) -> None:
-    for option in question.options:
-        with st.container(border=True):
-            st.markdown(option_markdown(option))
-            if st.button("Cook this", key=f"choose_{option.number}"):
-                answer(ChoiceReply(choice=option.number), f"I'll make {option.name}.")
-                st.rerun()
-    if st.button("Show me other recipes", key="choose_more"):
+    # One row of two cards at a time, so on a phone they stack in order 1, 2, 3.
+    for start in range(0, len(question.options), 2):
+        for column, option in zip(st.columns(2), question.options[start : start + 2], strict=False):
+            with column:
+                option_card(option)
+    if st.button("Show me other recipes", key="choose_more", icon=":material/refresh:"):
         answer(ChoiceReply(more=True), "Show me other recipes.")
         st.rerun()
 
@@ -211,14 +275,87 @@ FORMS = {
 }
 
 
+# --- chat messages ---------------------------------------------------------------------
+
+
+def show_answer(answer: FinalAnswer) -> None:
+    st.markdown(answer_markdown(answer))
+    for warning in answer.warnings:
+        st.warning(f"**Allergy:** {warning}", icon=":material/warning:")
+    ingredients, extras = st.columns([3, 2])
+    with ingredients:
+        st.markdown("#### Ingredients")
+        st.markdown("\n".join(f"- {item}" for item in answer.ingredients))
+    with extras:
+        if answer.also_needs:
+            st.markdown("#### You also need")
+            st.markdown(badges(answer.also_needs, "orange"))
+        if answer.adaptations:
+            st.markdown("#### Adapt")
+            st.markdown("\n".join(f"- {item}" for item in answer.adaptations))
+    st.markdown("#### Steps")
+    st.markdown("\n".join(f"{n}. {step}" for n, step in enumerate(answer.steps, start=1)))
+    for note in answer.notes:
+        st.caption(f":material/info: {note}")
+    if answer.disclaimer:
+        st.caption(f":material/medical_information: {answer.disclaimer}")
+
+
+def show_message(role: str, content: str | FinalAnswer) -> None:
+    with st.chat_message(role, avatar=AVATARS[role]):
+        if isinstance(content, FinalAnswer):
+            show_answer(content)
+        else:
+            st.markdown(content)
+
+
+def current_step(turn: TurnOut | None) -> int:
+    if turn is None:
+        return 0
+    if turn.type is TurnType.FINAL:
+        return 4
+    if turn.question is not None:
+        return STEP_OF_KIND[turn.question.kind]
+    return 0
+
+
+def progress_row(step: int) -> None:
+    """Pantry → Safety → … with the done steps green and the current one highlighted."""
+    parts = []
+    for index, name in enumerate(STEPS):
+        if index < step:
+            parts.append(f":green-badge[:material/check: {name}]")
+        elif index == step:
+            parts.append(f":orange-badge[**{name}**]")
+        else:
+            parts.append(f":gray-badge[{name}]")
+    st.markdown(" ".join(parts))
+
+
+def welcome() -> str | None:
+    """The empty-chat hero. Returns an example request when the user clicks one."""
+    st.title("What's in your kitchen?")
+    st.markdown(
+        "Tell me what you have and what you feel like. I'll find recipes you can make, "
+        "with allergens checked in code, twice."
+    )
+    return st.pills("Try one", EXAMPLES, key="example", label_visibility="collapsed")
+
+
 # --- page ------------------------------------------------------------------------------
 
 
 def sidebar() -> None:
     ss = st.session_state
     with st.sidebar:
-        st.header("PantryChef")
-        st.text_input("Your name (to remember your profile)", key="user_name")
+        st.header(":material/skillet: PantryChef", anchor=False)
+        st.caption("Recipes from what you already have.")
+        st.text_input(
+            "Your name",
+            key="user_name",
+            placeholder="e.g. alice",
+            help="Only needed to remember your allergies and diets between visits.",
+        )
         profile = None
         if ss.session_id is not None:
             try:
@@ -226,44 +363,56 @@ def sidebar() -> None:
             except ApiError:
                 profile = None
         if profile is not None:
-            st.subheader("Your profile")
-            st.markdown(profile_markdown(profile))
-        if st.button("New conversation", key="new_conversation"):
+            with st.container(border=True):
+                st.markdown("**Your profile**")
+                st.markdown(profile_markdown(profile))
+        if st.button(
+            "New conversation", key="new_conversation", icon=":material/add:", width="stretch"
+        ):
             reset_conversation()
             st.rerun()
-        if st.button("Delete my data", key="delete_data"):
+        if st.button(
+            "Delete my data", key="delete_data", icon=":material/delete:", width="stretch"
+        ):
             name = ss.get("user_name")
             deleted = client().delete_profile(name) if name else False
             reset_conversation(forget=True)
             ss.notice = "Your saved profile was deleted." if deleted else "Nothing was saved."
             st.rerun()
+        st.divider()
         st.caption(
-            "Not medical advice. Allergens are checked by code twice, but always check labels."
+            ":material/health_and_safety: Not medical advice. Allergens are checked by code "
+            "twice, but always check labels."
         )
 
 
 def main() -> None:
-    st.set_page_config(page_title="PantryChef", page_icon="🍳")
+    st.set_page_config(page_title="PantryChef", page_icon=":material/skillet:")
     init_state()
     sidebar()
     ss = st.session_state
     if notice := ss.pop("notice", None):
-        st.info(notice)
+        st.info(notice, icon=":material/check_circle:")
 
+    example = None
     if not ss.history:
-        st.chat_message("assistant").markdown(
+        example = welcome()
+        show_message(
+            "assistant",
             "Tell me what you have at home and what you feel like, "
-            "e.g. *I have eggs, milk and toast. Something sweet for breakfast?*"
+            "e.g. *I have eggs, milk and toast. Something sweet for breakfast?*",
         )
-    for role, text in ss.history:
-        st.chat_message(role).markdown(text)
+    else:
+        progress_row(current_step(ss.turn))
+    for role, content in ss.history:
+        show_message(role, content)
     if error := ss.pop("error", None):
-        st.error(error)
+        st.error(error, icon=":material/error:")
 
     turn = ss.turn
     if turn is not None and turn.question is not None:
         FORMS[turn.question.kind](turn.question)
-    elif text := st.chat_input("What do you have at home?", key="request"):
+    elif text := st.chat_input("What do you have at home?", key="request") or example:
         send(text)
         st.rerun()
 
