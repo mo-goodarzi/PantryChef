@@ -1,0 +1,41 @@
+# PantryChef UI theme: warm terracotta + fresh green on cream, with a matching dark theme.
+# Streamlit reads this file from the directory it is started in (the repo root, or /app in
+# Docker). Colours were checked for 4.5:1 text contrast in both themes.
+
+[theme]
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap, sans-serif"
+headingFont = "Calistoga:https://fonts.googleapis.com/css2?family=Calistoga&display=swap, serif"
+headingFontWeights = 400  # Calistoga has one weight; avoid faux bold
+baseRadius = "0.75rem"
+buttonRadius = "full"
+showWidgetBorder = true
+showSidebarBorder = true
+
+[theme.light]
+primaryColor = "#9A3412"
+backgroundColor = "#FFFBEB"
+secondaryBackgroundColor = "#F8F2F0"
+textColor = "#0F172A"
+borderColor = "#EADBD5"
+linkColor = "#9A3412"
+greenColor = "#059669"
+orangeColor = "#C2410C"
+
+[theme.light.sidebar]
+backgroundColor = "#F8F2F0"
+
+[theme.dark]
+primaryColor = "#C2410C"
+backgroundColor = "#1A1410"
+secondaryBackgroundColor = "#2A201B"
+textColor = "#F5EDE6"
+borderColor = "#3D302A"
+linkColor = "#FDBA74"
+greenColor = "#34D399"
+orangeColor = "#FB923C"
+
+[theme.dark.sidebar]
+backgroundColor = "#221A15"
+
+[client]
+toolbarMode = "minimal"  # hide the developer "Deploy" button
