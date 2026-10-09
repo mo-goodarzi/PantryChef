@@ -61,12 +61,20 @@ def cost_usd(model: str, input_tokens: int, output_tokens: int) -> float | None:
     return (input_tokens * price_in + output_tokens * price_out) / 1_000_000
 
 
+def unpriced_models(usage: dict[str, ModelUsage]) -> list[str]:
+    """Models in the usage that have no price in PRICES."""
+    return sorted(model for model in usage if model not in PRICES)
+
+
+def priced_cost(usage: dict[str, ModelUsage]) -> float:
+    """USD for the models that have a price; the others count as 0, so a report must name
+    them (unpriced_models). A spending cap uses total_cost instead."""
+    return sum(cost_usd(m, u.input_tokens, u.output_tokens) or 0.0 for m, u in usage.items())
+
+
 def total_cost(usage: dict[str, ModelUsage]) -> float:
     """USD for the usage; a model without a price is an error, so a cap is never skipped."""
-    total = 0.0
-    for model, u in usage.items():
-        cost = cost_usd(model, u.input_tokens, u.output_tokens)
-        if cost is None:
-            raise ValueError(f"no price for {model}; add it to PRICES in llm/usage.py")
-        total += cost
-    return total
+    missing = unpriced_models(usage)
+    if missing:
+        raise ValueError(f"no price for {missing[0]}; add it to PRICES in llm/usage.py")
+    return priced_cost(usage)

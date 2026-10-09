@@ -8,11 +8,13 @@ import pytest
 
 from pantry_chef.agents.finder import RequestAnswer
 from pantry_chef.agents.safety import AllergyMention, SafetyAnswer
+from pantry_chef.evaluation import e2e
 from pantry_chef.evaluation.e2e import (
     E2ECase,
     E2EResult,
     SimulatedUser,
     TrueAmount,
+    cap_reached,
     failure_codes,
     judged_case,
     load_e2e_cases,
@@ -151,6 +153,32 @@ def test_no_recipe_is_a_success_when_none_is_expected(enriched_conn, state_conn)
     assert result.recipe_id is None and result.reply and result.success
 
 
+def test_an_answer_on_the_last_allowed_turn_counts(monkeypatch, enriched_conn, state_conn):
+    # the clean conversation needs 3 replies: safety, confirm, choice
+    llm = ScriptedLLM(safety_intake=SafetyAnswer(), request_parsing=BAKING)
+    monkeypatch.setattr(e2e, "MAX_TURNS", 3)
+    assert run(enriched_conn, state_conn, llm, case()).success
+    monkeypatch.setattr(e2e, "MAX_TURNS", 2)
+    stuck = run(enriched_conn, state_conn, llm, case())
+    assert stuck.error == "RuntimeError: no answer after 2 turns"
+
+
+class UnpricedLLM(ScriptedLLM):
+    def generate(self, prompt, schema, **variables):
+        usage.record("unpriced-model", 10, 10)
+        return super().generate(prompt, schema, **variables)
+
+
+def test_a_model_without_a_price_does_not_lose_the_case(enriched_conn, state_conn, tmp_path):
+    llm = UnpricedLLM(safety_intake=SafetyAnswer(), request_parsing=BAKING)
+    result = run(enriched_conn, state_conn, llm, case())
+    assert result.success and result.error is None
+    assert result.cost_usd == 0.0 and result.unpriced_models == ["unpriced-model"]
+    meta = {"timestamp": "t", "cases_file": "c.json", "models": "m", "stopped": None}
+    md, _ = write_report({"chat": [result]}, meta, tmp_path)
+    assert "Costs leave out** models without a price: unpriced-model" in md.read_text()
+
+
 def test_an_error_is_recorded_not_raised(enriched_conn, state_conn):
     llm = ScriptedLLM(safety_intake=SafetyAnswer())  # no answer for request parsing
     result = run(enriched_conn, state_conn, llm, case())
@@ -191,6 +219,16 @@ def test_a_model_without_a_price_stops_the_cost_count():
     # a missing price must never let a run slip past its spending cap
     with pytest.raises(ValueError, match="no price"):
         usage.total_cost({"mystery-model": usage.ModelUsage(1, 10, 10)})
+
+
+def test_the_spending_cap_stops_the_run_and_needs_every_price():
+    mini = {"gpt-5.4-mini": usage.ModelUsage(1, 1_000_000, 0)}  # $0.75
+    unpriced = {"unpriced-model": usage.ModelUsage(1, 10, 10)}
+    assert cap_reached(None, unpriced, "chat", 3) is None  # no cap: nothing to price
+    assert cap_reached(1.0, mini, "chat", 3) is None
+    assert cap_reached(0.5, mini, "chat", 3) == "spending cap $0.50 reached in chat after 3 cases"
+    stopped = cap_reached(1.0, unpriced, "chat", 3)
+    assert stopped and "cannot be checked" in stopped and "unpriced-model" in stopped
 
 
 @pytest.mark.parametrize("name", ["e2e.json", "safety.json"])
