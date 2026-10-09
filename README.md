@@ -194,6 +194,9 @@ check then trusts. One run per model and a small subset, so small differences ar
 the safety miss is not. Known limits: the truth check uses the project's own ingredient
 allergen labels, and the quantity question (Phase 8) is not measured yet.
 
+gpt-5.4-nano is no longer used or evaluated: the missed allergy rules it out for the
+safety intake, and its cost saving does not justify a second model for the other steps.
+
 ## Development
 
 ```bash

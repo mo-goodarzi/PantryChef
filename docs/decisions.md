@@ -890,3 +890,19 @@ own types from saved conversations (needs an allowlist); s06 coeliac stays a die
   (`LEGACY_MATCH_MODEL = gpt-5.4-mini`), so only that model imports them now. If
   `data/processed/pantry.db` still has a `match_cache` table, the Phase 7 model
   comparison reused mini's answers and should be re-run (`eval/reproduce_e2e.sh`).
+
+## 2026-10-09 — gpt-5.4-nano dropped
+
+**Owner decision:** nano is no longer used or evaluated for any role. `LLM_MODEL` and
+`WISH_FIT_MODEL` stay on gpt-5.4-mini; this replaces "nano if its evals hold up" in
+"Model per role". The model comparison in `eval/reproduce_e2e.sh` now runs only
+gpt-5.4 against mini, and the parsing-eval example compares mini with gpt-5.4.
+
+**Why:** in Phase 7 nano missed a milk allergy in the safety intake ("dairy free
+please"), and every code layer trusts the intake. Its matcher numbers also reused mini's
+cached answers (see the entry above), but that does not change this: the miss was in
+the intake, not the matcher. The measured nano row stays in the README as the evidence.
+
+**Still open:** `data/processed/eval_cache/state-gpt-5.4.db` holds 7,730 of mini's old
+matcher answers, imported before the fix above. They must be removed before the gpt-5.4
+runs are repeated, or that comparison reuses mini's matcher again.
