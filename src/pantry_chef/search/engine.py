@@ -365,7 +365,7 @@ def matching_from_settings(
     from pathlib import Path
 
     from pantry_chef.agents.hidden_allergens import HiddenAllergenChecker
-    from pantry_chef.db.state import import_legacy_match_cache
+    from pantry_chef.db.state import LEGACY_MATCH_MODEL, import_legacy_match_cache
     from pantry_chef.ingredients.matcher import (
         CompositeMatcher,
         ExactMatcher,
@@ -378,7 +378,9 @@ def matching_from_settings(
     from pantry_chef.llm.factory import create_llm
     from pantry_chef.search.semantic import ChromaNameIndex
 
-    import_legacy_match_cache(state, settings.db_path)  # answers cached before state.db
+    # answers cached before state.db; another model must not reuse them (model comparisons)
+    if settings.llm_model == LEGACY_MATCH_MODEL:
+        import_legacy_match_cache(state, settings.db_path)
     llm = create_llm(settings)
     llm_matcher = LLMMatcher(llm)
     matcher = CompositeMatcher(

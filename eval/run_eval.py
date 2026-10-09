@@ -18,7 +18,7 @@ from pantry_chef.config import Settings, get_settings
 from pantry_chef.db.connection import connect
 from pantry_chef.db.state import open_state_db
 from pantry_chef.evaluation.cases import load_cases
-from pantry_chef.evaluation.e2e import load_e2e_cases, run_case
+from pantry_chef.evaluation.e2e import cap_reached, load_e2e_cases, run_case
 from pantry_chef.evaluation.e2e import summarize as summarize_e2e
 from pantry_chef.evaluation.e2e import write_report as write_e2e_report
 from pantry_chef.evaluation.judge import CachedJudge
@@ -140,12 +140,8 @@ def run_e2e(
         results = all_results.setdefault(variant, [])
         try:
             for i, case in enumerate(cases, start=1):
-                spent = usage.total_cost(usage.since(run_start))
-                if max_cost is not None and spent >= max_cost:
-                    stopped = (
-                        f"spending cap ${max_cost:.2f} reached in {variant} "
-                        f"after {len(results)} cases"
-                    )
+                stopped = cap_reached(max_cost, usage.since(run_start), variant, len(results))
+                if stopped:
                     break
                 chat = Conversation(app.graph)  # no user id: nothing is stored between cases
                 result = run_case(chat, conn, case, judge)
@@ -167,7 +163,8 @@ def run_e2e(
         "models": e2e_models(settings),
         "judge": f"{settings.judge_model} (preference_judge v{judge.prompt.version})",
         "stopped": stopped,
-        "total_cost_usd": usage.total_cost(usage.since(run_start)),
+        "total_cost_usd": usage.priced_cost(usage.since(run_start)),
+        "unpriced_models": usage.unpriced_models(usage.since(run_start)),
     }
     md_path, _ = write_e2e_report(all_results, meta, ROOT / "reports")
     for variant, results in all_results.items():
@@ -177,6 +174,8 @@ def run_e2e(
             f"{s['safety_violations']} | mean judge {s['mean_judge_score'] or 0:.2f}"
         )
     print(f"Total cost ${meta['total_cost_usd']:.3f}")
+    if meta["unpriced_models"]:
+        print(f"Cost leaves out models without a price: {', '.join(meta['unpriced_models'])}")
     if stopped:
         print(f"Stopped early: {stopped}")
     print(f"Report: {md_path}")

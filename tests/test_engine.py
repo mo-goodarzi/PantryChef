@@ -1,3 +1,5 @@
+import pytest
+
 from pantry_chef.agents.verifier import verify
 from pantry_chef.db.repository import load_recipe_ingredients
 from pantry_chef.ingredients.allergens import Allergen
@@ -148,3 +150,32 @@ def test_allergen_filter_off_leaves_the_verifier_as_the_only_code_layer(enriched
     assert has_eggs(find_verified(enriched_conn, query, no_safety))  # nothing does
     defaults = SearchOptions()
     assert defaults.use_allergen_filter and defaults.use_allergy_review and defaults.use_verifier
+
+
+@pytest.mark.parametrize(("model", "imported"), [("gpt-5.4-mini", 1), ("gpt-5.4-nano", 0)])
+def test_old_matcher_answers_are_reused_only_by_their_own_model(
+    monkeypatch, tmp_path, state_conn, model, imported
+):
+    """The old pantry.db match_cache rows carry no model: a model comparison must not
+    reuse gpt-5.4-mini's answers for another model."""
+    import sqlite3
+
+    from pantry_chef.config import Settings
+    from pantry_chef.llm import factory
+    from pantry_chef.search import engine, semantic
+
+    old_db = tmp_path / "pantry.db"
+    old = sqlite3.connect(old_db)
+    old.execute(
+        "CREATE TABLE match_cache (user_term TEXT, recipe_term TEXT, label TEXT, "
+        "source TEXT, created_at TEXT, PRIMARY KEY (user_term, recipe_term))"
+    )
+    old.execute("INSERT INTO match_cache VALUES ('pasta', 'spaghetti', 'substitute', 'llm', 't')")
+    old.commit()
+    old.close()
+    monkeypatch.setattr(factory, "create_llm", lambda s: None)
+    monkeypatch.setattr(semantic, "ChromaNameIndex", lambda path: None)
+    settings = Settings(_env_file=None, db_path=old_db, llm_model=model)
+    engine.matching_from_settings(settings, None, None, state_conn)
+    rows = state_conn.execute("SELECT COUNT(*) FROM match_cache").fetchone()[0]
+    assert rows == imported

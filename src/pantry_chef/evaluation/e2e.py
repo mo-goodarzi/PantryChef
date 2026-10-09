@@ -44,7 +44,7 @@ from pantry_chef.models.chat import (
 from pantry_chef.models.query import AmountStatus, Diet
 from pantry_chef.models.recipe import Candidate
 
-MAX_TURNS = 10  # a conversation needing more is stuck (counted as an error)
+MAX_TURNS = 10  # replies; a conversation needing more is stuck (counted as an error)
 
 
 class TrueAmount(BaseModel):
@@ -182,6 +182,7 @@ class E2EResult:
     latency_s: float = 0.0
     cost_usd: float = 0.0
     llm_calls: int = 0
+    unpriced_models: list[str] = field(default_factory=list)  # left out of cost_usd
     expect_recipe: bool = True
     judge_score: int | None = None  # 1-5: how well the final recipe fits the request
     judge_reason: str | None = None
@@ -242,7 +243,7 @@ def run_case(
                     ]
                     result.unsafe_shown += [f"{option.name}: {f}" for f in unsafe]
             turn = conversation.reply(user.answer(question))
-        else:
+        if not turn.done:
             raise RuntimeError(f"no answer after {MAX_TURNS} turns")
         result.searches = conversation.state().attempts
         if turn.answer is not None:
@@ -255,7 +256,9 @@ def run_case(
         result.latency_s = time.perf_counter() - start
         spent = usage.since(before)
         result.llm_calls = sum(u.calls for u in spent.values())
-        result.cost_usd = usage.total_cost(spent)
+        # never raises: a model without a price is named in the report, not lost as a run
+        result.cost_usd = usage.priced_cost(spent)
+        result.unpriced_models = usage.unpriced_models(spent)
         result.questions = dict(asked)
     if judge is not None and result.recipe_id is not None and not result.error:
         try:
@@ -268,6 +271,22 @@ def run_case(
         if judgment is not None:
             result.judge_score, result.judge_reason = judgment.score, judgment.reason
     return result
+
+
+def cap_reached(
+    max_cost: float | None, spent: dict[str, usage.ModelUsage], variant: str, done: int
+) -> str | None:
+    """Why the run stops before the next case, or None. Without a cap nothing is priced
+    here; with one, a model without a price stops the run (the cap cannot be checked)."""
+    if max_cost is None:
+        return None
+    try:
+        cost = usage.total_cost(spent)
+    except ValueError as error:
+        return f"spending cap cannot be checked in {variant} after {done} cases: {error}"
+    if cost >= max_cost:
+        return f"spending cap ${max_cost:.2f} reached in {variant} after {done} cases"
+    return None
 
 
 # --- summary ----------------------------------------------------------------------------
@@ -323,6 +342,7 @@ def summarize(results: list[E2EResult]) -> dict:
         "cost_usd": sum(r.cost_usd for r in results),
         "cost_per_case_usd": sum(r.cost_usd for r in results) / n if n else 0.0,
         "llm_calls_per_case": sum(r.llm_calls for r in results) / n if n else 0.0,
+        "unpriced_models": sorted({m for r in results for m in r.unpriced_models}),
     }
 
 
@@ -361,6 +381,13 @@ def write_report(
     ]
     if meta.get("stopped"):
         lines += ["", f"**Stopped early:** {meta['stopped']}"]
+    unpriced = sorted({m for s in summaries.values() for m in s["unpriced_models"]})
+    if unpriced:
+        lines += [
+            "",
+            f"**Costs leave out** models without a price: {', '.join(unpriced)} "
+            "(add them to PRICES in llm/usage.py)",
+        ]
     lines += [
         "",
         "| Variant | task success | good answer | mean judge | safety violations "
