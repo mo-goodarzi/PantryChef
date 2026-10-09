@@ -184,14 +184,18 @@ def check_ingredients(
 
 
 def check_quantities(candidate: Candidate, context: VerificationContext) -> CheckResult:
-    """Only key ingredients whose quantity matters and where both amounts are known.
+    """Key ingredients where both amounts are known: any amount the user gave is used (the
+    "amount matters" label only decides what the quantity question asks about).
     Unknown or "plenty" is fine; >= 50% available -> scale the recipe down; less -> fail."""
     reasons, notes, ratios = [], [], []
     for ingredient in candidate.ingredients:
-        if not (needs_match(ingredient) and ingredient.quantity_matters):
+        if not needs_match(ingredient):
             continue
-        match = match_for(ingredient, context)
-        item = context.pantry_items.get(match.user_term or "")
+        # The question asks with the recipe's name ("cooked pasta"); the user may have
+        # said another word ("pasta") that the matcher linked to it.
+        item = context.pantry_items.get(ingredient.canonical_name) or context.pantry_items.get(
+            match_for(ingredient, context).user_term or ""
+        )
         if item is None or item.amount_status is not AmountStatus.KNOWN or item.quantity is None:
             continue
         if ingredient.quantity is None:

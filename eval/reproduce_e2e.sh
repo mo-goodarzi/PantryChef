@@ -11,6 +11,10 @@ run --cases eval/cases/safety.json \
     --variants chat,no-verifier,coverage-only,sql-off,no-safety --max-cost 5
 run --cases eval/cases/e2e.json --variants chat,no-verifier,coverage-only --max-cost 6
 
+# Quantity question: never / when it matters (the app's default) / always
+run --cases eval/cases/quantities.json \
+    --variants ask-never,ask-when-it-matters,ask-always --max-cost 3
+
 # Model comparison for LLM_MODEL (parsing, safety intake, rerank, matcher);
 # the safety checks and the judge stay on gpt-5.4-mini. gpt-5.4-nano is no longer run
 # (owner decision 2026-10-09, docs/decisions.md); its Phase 7 numbers stay in the README.

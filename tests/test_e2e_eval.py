@@ -21,6 +21,7 @@ from pantry_chef.evaluation.e2e import (
     missing_key,
     run_case,
     summarize,
+    too_little,
     write_report,
 )
 from pantry_chef.evaluation.judge import CachedJudge, Judgment, JudgmentBatch
@@ -109,6 +110,45 @@ def recipe(*keys: str, staple: str = "salt") -> Candidate:
 )
 def test_missing_key_uses_whole_words_and_also_ok(pantry, also_ok, keys, missing):
     assert missing_key(recipe(*keys), case(pantry=pantry, also_ok=also_ok)) == missing
+
+
+def with_amount(candidate: Candidate, name: str, quantity: float, unit: str | None) -> Candidate:
+    ingredients = [
+        i.model_copy(update={"quantity": quantity, "unit": unit}) if i.name == name else i
+        for i in candidate.ingredients
+    ]
+    return candidate.model_copy(update={"ingredients": ingredients})
+
+
+@pytest.mark.parametrize(
+    ("have", "needs", "short"),
+    [
+        (TrueAmount(quantity=1), (2, "eggs"), False),  # half: the app scales the recipe down
+        (TrueAmount(quantity=1), (6, None), True),  # 1 of 6 eggs
+        (TrueAmount(quantity=6), (6, "eggs"), False),
+        (TrueAmount(quantity=100, unit="g"), (1, "pound"), True),  # 100 g of 454 g
+        (TrueAmount(quantity=300, unit="g"), (1, "pound"), False),
+        (TrueAmount(quantity=200, unit="g"), (2, "cup"), False),  # g vs cups: not checked
+    ],
+)
+def test_too_little_compares_true_amounts_with_the_recipe(have, needs, short):
+    candidate = with_amount(recipe("eggs"), "eggs", *needs)
+    failures = too_little(candidate, case(amounts={"egg": have}))
+    assert bool(failures) is short
+    if short:
+        assert failures[0].startswith("insufficient_quantity: eggs (have ")
+
+
+def test_too_little_skips_unknown_amounts_and_staples():
+    candidate = with_amount(recipe("eggs", staple="salt"), "salt", 1, "cup")
+    assert too_little(candidate, case(amounts={"egg": TrueAmount(quantity=1)})) == []
+    assert too_little(with_amount(recipe("eggs"), "eggs", 6, None), case()) == []
+
+
+def test_simulated_user_finds_the_amount_by_item_name():
+    user = SimulatedUser(case(amounts={"eggs": TrueAmount(quantity=3)}))
+    assert user.amount("egg").quantity == 3
+    assert user.amount("milk").status is AmountStatus.UNKNOWN
 
 
 # --- whole conversations ----------------------------------------------------------------
@@ -231,7 +271,7 @@ def test_the_spending_cap_stops_the_run_and_needs_every_price():
     assert stopped and "cannot be checked" in stopped and "unpriced-model" in stopped
 
 
-@pytest.mark.parametrize("name", ["e2e.json", "safety.json"])
+@pytest.mark.parametrize("name", ["e2e.json", "safety.json", "quantities.json"])
 def test_case_files_load(name):
     cases = load_e2e_cases(Path(__file__).parents[1] / "eval" / "cases" / name)
     assert cases and all(c.pantry or not c.expect_recipe for c in cases)
