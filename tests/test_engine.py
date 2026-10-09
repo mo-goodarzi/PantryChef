@@ -116,3 +116,35 @@ def test_the_hidden_allergen_check_keeps_its_own_model(monkeypatch, tmp_path, st
     _, verifier = engine.matching_from_settings(settings, None, None, state_conn)
     assert verifier.hidden_checker.llm.model_name == "gpt-5.4-mini"
     assert created == ["gpt-5.4-nano", "gpt-5.4-mini"]  # matcher, hidden-allergen check
+
+
+def test_verifier_off_lets_failed_recipes_through_for_the_eval_only(enriched_conn):
+    from pantry_chef.search.engine import SearchOptions, find_verified
+
+    query = RecipeQuery(ingredients=["milk"])  # every recipe misses key ingredients
+    on = find_verified(enriched_conn, query, SearchOptions())
+    off = find_verified(enriched_conn, query, SearchOptions(use_verifier=False))
+    statuses = {vc.verification.status for vc in off.top}
+    assert all(vc.verification.status is not VerificationStatus.FAIL for vc in on.top)
+    assert VerificationStatus.FAIL in statuses  # the verdict is still recorded, not obeyed
+    assert SearchOptions().use_verifier  # the app default never turns it off
+
+
+def test_allergen_filter_off_leaves_the_verifier_as_the_only_code_layer(enriched_conn):
+    from pantry_chef.search.engine import SearchOptions, find_verified
+
+    query = RecipeQuery(
+        ingredients=["flour", "butter", "eggs", "milk"], required_allergen_free=[Allergen.EGGS]
+    )
+
+    def has_eggs(result):
+        return any(
+            Allergen.EGGS in i.allergens for vc in result.top for i in vc.candidate.ingredients
+        )
+
+    sql_off = SearchOptions(use_allergen_filter=False)
+    assert not has_eggs(find_verified(enriched_conn, query, sql_off))  # the verifier catches it
+    no_safety = SearchOptions(use_allergen_filter=False, use_verifier=False)
+    assert has_eggs(find_verified(enriched_conn, query, no_safety))  # nothing does
+    defaults = SearchOptions()
+    assert defaults.use_allergen_filter and defaults.use_allergy_review and defaults.use_verifier

@@ -106,6 +106,7 @@ pantry-chef/
 - UI: `uv run streamlit run ui/streamlit_app.py` (talks to the API at `PANTRY_CHEF_API_URL`)
 - Docker (API + UI, `./data` mounted): `docker compose up --build`
 - Eval: `uv run python eval/run_eval.py --suite <name>`
+- End-to-end eval (simulated user, spending cap): `uv run python eval/run_eval.py --suite e2e --cases eval/cases/safety.json --variants chat,no-safety --max-cost 2`; all Phase 7 reports: `eval/reproduce_e2e.sh`
 
 ## Working rules for Claude Code
 - Work one phase (or one task within a phase) at a time. Stop at the end of each phase,

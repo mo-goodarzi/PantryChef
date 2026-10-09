@@ -11,6 +11,7 @@ from langchain_core.language_models import BaseChatModel
 from pydantic import BaseModel
 
 from pantry_chef.config import Settings
+from pantry_chef.llm import usage as usage_meter
 from pantry_chef.llm.prompt_loader import Prompt
 from pantry_chef.observability import generation, get_logger
 
@@ -72,6 +73,9 @@ class LangChainStructuredLLM:
             self.calls += 1
             self.input_tokens += usage.get("input_tokens") or 0
             self.output_tokens += usage.get("output_tokens") or 0
+            usage_meter.record(
+                self.model_name, usage.get("input_tokens") or 0, usage.get("output_tokens") or 0
+            )
             parsed = result.get("parsed")
             record.output = (
                 parsed.model_dump(mode="json") if isinstance(parsed, BaseModel) else None

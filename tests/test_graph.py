@@ -444,3 +444,29 @@ def test_close_refuses_to_skip_deletion_silently(enriched_conn, state_conn):
             chat.close()
     finally:
         chat.graph.checkpointer = real
+
+
+def test_the_last_check_hides_allergens_even_with_every_search_layer_off(enriched_conn, state_conn):
+    from dataclasses import replace
+
+    llm = ScriptedLLM(
+        safety_intake=SafetyAnswer(allergies=[AllergyMention(said="egg")]),
+        request_parsing=BAKING,
+    )
+    unsafe_search = SearchOptions(use_allergen_filter=False, use_verifier=False)
+    deps = make_deps(
+        enriched_conn,
+        state_conn,
+        llm,
+        find=lambda q: find_verified(enriched_conn, q, unsafe_search),
+    )
+
+    def shown_with_eggs(deps):
+        turn = through_safety(conversation(deps))
+        shown = [o.recipe_id for o in turn.question.options] if turn.question else []
+        ingredients = load_recipe_ingredients(enriched_conn, shown)
+        return any(Allergen.EGGS in i.allergens for r in shown for i in ingredients[r])
+
+    assert not shown_with_eggs(deps)  # the last check in the graph still removes them
+    assert shown_with_eggs(replace(deps, final_allergen_check=False))  # eval-only switch
+    assert ChatDeps.__dataclass_fields__["final_allergen_check"].default is True

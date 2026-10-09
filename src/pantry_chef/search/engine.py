@@ -197,6 +197,13 @@ class SearchOptions:
     use_rerank: bool = False
     use_matcher: bool = False  # pantry expansion + matcher-based verification
     use_wish_fit: bool = False  # LLM check that each recipe fits the wish (needs a checker)
+    # False only for the eval's "verifier off" comparison: its verdicts are ignored (the
+    # SQL filters and the allergy review still run). Never off in the app.
+    use_verifier: bool = True
+    # False only for the eval's safety-layer comparisons (sql-off, no-safety): the SQL
+    # allergen filters / the LLM allergy review are skipped. Never off in the app.
+    use_allergen_filter: bool = True
+    use_allergy_review: bool = True
     usage_weight: float = 0.5  # weight of pantry usage in the ingredient score (0 = off)
     shortlist_size: int = 20  # verified recipes passed to diversity / rerank
     mmr_lambda: float = 0.7
@@ -294,9 +301,15 @@ def find_verified(
         raise ValueError("use_wish_fit=True needs a WishFitChecker")
     if options.use_matcher and (expander is None or verifier is None):
         raise ValueError("use_matcher=True needs a PantryExpander and a matcher Verifier")
+    # Without the allergen filter the search sees no allergies; the verifier still does.
+    search_query = (
+        query
+        if options.use_allergen_filter
+        else query.model_copy(update={"required_allergen_free": [], "other_allergies": []})
+    )
     result = search(
         conn,
-        query,
+        search_query,
         limit=options.pool_size,
         semantic=semantic if options.use_semantic else None,
         expander=expander if options.use_matcher else None,
@@ -313,9 +326,10 @@ def find_verified(
         ],
         matched_recipes=result.matched_recipes,
     )
-    shortlist = [vc.candidate for vc in found.approved[: options.shortlist_size]]
+    passed = found.approved if options.use_verifier else found.checked
+    shortlist = [vc.candidate for vc in passed[: options.shortlist_size]]
     with span("search.allergy_review", candidates=len(shortlist)):
-        if allergy_reviewer is not None:
+        if allergy_reviewer is not None and options.use_allergy_review:
             outcomes = allergy_reviewer.review(query, shortlist)
         else:
             outcomes = code_only_outcomes(conn, query, shortlist)

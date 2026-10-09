@@ -39,11 +39,17 @@ class ChatApp:
             conn.close()
 
 
-def chat_from_settings(settings: Settings, threaded: bool = False) -> ChatApp:
+def chat_from_settings(
+    settings: Settings,
+    threaded: bool = False,
+    options: SearchOptions | None = None,
+    final_allergen_check: bool = True,
+) -> ChatApp:
     """The measured best pipeline: semantic + matcher + pantry usage + LLM rerank.
 
     threaded=True (the API) opens connections that worker threads may share; the caller
-    must serialize graph calls.
+    must serialize graph calls. `options` and `final_allergen_check` change the pipeline
+    for the eval's comparisons only; the app always uses the defaults.
     """
     for path, how in [
         (settings.db_path, "scripts/build_db.py and scripts/enrich_db.py"),
@@ -72,7 +78,7 @@ def chat_from_settings(settings: Settings, threaded: bool = False) -> ChatApp:
     wish_checker = WishFitChecker(
         wish_llm, conn, cache_path=settings.state_db_path.parent / "wish_fit.json"
     )
-    options = SearchOptions(
+    options = options or SearchOptions(
         use_semantic=True,
         use_matcher=True,
         use_rerank=True,
@@ -101,6 +107,7 @@ def chat_from_settings(settings: Settings, threaded: bool = False) -> ChatApp:
         steps=lambda recipe_id: load_steps(conn, recipe_id),
         profiles=profiles,
         ask_quantities=settings.ask_quantities,
+        final_allergen_check=final_allergen_check,
     )
     graph = build_graph(deps, SqliteSaver(checkpoints))
     return ChatApp(graph=graph, profiles=profiles, connections=[conn, state, checkpoints])
