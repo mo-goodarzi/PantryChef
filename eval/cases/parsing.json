@@ -22,7 +22,9 @@
   {"id": "s19", "answer": "nope, I eat everything", "allergens": []},
   {"id": "s20", "answer": "tree nut allergy (peanuts are fine), and my kidney doctor says low sodium", "allergens": ["tree_nuts"], "diets": ["low_salt"], "health_diets": ["low_salt"]},
   {"id": "s21", "answer": "sulfites give me a reaction", "allergens": ["sulphites"]},
-  {"id": "s22", "answer": "allergic to cashews, and I'm on a low potassium diet", "allergens": ["tree_nuts"], "health_not_covered": true}
+  {"id": "s22", "answer": "allergic to cashews, and I'm on a low potassium diet", "allergens": ["tree_nuts"], "health_not_covered": true},
+  {"id": "s23", "answer": "dairy free please", "allergens": ["milk"]},
+  {"id": "s24", "answer": "egg-free and no fish please", "allergens": ["eggs", "fish"]}
  ],
  "requests": [
   {"id": "r01", "message": "I have eggs, milk and toast. Something sweet for breakfast?", "pantry": ["eggs", "milk", "toast"], "wish_words": ["sweet", "breakfast"]},

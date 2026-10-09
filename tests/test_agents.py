@@ -71,6 +71,41 @@ def test_health_conditions_become_confirmed_restrictions_only():
     assert "low sugar" in message and "not medical advice" in message
 
 
+def test_a_disliked_allergen_word_becomes_an_allergy():
+    # "dairy free please" read as a dislike: a dislike only drops recipes naming "dairy",
+    # so alfredo sauce would pass; the alias table makes it milk
+    llm = FakeLLM(SafetyAnswer(dislikes=["Dairy", "mushrooms", "eggs"]))
+    intake = interpret_safety_answer(llm, "dairy free please, no mushrooms or eggs")
+    assert intake.profile.allergens == [Allergen.EGGS, Allergen.MILK]
+    assert intake.allergy_groups == {"dairy": [Allergen.MILK], "eggs": [Allergen.EGGS]}
+    assert intake.profile.dislikes == ["mushrooms"]
+    assert "dairy (milk)" in confirmation_message(intake)  # read back for confirmation
+
+
+def test_an_allergy_and_a_dislike_of_the_same_word_are_one_allergy():
+    llm = FakeLLM(SafetyAnswer(allergies=[said("dairy")], dislikes=["dairy"]))
+    intake = interpret_safety_answer(llm, "dairy")
+    assert intake.allergy_groups == {"dairy": [Allergen.MILK]}
+    assert intake.profile.dislikes == []
+
+
+def test_a_health_reason_for_gluten_free_adds_the_gluten_allergen():
+    llm = FakeLLM(SafetyAnswer(health_diets=[Diet.GLUTEN_FREE]))
+    intake = interpret_safety_answer(llm, "I have coeliac disease")
+    assert intake.profile.allergens == [Allergen.GLUTEN]
+    assert intake.profile.health_diets == [Diet.GLUTEN_FREE]
+    assert intake.allergy_groups == {"gluten": [Allergen.GLUTEN]}
+    assert "coeliac" not in intake.model_dump_json()  # the condition is never kept
+
+
+def test_gluten_is_not_added_twice_or_for_a_chosen_diet():
+    llm = FakeLLM(SafetyAnswer(allergies=[said("wheat")], health_diets=[Diet.GLUTEN_FREE]))
+    intake = interpret_safety_answer(llm, "wheat allergy and coeliac")
+    assert intake.allergy_groups == {"wheat": [Allergen.GLUTEN]}
+    chosen = interpret_safety_answer(FakeLLM(SafetyAnswer(diets=[Diet.GLUTEN_FREE])), "gf")
+    assert chosen.profile.allergens == []  # a chosen diet stays a diet
+
+
 def test_uncovered_health_condition_is_flagged_without_keeping_it():
     llm = FakeLLM(SafetyAnswer(health_not_covered=True))
     message = confirmation_message(interpret_safety_answer(llm, "I have gout"))
