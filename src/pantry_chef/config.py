@@ -57,7 +57,8 @@ class Settings(BaseSettings):
     usage_weight: float = 0.5  # ingredient score = (1 - w) * coverage + w * pantry usage
 
     # Conversation
-    # The quantity question is built but off until recipes have amounts (Phase 8).
+    # The quantity question is built but off until the quantity-strategy eval has run
+    # (recipes have amounts since 2026-10-09, docs/decisions.md).
     ask_quantities: bool = False
 
     log_level: str = "INFO"

@@ -203,7 +203,7 @@ every later check then trusts. Asked "dairy free please" five times each, gpt-5.
 milk allergy twice (twice a dislike, once nothing) and mini five times. One run per model
 and a small subset, so small differences are noise; the safety miss is not. Known limits:
 the truth check uses the project's own ingredient allergen labels, and the quantity
-question (Phase 8) is not measured yet.
+question is not measured yet (recipes have amounts since 2026-10-09; the eval comes next).
 
 \*Measured before the ingredient matcher's cache was keyed by model, so nano's matcher
 reused mini's answers; its allergy miss is in the safety intake and stands. gpt-5.4 was
