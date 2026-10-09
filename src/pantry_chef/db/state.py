@@ -22,6 +22,11 @@ def open_state_db(path: Path, check_same_thread: bool = True) -> sqlite3.Connect
     return conn
 
 
+# The matcher model when match_cache lived in pantry.db: the old rows carry no model, so
+# only a matcher on this model may reuse them.
+LEGACY_MATCH_MODEL = "gpt-5.4-mini"
+
+
 def import_legacy_match_cache(state: sqlite3.Connection, recipe_db: Path | str) -> int:
     """Copy match_cache rows from a recipe database built before state.db existed.
 
