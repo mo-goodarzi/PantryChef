@@ -54,8 +54,10 @@ description, ingredients, n_ingredients`.
 - `nutrition` = `[calories, total_fat_PDV, sugar_PDV, sodium_PDV, protein_PDV,
   sat_fat_PDV, carbs_PDV]`.
 - `minutes` has outliers (0 and extremely large values).
-- **No ingredient quantities or servings.** Quantities for key ingredients are estimated on
-  demand (Phase 8) and cached; they are always marked as estimates.
+- **No ingredient quantities or servings.** The original ingredient lines with amounts
+  ("4 cups blueberries") and servings come from a second file of the same author,
+  `recipes_w_search_terms.csv`, and are shown to the user (`scripts/load_amounts.py`,
+  see `docs/decisions.md` 2026-10-09). They are display text, not parsed numbers yet.
 - Some names/descriptions are empty.
 
 **Download:** manual from Kaggle, or `kaggle datasets download -d
@@ -65,7 +67,9 @@ hard-code credentials.
 
 **Decided in Phase 1:** the Kaggle dataset `irkaal/foodcom-recipes-and-reviews` was
 inspected as a quantity source and not used (quantities have no units; see
-`docs/decisions.md`).
+`docs/decisions.md`). Amounts with units come from Kaggle "Food.com Recipes with Search
+Terms and Tags" (`shuyangli94/foodcom-recipes-with-search-terms-and-tags`), added
+2026-10-09.
 
 ---
 
@@ -200,7 +204,9 @@ Acceptance criteria
 
 Tasks
 1. ~~Decide the quantity source~~ Done: LLM estimates in Phase 8 (irkaal dataset
-   inspected and dropped, see `docs/decisions.md`).
+   inspected and dropped, see `docs/decisions.md`). Update 2026-10-09: the original lines
+   from `recipes_w_search_terms.csv` are shown to the user; the estimator is only needed
+   for numbers the verifier can compare, if those lines are not parsed instead.
 2. `config.py` with pydantic-settings.
 3. `db/schema.sql` as above; `db/connection.py`.
 4. `scripts/build_db.py`:
