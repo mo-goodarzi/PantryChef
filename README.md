@@ -185,14 +185,22 @@ nothing stops them (pad thai with peanuts, sticky chicken with sesame oil).
 
 | Model | good answer | mean judge | safety violations | cost per conversation |
 |---|---|---|---|---|
-| gpt-5.4-nano | 86% | 4.44 | **1** ("dairy free please" not read as a milk allergy) | ~$0.005 |
+| gpt-5.4-nano* | 86% | 4.44 | **1** ("dairy free please" not read as a milk allergy) | ~$0.005 |
 | **gpt-5.4-mini** | **92%** | **4.52** | 0 | ~$0.02 |
-| gpt-5.4 | 90% | 4.43 | 0 | ~$0.05 |
+| gpt-5.4 | 88% | 4.47 | **1** (the same case) | ~$0.05 |
 
-The bigger model is not better here; the smaller one misses an allergy, which every later
-check then trusts. One run per model and a small subset, so small differences are noise;
-the safety miss is not. Known limits: the truth check uses the project's own ingredient
-allergen labels, and the quantity question (Phase 8) is not measured yet.
+The bigger model is not better here, and both other models miss the same allergy, which
+every later check then trusts. Asked "dairy free please" five times each, gpt-5.4 read a
+milk allergy twice (twice a dislike, once nothing) and mini five times. One run per model
+and a small subset, so small differences are noise; the safety miss is not. Known limits:
+the truth check uses the project's own ingredient allergen labels, and the quantity
+question (Phase 8) is not measured yet.
+
+\*Measured before the ingredient matcher's cache was keyed by model, so nano's matcher
+reused mini's answers; its allergy miss is in the safety intake and stands. gpt-5.4 was
+re-measured after the fix (`e2e_20261009-1928/1933`). gpt-5.4-nano is no longer used or
+evaluated: the missed allergy rules it out for the safety intake, and its cost saving
+does not justify a second model for the other steps.
 
 ## Development
 

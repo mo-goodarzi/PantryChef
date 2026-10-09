@@ -6,9 +6,9 @@ CREATE TABLE IF NOT EXISTS match_cache (   -- ingredient matcher answers (LLM, c
   user_term TEXT NOT NULL,
   recipe_term TEXT NOT NULL,
   label TEXT NOT NULL,                     -- same | contains | substitute | different
-  source TEXT NOT NULL,                    -- e.g. llm:ingredient_match:v2
+  source TEXT NOT NULL,                    -- e.g. llm:ingredient_match:v2:gpt-5.4-mini
   created_at TEXT,
-  PRIMARY KEY (user_term, recipe_term)
+  PRIMARY KEY (user_term, recipe_term, source)  -- each prompt version and model its own
 );
 
 CREATE TABLE IF NOT EXISTS profiles (      -- written only when consent_to_store is true

@@ -152,12 +152,12 @@ def test_allergen_filter_off_leaves_the_verifier_as_the_only_code_layer(enriched
     assert defaults.use_allergen_filter and defaults.use_allergy_review and defaults.use_verifier
 
 
-@pytest.mark.parametrize(("model", "imported"), [("gpt-5.4-mini", 1), ("gpt-5.4-nano", 0)])
+@pytest.mark.parametrize(("model", "reused"), [("gpt-5.4-mini", True), ("gpt-5.4", False)])
 def test_old_matcher_answers_are_reused_only_by_their_own_model(
-    monkeypatch, tmp_path, state_conn, model, imported
+    monkeypatch, tmp_path, state_conn, model, reused
 ):
-    """The old pantry.db match_cache rows carry no model: a model comparison must not
-    reuse gpt-5.4-mini's answers for another model."""
+    """The old pantry.db match_cache rows were made by gpt-5.4-mini: a model comparison
+    must not reuse them for another model."""
     import sqlite3
 
     from pantry_chef.config import Settings
@@ -170,12 +170,20 @@ def test_old_matcher_answers_are_reused_only_by_their_own_model(
         "CREATE TABLE match_cache (user_term TEXT, recipe_term TEXT, label TEXT, "
         "source TEXT, created_at TEXT, PRIMARY KEY (user_term, recipe_term))"
     )
-    old.execute("INSERT INTO match_cache VALUES ('pasta', 'spaghetti', 'substitute', 'llm', 't')")
+    old.execute(
+        "INSERT INTO match_cache VALUES "
+        "('pasta', 'spaghetti', 'substitute', 'llm:ingredient_match:v2', 't')"
+    )
     old.commit()
     old.close()
-    monkeypatch.setattr(factory, "create_llm", lambda s: None)
+
+    class Named:
+        def __init__(self, model):
+            self.model_name = model
+
+    monkeypatch.setattr(factory, "create_llm", lambda s: Named(s.llm_model))
     monkeypatch.setattr(semantic, "ChromaNameIndex", lambda path: None)
     settings = Settings(_env_file=None, db_path=old_db, llm_model=model)
-    engine.matching_from_settings(settings, None, None, state_conn)
-    rows = state_conn.execute("SELECT COUNT(*) FROM match_cache").fetchone()[0]
-    assert rows == imported
+    expander, _ = engine.matching_from_settings(settings, None, None, state_conn)
+    cached = expander.matcher.cache.get("pasta", "spaghetti")
+    assert (cached is not None) == reused

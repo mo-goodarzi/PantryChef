@@ -5,7 +5,7 @@ Usage:
     uv run python eval/run_eval.py --variants semantic+matcher+usage+rerank --repeats 3
     uv run python eval/run_eval.py --suite e2e --cases eval/cases/safety.json --max-cost 2
     uv run python eval/run_eval.py --suite e2e --variants chat,no-verifier,coverage-only
-    LLM_MODEL=gpt-5.4-nano WISH_FIT_MODEL=gpt-5.4-nano uv run python eval/run_eval.py ...
+    LLM_MODEL=gpt-5.4 uv run python eval/run_eval.py --suite e2e ...
 """
 
 import argparse
@@ -118,10 +118,8 @@ def run_e2e(
     """Whole conversations with the simulated user, through the chat pipeline as it runs
     for real (chat_from_settings), with its own state database and caches. The cap
     counts everything this run spends, judge included."""
-    # One state database per LLM_MODEL: the matcher's answer cache lives there and is
-    # keyed by prompt, not model, so a model comparison must not reuse another's answers.
-    name = "state.db" if settings.llm_model == "gpt-5.4-mini" else f"state-{settings.llm_model}.db"
-    eval_state = Path("data/processed/eval_cache") / name
+    # one state database for every LLM_MODEL: matcher answers are cached per model
+    eval_state = Path("data/processed/eval_cache/state.db")
     eval_state.parent.mkdir(parents=True, exist_ok=True)
     eval_settings = settings.model_copy(update={"state_db_path": eval_state})
     conn = connect(settings.db_path)
@@ -225,7 +223,7 @@ def main() -> None:
     conn = connect(args.db)
     cases = load_cases(args.cases or ROOT / "cases" / "search.json")[: args.limit]
     variants_arg = args.variants or ",".join(VARIANTS)
-    # the judge has its own model, so LLM_MODEL=gpt-5.4-nano changes the pipeline, not the ruler
+    # the judge has its own model, so another LLM_MODEL changes the pipeline, not the ruler
     judge_llm = create_llm(settings.model_copy(update={"llm_model": settings.judge_model}))
     judge = CachedJudge(judge_llm, args.judge_cache)
     variants = variants_arg.split(",")

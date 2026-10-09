@@ -98,8 +98,9 @@ def parents_from_seed(seed: dict[str, dict]) -> dict[str, set[str]]:
 class MatchCache:
     """Pair labels in the match_cache table of state.db.
 
-    Entries are tagged with their source (e.g. "llm:v2"); only entries from the current
-    source are used, so changing the prompt version invalidates old answers.
+    Entries are tagged with their source (e.g. "llm:ingredient_match:v2:gpt-5.4-mini");
+    only entries from the current source are used, so another prompt version or model
+    never reuses old answers.
     """
 
     def __init__(self, conn: sqlite3.Connection, source: str = "llm"):
@@ -182,8 +183,9 @@ class LLMMatcher:
 
 
 def llm_cache_source(llm: "LLMMatcher") -> str:
-    """Cache tag for answers from this LLM matcher's prompt version."""
-    return f"llm:{llm.prompt.name}:v{llm.prompt.version}"
+    """Cache tag for answers from this LLM matcher's prompt version and model."""
+    model = getattr(llm.llm, "model_name", "unknown")
+    return f"llm:{llm.prompt.name}:v{llm.prompt.version}:{model}"
 
 
 class CompositeMatcher:
