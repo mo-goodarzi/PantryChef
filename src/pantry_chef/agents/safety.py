@@ -71,15 +71,35 @@ def split_allergies(
     return groups, other
 
 
+def is_allergen_word(word: str) -> bool:
+    """True if the alias table maps the word to allergen codes ("dairy", "eggs")."""
+    try:
+        parse_user_allergy(word)
+    except ValueError:
+        return False
+    return True
+
+
 def interpret_safety_answer(llm: StructuredLLM, answer: str) -> SafetyIntake:
     result = llm.generate(load_prompt("safety_intake"), SafetyAnswer, answer=answer)
-    groups, other = split_allergies(result.allergies)
+    # A disliked allergen word ("dairy free please" read as a dislike of "dairy") becomes
+    # an allergy: a dislike only drops recipes naming the word, so alfredo sauce would pass.
+    dislikes = {" ".join(d.lower().split()) for d in result.dislikes if d.strip()}
+    disliked_allergens = {d for d in dislikes if is_allergen_word(d)}
+    mentions = result.allergies + [AllergyMention(said=d) for d in sorted(disliked_allergens)]
+    groups, other = split_allergies(mentions)
+    # A health reason for gluten free (e.g. coeliac) also makes gluten an allergen, so the
+    # hidden-allergen check and the allergy review run, not only the diet filter.
+    if Diet.GLUTEN_FREE in result.health_diets and not any(
+        Allergen.GLUTEN in codes for codes in groups.values()
+    ):
+        groups["gluten"] = [Allergen.GLUTEN]
     profile = UserProfile(
         allergens=sorted({code for codes in groups.values() for code in codes}),
         other_allergies=sorted(set(other)),
         diets=list(dict.fromkeys(result.diets + result.health_diets)),
         health_diets=list(dict.fromkeys(result.health_diets)),
-        dislikes=sorted({" ".join(d.lower().split()) for d in result.dislikes if d.strip()}),
+        dislikes=sorted(dislikes - disliked_allergens),
     )
     return SafetyIntake(
         profile=profile, allergy_groups=groups, health_not_covered=result.health_not_covered
