@@ -15,6 +15,8 @@ class RecipeIngredient(BaseModel):
     quantity_matters: bool = False
     quantity: float | None = None
     unit: str | None = None
+    # The recipe's own line, e.g. "4 cups blueberries, fresh or frozen" (db/amounts.py).
+    amount_text: str | None = None
     # Own allergens plus those of parent and contained ingredients (pesto -> pine nut).
     allergens: list[Allergen] = Field(default_factory=list)
     contains_meat: bool = False

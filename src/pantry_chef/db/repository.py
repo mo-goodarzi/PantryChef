@@ -13,6 +13,7 @@ from pantry_chef.search.text import useful_tags
 INGREDIENTS_SQL = """
 SELECT ri.recipe_id, i.id AS ingredient_id, i.name, i.canonical_name, i.category,
        ri.is_key, ri.is_optional, i.is_staple, i.quantity_matters, ri.quantity, ri.unit,
+       ri.amount_text,
        i.contains_meat, i.contains_fish, i.animal_product
 FROM recipe_ingredients ri JOIN ingredients i ON i.id = ri.ingredient_id
 WHERE ri.recipe_id IN (SELECT value FROM json_each(:ids))
@@ -65,6 +66,7 @@ def load_recipe_ingredients(
                 quantity_matters=bool(row["quantity_matters"]),
                 quantity=row["quantity"],
                 unit=row["unit"],
+                amount_text=row["amount_text"],
                 allergens=sorted(allergens[row["ingredient_id"]]),
                 contains_meat=bool(row["contains_meat"]),
                 contains_fish=bool(row["contains_fish"]),
@@ -90,6 +92,12 @@ def load_steps(conn: sqlite3.Connection, recipe_id: int) -> list[str]:
     """The recipe's steps exactly as stored."""
     row = conn.execute("SELECT steps_json FROM recipes WHERE id = ?", (recipe_id,)).fetchone()
     return json.loads(row["steps_json"]) if row else []
+
+
+def load_servings(conn: sqlite3.Connection, recipe_id: int) -> int | None:
+    """Servings from the recipe author, or None when unknown."""
+    row = conn.execute("SELECT servings FROM recipes WHERE id = ?", (recipe_id,)).fetchone()
+    return row["servings"] if row else None
 
 
 def recipe_summaries(conn: sqlite3.Connection, recipe_ids: list[int]) -> dict[int, dict]:

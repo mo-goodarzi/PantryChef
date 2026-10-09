@@ -17,7 +17,8 @@ CREATE TABLE recipes (
   -- n_key: distinct key ingredients by canonical name, for search.
   -- is_high_protein: for the high protein goal, see ingredients/protein.py.
   n_key INTEGER,
-  is_high_protein INTEGER
+  is_high_protein INTEGER,
+  servings INTEGER                   -- from recipes_w_search_terms.csv (db/amounts.py)
 );
 
 CREATE TABLE ingredients (
@@ -41,6 +42,7 @@ CREATE TABLE recipe_ingredients (
   quantity REAL,
   unit TEXT,
   quantity_source TEXT,              -- NULL | 'llm_estimate' (Phase 8)
+  amount_text TEXT,                  -- original line, e.g. "4 cups blueberries" (db/amounts.py)
   PRIMARY KEY (recipe_id, ingredient_id)
 );
 
