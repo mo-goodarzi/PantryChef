@@ -939,3 +939,29 @@ stays for `LLM_MODEL`.
 **Open (owner's call):** "X free" phrasing depends on the model reading it as an allergy.
 The simulated user always confirms the read-back, so a real user could still correct
 it; making "dairy free" map to milk in code (like the alias table) is not decided.
+
+## 2026-10-09 — Safety intake: allergen dislikes and coeliac in code
+
+**Problem:** two allergies depended on the model alone. "dairy free please" came back as
+a dislike of "dairy" (gpt-5.4, 2 of 5 tries), and a dislike only drops recipes whose
+ingredient names contain the word, so alfredo sauce passed. "I have coeliac disease"
+became the gluten_free health diet but never the gluten allergen (mini and nano, parsing
+case s06), so the hidden-allergen check and the allergy review did not run for it.
+
+**Owner decision:**
+- A dislike that the alias table knows ("dairy", "eggs", "nuts") becomes an allergy and
+  is read back as one ("I'll avoid: dairy (milk)"). Stricter, never weaker.
+- A gluten_free **health** diet also adds the gluten allergen (read back as "gluten");
+  a chosen gluten_free diet stays a diet. This reverses the earlier "coeliac stays a
+  diet" choice (2026-10-07).
+- Considered and not chosen: a code check for "<allergen> free" in the user's raw answer
+  (would also catch the model returning nothing, about 1 in 5 gpt-5.4 tries; it parses
+  user text in code), and a prompt change only (no guarantee).
+
+**Results:** parsing eval with two new cases (s23 "dairy free please", s24 "egg-free
+and no fish please"): mini and gpt-5.4 both 100%, **0 missed allergens** (s06 was missed
+before; `parsing_20261009-2000`). gpt-5.4 on "dairy free please", 10 tries: 7 read as an
+allergy, 3 as a dislike that code now turns into milk, so milk 10 of 10.
+
+**Still open:** the model can still return nothing for "X free" phrasing; the read-back
+is then "No allergies", which the user must catch.
