@@ -118,10 +118,8 @@ def run_e2e(
     """Whole conversations with the simulated user, through the chat pipeline as it runs
     for real (chat_from_settings), with its own state database and caches. The cap
     counts everything this run spends, judge included."""
-    # One state database per LLM_MODEL: the matcher's answer cache lives there and is
-    # keyed by prompt, not model, so a model comparison must not reuse another's answers.
-    name = "state.db" if settings.llm_model == "gpt-5.4-mini" else f"state-{settings.llm_model}.db"
-    eval_state = Path("data/processed/eval_cache") / name
+    # one state database for every LLM_MODEL: matcher answers are cached per model
+    eval_state = Path("data/processed/eval_cache/state.db")
     eval_state.parent.mkdir(parents=True, exist_ok=True)
     eval_settings = settings.model_copy(update={"state_db_path": eval_state})
     conn = connect(settings.db_path)
