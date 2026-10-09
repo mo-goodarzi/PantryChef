@@ -5,7 +5,7 @@ Usage:
     uv run python eval/run_eval.py --variants semantic+matcher+usage+rerank --repeats 3
     uv run python eval/run_eval.py --suite e2e --cases eval/cases/safety.json --max-cost 2
     uv run python eval/run_eval.py --suite e2e --variants chat,no-verifier,coverage-only
-    LLM_MODEL=gpt-5.4-nano WISH_FIT_MODEL=gpt-5.4-nano uv run python eval/run_eval.py ...
+    LLM_MODEL=gpt-5.4 uv run python eval/run_eval.py --suite e2e ...
 """
 
 import argparse
@@ -225,7 +225,7 @@ def main() -> None:
     conn = connect(args.db)
     cases = load_cases(args.cases or ROOT / "cases" / "search.json")[: args.limit]
     variants_arg = args.variants or ",".join(VARIANTS)
-    # the judge has its own model, so LLM_MODEL=gpt-5.4-nano changes the pipeline, not the ruler
+    # the judge has its own model, so another LLM_MODEL changes the pipeline, not the ruler
     judge_llm = create_llm(settings.model_copy(update={"llm_model": settings.judge_model}))
     judge = CachedJudge(judge_llm, args.judge_cache)
     variants = variants_arg.split(",")

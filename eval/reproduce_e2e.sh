@@ -12,8 +12,7 @@ run --cases eval/cases/safety.json \
 run --cases eval/cases/e2e.json --variants chat,no-verifier,coverage-only --max-cost 6
 
 # Model comparison for LLM_MODEL (parsing, safety intake, rerank, matcher);
-# the safety checks and the judge stay on gpt-5.4-mini
-LLM_MODEL=gpt-5.4-nano run --cases eval/cases/safety.json --max-cost 1.5
-LLM_MODEL=gpt-5.4-nano run --cases eval/cases/e2e.json --max-cost 1.5
+# the safety checks and the judge stay on gpt-5.4-mini. gpt-5.4-nano is no longer run
+# (owner decision 2026-10-09, docs/decisions.md); its Phase 7 numbers stay in the README.
 LLM_MODEL=gpt-5.4 run --cases eval/cases/safety.json --limit 25 --max-cost 3
 LLM_MODEL=gpt-5.4 run --cases eval/cases/e2e.json --limit 25 --max-cost 3

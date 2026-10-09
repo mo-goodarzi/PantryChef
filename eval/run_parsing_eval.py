@@ -1,10 +1,10 @@
 """Compare models on the safety intake and request parsing (eval/cases/parsing.json).
 
-Decides whether LLM_MODEL can move to a cheaper model: the cheaper one must miss no
-allergen and pass about as many cases (docs/decisions.md, "Model per role").
+Decides whether LLM_MODEL can move to another model: it must miss no allergen and pass
+about as many cases (docs/decisions.md, "Model per role").
 
 Usage:
-    uv run python eval/run_parsing_eval.py --models gpt-5.4-mini,gpt-5.4-nano
+    uv run python eval/run_parsing_eval.py --models gpt-5.4-mini,gpt-5.4
 """
 
 import argparse
