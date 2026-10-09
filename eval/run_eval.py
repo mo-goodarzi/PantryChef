@@ -9,6 +9,7 @@ Usage:
 """
 
 import argparse
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -74,8 +75,14 @@ def pipeline_models(settings: Settings) -> str:
     )
 
 
-def e2e_variants(settings: Settings) -> dict[str, SearchOptions | None]:
-    """Pipeline configurations for the end-to-end comparison (None = the app's own)."""
+@dataclass(frozen=True)
+class E2EVariant:
+    options: SearchOptions | None  # None = the app's own pipeline
+    final_allergen_check: bool = True
+
+
+def e2e_variants(settings: Settings) -> dict[str, E2EVariant]:
+    """Pipeline configurations for the end-to-end comparison."""
     full = dict(
         use_semantic=True,
         use_matcher=True,
@@ -83,12 +90,21 @@ def e2e_variants(settings: Settings) -> dict[str, SearchOptions | None]:
         use_wish_fit=settings.wish_fit_enabled,
         usage_weight=settings.usage_weight,
     )
+    # the code safety layers off (diet filters stay on); the LLM allergy review off too,
+    # so the result is about the code layers only
+    no_sql = dict(full, use_allergen_filter=False, use_allergy_review=False)
     return {
-        "chat": None,
+        "chat": E2EVariant(None),
         # every verifier verdict ignored; SQL filters and the allergy review still run
-        "no-verifier": SearchOptions(**full, use_verifier=False),
+        "no-verifier": E2EVariant(SearchOptions(**full, use_verifier=False)),
         # the no-LLM search: SQL filters + ingredient coverage, exact-name verifier
-        "coverage-only": SearchOptions(usage_weight=settings.usage_weight),
+        "coverage-only": E2EVariant(SearchOptions(usage_weight=settings.usage_weight)),
+        # safety layers: only the verifier left
+        "sql-off": E2EVariant(SearchOptions(**no_sql), final_allergen_check=False),
+        # no allergen layer at all: shows the eval detects violations
+        "no-safety": E2EVariant(
+            SearchOptions(**no_sql, use_verifier=False), final_allergen_check=False
+        ),
     }
 
 
@@ -114,7 +130,10 @@ def run_e2e(
     all_results: dict[str, list] = {}
     stopped = None
     for variant in variants:
-        app = chat_from_settings(eval_settings, options=options[variant])
+        spec = options[variant]
+        app = chat_from_settings(
+            eval_settings, options=spec.options, final_allergen_check=spec.final_allergen_check
+        )
         results = all_results.setdefault(variant, [])
         try:
             for i, case in enumerate(cases, start=1):

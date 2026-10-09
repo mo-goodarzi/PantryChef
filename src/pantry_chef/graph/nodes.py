@@ -69,6 +69,9 @@ class ChatDeps:
     steps: Callable[[int], list[str]]
     profiles: ProfileStore | None = None
     ask_quantities: bool = False  # off until recipes have amounts (Phase 8)
+    # The last allergen check before options are shown. False only for the eval's
+    # safety-layer comparisons; never off in the app.
+    final_allergen_check: bool = True
 
 
 def ask(question: Question) -> dict:
@@ -222,7 +225,11 @@ class ChatNodes:
         attempt = state.attempts + 1
         with span("node.search", attempt=attempt):
             result = self.deps.find(state.query)
-            unsafe = allergen_violations(result.top, state.query)
+            unsafe = (
+                allergen_violations(result.top, state.query)
+                if self.deps.final_allergen_check
+                else []
+            )
             if unsafe:  # never expected: the filters and the verifier both check allergens
                 log.error("graph.allergen_violation", recipe_ids=unsafe)
             approved = [vc for vc in result.top if vc.candidate.recipe_id not in unsafe]
