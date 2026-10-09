@@ -903,6 +903,39 @@ please"), and every code layer trusts the intake. Its matcher numbers also reuse
 cached answers (see the entry above), but that does not change this: the miss was in
 the intake, not the matcher. The measured nano row stays in the README as the evidence.
 
-**Still open:** `data/processed/eval_cache/state-gpt-5.4.db` holds 7,730 of mini's old
-matcher answers, imported before the fix above. They must be removed before the gpt-5.4
-runs are repeated, or that comparison reuses mini's matcher again.
+The gpt-5.4 comparison had the same problem; it was fixed and re-measured (next entry).
+
+## 2026-10-09 — Matcher answers cached per model
+
+**Problem:** `match_cache` was keyed by the ingredient pair and prompt version, not the
+model. Two workarounds each missed a case: separate eval state files per model (the
+search suite still used the shared `state.db`), and importing old `pantry.db` answers
+only for mini (#28; the per-model eval files already held 7,730 of mini's answers for
+gpt-5.4 and 6,365 for nano). The app's shared `state.db` would also hand mini's answers
+to any new `LLM_MODEL`, for example when mini is retired.
+
+**Owner decision:** fix the key, not the callers.
+- The cache source names the model (`llm:ingredient_match:v2:gpt-5.4-mini`), as the
+  allergy review, wish-fit and judge caches already do; the key is
+  `(user_term, recipe_term, source)`, so models no longer overwrite each other.
+- `open_state_db` rebuilds an older table in one transaction and tags its answers with
+  `LEGACY_MATCH_MODEL` (gpt-5.4-mini): mini was the default whenever they were made.
+  Old `pantry.db` answers are always imported, tagged the same way.
+- The e2e eval uses one `eval_cache/state.db` for every model again.
+
+**Data clean-up (local, not in git):** both state databases were backed up to
+`data/processed/backup-20261009-match-cache/` and migrated. Of the old
+`state-gpt-5.4.db`, the 8,301 rows written during the gpt-5.4 run (all dated
+2026-10-09; mini's copies are dated 2026-09-27/28) were kept, tagged as gpt-5.4; the
+per-model files were moved to the backup.
+
+**Re-measured gpt-5.4** (`e2e_20261009-1928/1933`, the same 25 + 25 cases, about $1.10):
+good answer 88% (was 90%), mean judge 4.47 (was 4.43), and **1 safety violation** (was
+0): s05 "dairy free please" got alfredo pasta, the same miss as nano. The intake, not
+the matcher, is the cause: asked five times, gpt-5.4 read a milk allergy twice (twice
+a dislike, once nothing), mini five times. The first run passed s05 by chance. Mini
+stays for `LLM_MODEL`.
+
+**Open (owner's call):** "X free" phrasing depends on the model reading it as an allergy.
+The simulated user always confirms the read-back, so a real user could still correct
+it; making "dairy free" map to milk in code (like the alias table) is not decided.
