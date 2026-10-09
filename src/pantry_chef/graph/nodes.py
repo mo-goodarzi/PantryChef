@@ -67,6 +67,7 @@ class ChatDeps:
     find: Callable[[RecipeQuery], FindResult]  # search + verify (+ rerank)
     reverify: Callable[[list[Candidate], RecipeQuery, list[PantryItem]], list[VerificationResult]]
     steps: Callable[[int], list[str]]
+    servings: Callable[[int], int | None] = lambda recipe_id: None
     profiles: ProfileStore | None = None
     ask_quantities: bool = False  # off until recipes have amounts (Phase 8)
     # The last allergen check before options are shown. False only for the eval's
@@ -341,7 +342,8 @@ class ChatNodes:
                 name=vc.candidate.name,
                 minutes=vc.candidate.minutes,
                 why_it_fits=why,
-                ingredients=[i.name for i in vc.candidate.ingredients],
+                ingredients=[i.amount_text or i.name for i in vc.candidate.ingredients],
+                servings=self.deps.servings(vc.candidate.recipe_id),
                 steps=self.deps.steps(vc.candidate.recipe_id),
                 adaptations=vc.verification.adaptations,
                 also_needs=ingredients_with_status(vc, {"missing", "extra"}),

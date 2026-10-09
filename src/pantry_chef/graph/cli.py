@@ -114,7 +114,9 @@ def render_question(question: Question) -> str:
 
 def render_answer(answer: FinalAnswer) -> str:
     lines = [f"{answer.name} ({answer.minutes} min)", f"Why it fits: {answer.why_it_fits}"]
-    lines.append("Ingredients: " + ", ".join(answer.ingredients))
+    serves = f" (serves {answer.servings})" if answer.servings else ""
+    lines.append(f"Ingredients{serves}:")
+    lines += [f" - {item}" for item in answer.ingredients]
     lines += [f"ALLERGY: {warning}" for warning in answer.warnings]
     if answer.adaptations:
         lines.append("Adapt: " + "; ".join(answer.adaptations))
