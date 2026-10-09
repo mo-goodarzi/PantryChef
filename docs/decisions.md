@@ -1039,3 +1039,49 @@ quantity matters, not staple), including recipes missing from the file:
 against "2 cups pasta" is a note, not a check.
 **Next:** the quantity question is still off (`ask_quantities = False`). It is turned on
 only after the Phase 7 quantity-strategy eval (never / always / when it matters).
+
+## 2026-10-09 — Quantity question on ("when it matters"), measured
+Phase 7's quantity-strategy comparison, now that recipes have amounts. New case file
+`eval/cases/quantities.json`: 24 hand-written cases with hidden amounts (11 tight, e.g. 1
+egg for a cake; 4 about half; 6 plenty; 3 in units the recipes do not use, e.g. grams of
+cheese against cups). The simulated user answers from the hidden amounts.
+
+**Eval change:** task success now also needs at least half of every key amount the case
+knows (`evaluation/e2e.py: too_little`, the verifier's scale-down limit, checked by code on
+every key ingredient, not only those labeled "amount matters"). Grams against cups are not
+counted as failures.
+
+**Two verifier bugs found by the first run** (`e2e_20261009-2119`, kept as the "before"):
+1. The question asks with the recipe's name ("cooked pasta") and stores the answer under
+   it, but the verifier looked it up under the user's word ("pasta") and skipped the check.
+2. The verifier only checked ingredients labeled "amount matters", so an answer about milk
+   (asked under "always") was ignored. Now any amount the user gave is checked; the label
+   only decides what to ask.
+
+**Results after the fixes** (`e2e_20261009-2127`, gpt-5.4-mini, $0.45; "chat" in that
+report is the app with the question off, now the `ask-never` variant):
+
+| Strategy | task success | recipes the user cannot make | no recipe | amounts asked / request |
+|---|---|---|---|---|
+| never | 71% | 29% (7) | 0 | 0 |
+| when it matters | 92% | 4% (1) | 1 | 2.12 |
+| always | 92% | 0% | 2 | 3.83 |
+
+Cost and latency are the same for all three (~$0.006, p50 ~5 s). Noise: the "never" row
+was 79% in the first run, so differences under ~10 points mean little at 24 cases.
+
+**Decision:** the owner agreed to turn the question on once measured; the eval picks
+`QUANTITY_QUESTION=when_it_matters` as the default
+(`ASK_QUANTITIES` is replaced by `QUANTITY_QUESTION = off | when_it_matters | always`).
+Same success as "always" with about half the items asked.
+
+**Still open (owner's decision):**
+- **No new search after the answer.** The amounts only re-check the options already
+  found; if all of them fail, the user gets "no recipe" (q04: 100 g beef for tacos; q11
+  under "always") instead of a search for recipes that need less. A fix would pass the
+  amounts into the search's verifier and retry with the failures as feedback.
+- **Milk is labeled "amount does not matter"**, so "when it matters" never asks about it
+  (q06: ½ cup of milk, pancakes need 1¼ cups). Relabeling is a `quantity_matters.md`
+  prompt question.
+- **Amounts typed in the message are dropped** by request parsing ("I only have 1 egg"
+  becomes "egg"), so the question can ask for something the user already said.

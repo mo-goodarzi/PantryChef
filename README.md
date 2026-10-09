@@ -190,6 +190,20 @@ at least 4/5. Reports: `eval/reports/e2e_20261009-*.md`; reproduce with
 Either code layer alone keeps every trap out, and the eval does catch violations when
 nothing stops them (pad thai with peanuts, sticky chicken with sesame oil).
 
+**Quantity question** (24 cases where the user has a hidden, often too small amount, e.g.
+1 egg for a cake; recipe amounts come from the original Food.com lines; gpt-5.4-mini;
+`e2e_20261009-2127`):
+
+| Ask about amounts | task success | recipes the user cannot make | amounts asked / request | cost / conversation |
+|---|---|---|---|---|
+| never | 71% | 29% | 0 | $0.006 |
+| **when it matters** (the default) | **92%** | 4% | 2.1 | $0.006 |
+| always | 92% | 0% | 3.8 | $0.006 |
+
+Asking only about key ingredients whose amount matters gets the same success as asking
+about everything, with about half the items. The rows above this one were measured with
+the question off. One run of 24 cases: the "never" row moved 8 points between two runs.
+
 **Model for parsing, intake, rerank and matcher** (`LLM_MODEL`; same 50-case subset):
 
 | Model | good answer | mean judge | safety violations | cost per conversation |
