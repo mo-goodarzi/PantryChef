@@ -196,7 +196,20 @@ def test_cache_entries_from_an_older_prompt_version_are_ignored(state_conn):
     assert new.get("egg", "egg noodle") is None
 
 
-def test_llm_cache_source_includes_the_prompt_version():
+def test_cache_entries_from_another_model_are_ignored_and_kept(state_conn):
+    mini = MatchCache(state_conn, source="llm:ingredient_match:v2:gpt-5.4-mini")
+    large = MatchCache(state_conn, source="llm:ingredient_match:v2:gpt-5.4")
+    mini.put_many([("egg", "egg noodle", MatchLabel.CONTAINS)])
+    assert large.get("egg", "egg noodle") is None
+    large.put_many([("egg", "egg noodle", MatchLabel.DIFFERENT)])  # does not replace mini's
+    assert mini.get("egg", "egg noodle") is MatchLabel.CONTAINS
+    assert large.get("egg", "egg noodle") is MatchLabel.DIFFERENT
+
+
+def test_llm_cache_source_includes_the_prompt_version_and_model():
     from pantry_chef.ingredients.matcher import llm_cache_source
 
-    assert llm_cache_source(LLMMatcher(FakeMatchLLM())) == "llm:ingredient_match:v2"
+    llm = FakeMatchLLM()
+    assert llm_cache_source(LLMMatcher(llm)) == "llm:ingredient_match:v2:unknown"
+    llm.model_name = "gpt-5.4-mini"
+    assert llm_cache_source(LLMMatcher(llm)) == "llm:ingredient_match:v2:gpt-5.4-mini"
