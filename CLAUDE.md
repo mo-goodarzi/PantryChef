@@ -92,6 +92,7 @@ pantry-chef/
 - Lint/format: `uv run ruff check . && uv run ruff format .`
 - Type check: `uv run mypy src`
 - Build database: `uv run python scripts/build_db.py --csv data/raw/RAW_recipes.csv`
+- Load amounts + servings (after build_db): `uv run python scripts/load_amounts.py` (needs `data/raw/recipes_w_search_terms.csv`)
 - Label ingredients (LLM, cached): `uv run python scripts/label_ingredients.py`
 - Apply labels, allergens, diet flags, relations: `uv run python scripts/enrich_db.py`
 - Draft relation seed (LLM, then review): `uv run python scripts/draft_relations.py`

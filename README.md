@@ -31,6 +31,15 @@ uv run python scripts/build_db.py --limit 1000   # quick development build
 uv run python scripts/inspect_data.py        # data quality report
 ```
 
+Add ingredient amounts and servings: download `recipes_w_search_terms.csv` from
+[Food.com Recipes with Search Terms and Tags](https://www.kaggle.com/datasets/shuyangli94/foodcom-recipes-with-search-terms-and-tags)
+into `data/raw/`, then (about 20 s, safe to run again; run it again after every
+`build_db.py`):
+
+```bash
+uv run python scripts/load_amounts.py        # "4 cups blueberries" instead of "blueberries"
+```
+
 Build the recipe embeddings for semantic search (local model, about 17 minutes once):
 
 ```bash

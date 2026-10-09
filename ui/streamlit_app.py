@@ -285,6 +285,8 @@ def show_answer(answer: FinalAnswer) -> None:
     ingredients, extras = st.columns([3, 2])
     with ingredients:
         st.markdown("#### Ingredients")
+        if answer.servings:
+            st.caption(f"Serves {answer.servings}")
         st.markdown("\n".join(f"- {item}" for item in answer.ingredients))
     with extras:
         if answer.also_needs:

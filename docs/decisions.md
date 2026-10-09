@@ -965,3 +965,42 @@ allergy, 3 as a dislike that code now turns into milk, so milk 10 of 10.
 
 **Still open:** the model can still return nothing for "X free" phrasing; the read-back
 is then "No allergies", which the user must catch.
+
+## 2026-10-09 — Recipe amounts from the original ingredient lines
+The owner asked to show each ingredient's amount from the data instead of estimating it,
+pointing at irkaal's `RecipeIngredientQuantities`. Re-checked on the owner's own example:
+
+- irkaal has no units: "4" blueberries is 4 **cups** on food.com (recipe 38).
+- irkaal's lists are misaligned: Biryani (39) has 26 quantities but 25 names (it drops
+  coriander seed, vegetable oil and almonds and splits "cilantro or mint leaf" in two), so
+  zipping them gives "eggs: 1/3" instead of 6. Same findings as 2026-09-26.
+
+**New source:** Kaggle "Food.com Recipes with Search Terms and Tags" (`shuyangli94`, the
+author of `RAW_recipes.csv`), file `recipes_w_search_terms.csv`. Its
+`ingredients_raw_str` keeps the original lines with units.
+
+| Check | Result |
+|---|---|
+| Our recipes found (same ids) | 96.1% (222,702 of 231,635) |
+| Ingredient rows that get a line | 96.6% of all rows (99.9% of rows in found recipes) |
+| Random pairs checked by hand | 40 / 40 correct |
+| Servings present | 79% (the rest: missing or the site's default of 1) |
+
+**Alignment rule:** each ingredient name takes the next line that mentions one of its
+words; a line is never attached to a name it does not mention. Matching by position alone
+looked fine (99.9% of pairs in equal-length recipes), but a shifted list would then show
+a wrong amount; with this rule the worst case is the name shown alone.
+
+**Servings of 1 are treated as unknown:** 17% of recipes have 1, with a median serving of
+784 g against ~250 g otherwise (pancakes 5170: "1 serving" that makes 9 pancakes). Showing
+"serves 1" would be wrong more often than right.
+
+**Decision:** store the cleaned line in `recipe_ingredients.amount_text` and servings in
+`recipes.servings` (`scripts/load_amounts.py`, after `build_db.py`, re-runnable) and show
+them in the final answer. Recipes not in the file show names as before.
+**Not done yet:** the lines are display text only. `quantity`/`unit` stay empty, so the
+verifier's quantity check and the quantity question are unchanged. Parsing the lines
+("1 (14 ounce) can", "1/2-1 cup") into numbers would replace most of the Phase 8 LLM
+estimator; that is a separate decision for the owner.
+**Safety note:** allergen checks still use ingredient names only. A line can mention an
+alternative the name list does not ("1/3 cup melted butter or applesauce" for "oil").

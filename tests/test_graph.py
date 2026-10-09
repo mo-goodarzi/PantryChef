@@ -7,6 +7,7 @@ branch (retry, give up, nothing found, quantities) can be forced exactly.
 import json
 import sqlite3
 
+import pandas as pd
 import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver
@@ -14,7 +15,8 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from pantry_chef.agents.finder import RequestAnswer
 from pantry_chef.agents.safety import DISCLAIMER, AllergyMention, SafetyAnswer
 from pantry_chef.agents.verifier import Verifier
-from pantry_chef.db.repository import load_recipe_ingredients, load_steps
+from pantry_chef.db.amounts import load_amounts
+from pantry_chef.db.repository import load_recipe_ingredients, load_servings, load_steps
 from pantry_chef.db.state import ProfileStore
 from pantry_chef.graph import nodes
 from pantry_chef.graph.builder import build_graph
@@ -67,6 +69,7 @@ def make_deps(conn, state_conn, llm, find=None, ask_quantities=False, reverify=N
         find=find or (lambda query: find_verified(conn, query, SearchOptions())),
         reverify=reverify or (lambda c, q, items: verifier.verify_all(c, q, items)),
         steps=lambda recipe_id: load_steps(conn, recipe_id),
+        servings=lambda recipe_id: load_servings(conn, recipe_id),
         profiles=ProfileStore(state_conn),
         ask_quantities=ask_quantities,
     )
@@ -111,6 +114,35 @@ def test_first_visit_asks_safety_then_offers_recipes_then_answers(enriched_conn,
     assert turn.answer.disclaimer is None
     # Each LLM runs once, even though nodes re-run when the graph resumes.
     assert llm.calls == ["safety_intake", "request_parsing"]
+
+
+def test_answer_shows_the_recipe_amounts_and_servings(enriched_conn, state_conn):
+    lines = ["2   cups    flour", "3   tablespoons    sugar", "1/2  teaspoon    salt"]
+    lines += ["1   tablespoon    baking powder", "2       eggs", "1/4  cup    butter"]
+    lines += ["1 3/4  cups    milk"]
+    amounts = [{"id": PANCAKES, "ingredients_raw_str": json.dumps(lines), "servings": 4}]
+    load_amounts(enriched_conn, pd.DataFrame(amounts))
+    llm = ScriptedLLM(safety_intake=SafetyAnswer(), request_parsing=BAKING)
+    chat = conversation(make_deps(enriched_conn, state_conn, llm))
+
+    options = through_safety(chat).question.options
+    pancakes = next(o for o in options if o.recipe_id == PANCAKES)
+    answer = chat.reply(ChoiceReply(choice=pancakes.number)).answer
+
+    assert answer.ingredients[0] == "2 cups flour"
+    assert "1 3/4 cups milk" in answer.ingredients
+    assert answer.servings == 4
+
+
+def test_answer_falls_back_to_names_without_amounts(enriched_conn, state_conn):
+    llm = ScriptedLLM(safety_intake=SafetyAnswer(), request_parsing=BAKING)
+    chat = conversation(make_deps(enriched_conn, state_conn, llm))
+
+    options = through_safety(chat).question.options
+    pancakes = next(o for o in options if o.recipe_id == PANCAKES)
+    answer = chat.reply(ChoiceReply(choice=pancakes.number)).answer
+
+    assert answer.ingredients[0] == "flour" and answer.servings is None
 
 
 def test_consented_profile_is_stored_and_skips_the_intake_next_time(enriched_conn, state_conn):

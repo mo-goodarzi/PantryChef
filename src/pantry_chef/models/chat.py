@@ -78,7 +78,8 @@ class FinalAnswer(BaseModel):
     name: str
     minutes: int
     why_it_fits: str
-    ingredients: list[str]
+    ingredients: list[str]  # the recipe's own lines with amounts, or names where none
+    servings: int | None = None
     steps: list[str]  # exactly as in the recipe database, never rewritten by an LLM
     adaptations: list[str] = Field(default_factory=list)
     also_needs: list[str] = Field(default_factory=list)

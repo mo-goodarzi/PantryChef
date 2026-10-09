@@ -77,3 +77,23 @@ def test_chat_refuses_to_start_without_the_embeddings(enriched_conn, tmp_path):
     )
     with pytest.raises(FileNotFoundError, match="build_embeddings"):
         chat_from_settings(settings)
+
+
+def test_answer_lists_one_ingredient_line_per_row_with_servings():
+    from pantry_chef.graph.cli import render_answer
+    from pantry_chef.models.chat import FinalAnswer
+
+    answer = FinalAnswer(
+        recipe_id=38,
+        name="Berry Blue Frozen Dessert",
+        minutes=30,
+        why_it_fits="Uses your blueberries.",
+        ingredients=["4 cups blueberries, fresh or frozen", "1/4 cup granulated sugar"],
+        servings=4,
+        steps=["toss the berries with sugar"],
+    )
+    text = render_answer(answer)
+
+    assert "Ingredients (serves 4):\n - 4 cups blueberries, fresh or frozen\n" in text
+    assert " - 1/4 cup granulated sugar" in text
+    assert "(serves" not in render_answer(answer.model_copy(update={"servings": None}))
