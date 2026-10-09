@@ -167,6 +167,25 @@ def test_weight_versus_volume_is_not_guessed():
     assert result.passed and "cannot compare" in result.notes[0]
 
 
+def test_an_amount_is_used_even_when_the_label_says_it_does_not_matter():
+    """The label only decides what to ask; an answer the user gave is always checked."""
+    milk = cand(ing("milk", qty_matters=False, quantity=1.25, unit="cup"))
+    context = VerificationContext(pantry={"milk"}, pantry_items={"milk": item("milk", 0.5, "cup")})
+    assert not check_quantities(milk, context).passed
+
+
+def test_the_answer_is_found_under_the_recipe_name_or_the_users_word():
+    """The question asks "cooked pasta"; the user's pantry says "pasta"."""
+    pasta = cand(ing("cooked pasta", qty_matters=True, quantity=8, unit="ounce"))
+    matches = {"cooked pasta": match("cooked pasta", "pasta", "same")}
+    for key in ["cooked pasta", "pasta"]:
+        context = VerificationContext(
+            pantry={"pasta"}, matches=matches, pantry_items={key: item(key, 100, "g")}
+        )
+        result = check_quantities(pasta, context)  # 100 g of 227 g
+        assert [r.code for r in result.reasons] == [FailureCode.INSUFFICIENT_QUANTITY]
+
+
 def test_recipe_amount_unknown_is_a_note_not_a_failure():
     context = VerificationContext(pantry={"egg"}, pantry_items={"egg": item("egg", 1)})
     result = check_quantities(eggs_recipe(None), context)
