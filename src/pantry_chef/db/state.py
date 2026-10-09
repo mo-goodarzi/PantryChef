@@ -18,17 +18,45 @@ def open_state_db(path: Path, check_same_thread: bool = True) -> sqlite3.Connect
     """Open (and create if needed) the state database."""
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = connect(path, check_same_thread=check_same_thread)
-    conn.executescript(files("pantry_chef.db").joinpath("state_schema.sql").read_text())
+    conn.executescript(state_schema())
+    migrate_match_cache(conn)
     return conn
 
 
-# The matcher model when match_cache lived in pantry.db: the old rows carry no model, so
-# only a matcher on this model may reuse them.
+def state_schema() -> str:
+    return files("pantry_chef.db").joinpath("state_schema.sql").read_text()
+
+
+# The matcher model before match_cache sources named their model: every older answer
+# (in pantry.db or an older state.db) was made with it, so it is tagged with it.
 LEGACY_MATCH_MODEL = "gpt-5.4-mini"
 
 
+def migrate_match_cache(conn: sqlite3.Connection) -> None:
+    """Rebuild a match_cache keyed by the pair alone into one keyed by pair and source,
+    tagging the old sources with LEGACY_MATCH_MODEL. Does nothing on a current table."""
+    key = [r["name"] for r in conn.execute("PRAGMA table_info(match_cache)") if r["pk"]]
+    if "source" in key:
+        return
+    try:
+        # one transaction: a failure leaves the old table as it was
+        conn.executescript(
+            "BEGIN;"
+            "ALTER TABLE match_cache RENAME TO match_cache_old;"
+            f"{state_schema()};"
+            "INSERT INTO match_cache SELECT user_term, recipe_term, label, "
+            f"source || ':{LEGACY_MATCH_MODEL}', created_at FROM match_cache_old;"
+            "DROP TABLE match_cache_old;"
+            "COMMIT;"
+        )
+    except sqlite3.Error:
+        conn.rollback()
+        raise
+
+
 def import_legacy_match_cache(state: sqlite3.Connection, recipe_db: Path | str) -> int:
-    """Copy match_cache rows from a recipe database built before state.db existed.
+    """Copy match_cache rows from a recipe database built before state.db existed,
+    tagged with LEGACY_MATCH_MODEL so that only a matcher on that model reuses them.
 
     Idempotent (existing pairs are kept); rows with NULL keys are skipped. Returns the
     number of rows added.
@@ -45,10 +73,11 @@ def import_legacy_match_cache(state: sqlite3.Connection, recipe_db: Path | str) 
         with state:
             cursor = state.execute(
                 "INSERT OR IGNORE INTO match_cache "
-                "SELECT user_term, recipe_term, label, source, created_at "
+                "SELECT user_term, recipe_term, label, source || ':' || ?, created_at "
                 "FROM legacy.match_cache "
                 "WHERE user_term IS NOT NULL AND recipe_term IS NOT NULL "
-                "AND label IS NOT NULL AND source IS NOT NULL"
+                "AND label IS NOT NULL AND source IS NOT NULL",
+                (LEGACY_MATCH_MODEL,),
             )
         return cursor.rowcount
     finally:

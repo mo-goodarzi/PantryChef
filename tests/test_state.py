@@ -44,6 +44,53 @@ def test_legacy_match_cache_is_imported_once(tmp_path, state_conn):
     assert import_legacy_match_cache(state_conn, old_db) == 0  # already there
     row = state_conn.execute("SELECT * FROM match_cache").fetchone()
     assert (row["user_term"], row["label"]) == ("pasta", "substitute")
+    assert row["source"] == "llm:gpt-5.4-mini"  # the model that made every old answer
+
+
+def old_state_db(path):
+    """A state.db from before match_cache was keyed by source."""
+    old = sqlite3.connect(path)
+    old.execute(
+        "CREATE TABLE match_cache (user_term TEXT NOT NULL, recipe_term TEXT NOT NULL, "
+        "label TEXT NOT NULL, source TEXT NOT NULL, created_at TEXT, "
+        "PRIMARY KEY (user_term, recipe_term))"
+    )
+    old.execute(
+        "INSERT INTO match_cache VALUES ('egg', 'egg noodle', 'contains', "
+        "'llm:ingredient_match:v2', 't')"
+    )
+    old.commit()
+    old.close()
+
+
+def test_an_old_match_cache_is_rekeyed_and_tagged_with_the_old_model(tmp_path):
+    path = tmp_path / "state.db"
+    old_state_db(path)
+    conn = open_state_db(path)
+    key = [r["name"] for r in conn.execute("PRAGMA table_info(match_cache)") if r["pk"]]
+    assert key == ["user_term", "recipe_term", "source"]
+    rows = [tuple(r) for r in conn.execute("SELECT * FROM match_cache")]
+    assert rows == [("egg", "egg noodle", "contains", "llm:ingredient_match:v2:gpt-5.4-mini", "t")]
+    tables = {r["name"] for r in conn.execute("SELECT name FROM sqlite_master")}
+    assert "match_cache_old" not in tables
+    conn.close()
+    conn = open_state_db(path)  # migrated once: reopening keeps the tags as they are
+    assert [tuple(r) for r in conn.execute("SELECT * FROM match_cache")] == rows
+
+
+def test_a_failed_migration_leaves_the_old_table(tmp_path, monkeypatch):
+    from pantry_chef.db import state
+
+    path = tmp_path / "state.db"
+    old_state_db(path)
+    monkeypatch.setattr(state, "state_schema", lambda: "CREATE TABLE broken (")
+    with pytest.raises(sqlite3.Error):
+        open_state_db(path)
+    old = sqlite3.connect(path)
+    assert old.execute("SELECT source FROM match_cache").fetchall() == [
+        ("llm:ingredient_match:v2",)
+    ]
+    assert not old.execute("SELECT 1 FROM sqlite_master WHERE name = 'match_cache_old'").fetchall()
 
 
 def test_legacy_import_without_old_table_or_file_does_nothing(tmp_path, state_conn, enriched_conn):
