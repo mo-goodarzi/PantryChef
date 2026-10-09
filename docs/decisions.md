@@ -815,3 +815,59 @@ report adds tokens and cost per model (`PRICES` in `evaluation/parsing_eval.py`,
 **Rejected:** OpenRouter for the main runs (5.5% top-up fee, same token prices for OpenAI
 models; worth it later only to compare non-OpenAI models); Anthropic for the "large model"
 ablation for now (needs a second provider in `llm/factory.py`; gpt-5.4 needs nothing).
+
+## 2026-10-09 — Phase 7: end-to-end evaluation with a simulated user
+
+**What a case is.** A first-visit conversation (`eval/cases/e2e.json`, 100 everyday;
+`eval/cases/safety.json`, 50 traps) with the hand-written truth: real allergens, other
+allergies, diets, time limit, pantry, hidden amounts, and a short `wish` for the judge.
+Cases were drafted by Claude and reviewed by the owner.
+
+**Simulated user** (`evaluation/e2e.py`): answers the safety question with the case's text,
+**confirms whatever is read back** (the worst case for safety: intake mistakes go through),
+answers amounts from the hidden truth, picks option 1. Deterministic.
+
+**Truth check, in code.** Every recipe *shown* (not only the chosen one) is checked against
+the truth, not against what the pipeline understood: allergens, other allergies (whole
+word), diets, time, and "can they make it" (at most one missing key ingredient).
+Owner decision (option A of three): a pantry item covers a recipe ingredient by whole
+words either way ("garlic" / "garlic clove") plus a per-case `also_ok` list ("pasta" ->
+"spaghetti"). Rejected: the pipeline's LLM matcher (the eval could not catch matcher
+mistakes) and listing every accepted name by hand. Limit: allergens come from the
+project's own ingredient labels.
+
+**Judge.** The preference judge (gpt-5.4-mini, fixed) rates the final recipe against the
+case's hand-written `wish`. The first version used the whole message, which includes the
+pantry, so it marked recipes down for unused items ("lacks black beans").
+
+**Spending cap.** Every LLM call's tokens are counted per model (`llm/usage.py`, prices
+dated); `--max-cost` stops a run before the next case; a model without a price is an error,
+so the cap cannot be skipped. Phase 7 cost about $12 of the $25 budget (owner's choice of
+the cheaper plan); a cold conversation costs about $0.02 with gpt-5.4-mini.
+
+**Eval-only switches** (`SearchOptions.use_verifier`, `use_allergen_filter`,
+`use_allergy_review`, `ChatDeps.final_allergen_check`; all on by default, never off in the
+app) make the comparisons. Re-reading the graph found a third code layer: the last allergen
+check before options are shown, so "verifier only" also switches that off.
+
+**Results** (README tables; `e2e_20261009-1047/1112` and the model runs):
+- The verifier is what makes recipes makeable (without it 4–5% need missing key
+  ingredients); the LLM steps are what make them fit the wish (good answers 99% vs 69%
+  everyday, 84% vs 44% safety traps).
+- Safety: 0 unsafe recipes with all layers, 0 with the verifier alone, **23 of 50 cases /
+  71 recipes with no allergen layer**: the second layer works alone, and the eval detects
+  violations.
+- `LLM_MODEL`: gpt-5.4 is not better than mini on the same 50-case subset (good 90% vs
+  92%) at about 2.5x the cost; gpt-5.4-nano is cheaper but showed alfredo pasta to a
+  "dairy free please" user (the intake missed the milk allergy, and every code layer trusts
+  the intake). Mini stays; the safety intake should stay on mini even if parsing moves.
+
+**Not done in Phase 7, and why:**
+- The quantity strategies (never / always / when it matters): recipes have no amounts
+  until Phase 8, so the question is off. Cases already carry hidden amounts.
+- Repeated runs: single runs only; differences of a few points are noise.
+
+**Found along the way:** sweets with small servings pass the low-sugar check (per-serving
+%DV: "chocolate oat balls with marzipan", 5%); LangGraph warns it will stop loading our
+own types from saved conversations (needs an allowlist); s06 coeliac stays a diet
+(owner decision 2026-10-07).

@@ -6,8 +6,9 @@ A multi-agent recipe assistant. Tell it what you have at home ("eggs, milk, toas
 it returns safe, suitable recipes you can actually make, checked against your allergies
 and diet, plus an optional matching YouTube video.
 
-**Status:** web UI and API (Phase 6): a Streamlit chat over a FastAPI backend, runnable
-with Docker Compose. The same conversation also runs in the terminal (Phase 5b). See
+**Status:** end-to-end evaluation of whole conversations (Phase 7), on top of the web UI
+and API (Phase 6): a Streamlit chat over a FastAPI backend, runnable with Docker Compose.
+The same conversation also runs in the terminal (Phase 5b). See
 [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for the design and build order.
 
 ## Setup
@@ -148,6 +149,50 @@ reviewer on about 56% of good/not-good calls and is stricter, so these numbers a
 
 Diversity (MMR) was also tested and changed nothing measurable; see `docs/decisions.md`.
 Reproduce: `uv run python eval/run_eval.py --suite search`.
+
+## Results: whole conversations (end to end)
+
+Every case is a full first-visit conversation with a simulated user: a safety answer, a
+request, then the user confirms what was read back and picks the first recipe. Every
+recipe *shown* is then checked by code against the hand-written truth (the user's real
+allergies, diets, time limit and pantry), not against what the system understood, so a
+misread allergy counts as a failure. 100 everyday cases and 50 safety traps (hidden
+allergens, misspellings, allergies said only in the request, the allergen in the pantry).
+**Good answer** = safe and makeable **and** an LLM judge rates the fit to the user's wish
+at least 4/5. Reports: `eval/reports/e2e_20261009-*.md`; reproduce with
+`eval/reproduce_e2e.sh`.
+
+**What each part adds** (gpt-5.4-mini):
+
+| Pipeline | everyday: good answer | safety traps: good answer | safety violations (150 cases) | recipes needing missing ingredients |
+|---|---|---|---|---|
+| Full app | **99%** | **84%** | **0** | 0% |
+| without the verifier | 93% | 86% | 0 | 4–5% |
+| without the LLM steps (coverage search only) | 69% | 44% | 0 | 0% |
+
+**Safety, layer by layer** (the 50 safety traps; the LLM allergy review is off in the last two rows):
+
+| Allergen layers on | cases with an unsafe recipe shown | unsafe recipes shown |
+|---|---|---|
+| all (SQL filter, verifier, allergy review, last check) | 0 | 0 |
+| verifier only | 0 | 0 |
+| **none** | **23 of 50** | **71** |
+
+Either code layer alone keeps every trap out, and the eval does catch violations when
+nothing stops them (pad thai with peanuts, sticky chicken with sesame oil).
+
+**Model for parsing, intake, rerank and matcher** (`LLM_MODEL`; same 50-case subset):
+
+| Model | good answer | mean judge | safety violations | cost per conversation |
+|---|---|---|---|---|
+| gpt-5.4-nano | 86% | 4.44 | **1** ("dairy free please" not read as a milk allergy) | ~$0.005 |
+| **gpt-5.4-mini** | **92%** | **4.52** | 0 | ~$0.02 |
+| gpt-5.4 | 90% | 4.43 | 0 | ~$0.05 |
+
+The bigger model is not better here; the smaller one misses an allergy, which every later
+check then trusts. One run per model and a small subset, so small differences are noise;
+the safety miss is not. Known limits: the truth check uses the project's own ingredient
+allergen labels, and the quantity question (Phase 8) is not measured yet.
 
 ## Development
 
