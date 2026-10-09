@@ -871,3 +871,22 @@ check before options are shown, so "verifier only" also switches that off.
 %DV: "chocolate oat balls with marzipan", 5%); LangGraph warns it will stop loading our
 own types from saved conversations (needs an allowlist); s06 coeliac stays a diet
 (owner decision 2026-10-07).
+
+## 2026-10-09 — Review fixes: e2e eval turn limit, unpriced models, matcher cache
+
+- **An answer on the last allowed turn counts.** `run_case` only checked `turn.done` before
+  each reply, so a conversation finishing on reply 10 was recorded as "no answer after
+  10 turns". `MAX_TURNS` now counts replies and the check runs after the loop.
+- **A model without a price no longer ends the run.** `total_cost` raised inside
+  `run_case`'s `finally` (outside its `except`) and before every case, so any model
+  missing from `PRICES` crashed the run and lost the report, even with no cap. A case now
+  records `usage.priced_cost` and names the `unpriced_models`; the report says which
+  costs are left out. With `--max-cost`, a missing price still stops the run (the cap
+  cannot be checked), but as an early stop with a report, not a crash.
+- **Old matcher answers are reused only by gpt-5.4-mini.** The `match_cache` rows in an
+  old `pantry.db` carry no model, and `matching_from_settings` imported them into every
+  state database, including the per-model eval ones, so a nano or gpt-5.4 run could
+  reuse mini's matcher verdicts. They were all made with the default at the time
+  (`LEGACY_MATCH_MODEL = gpt-5.4-mini`), so only that model imports them now. If
+  `data/processed/pantry.db` still has a `match_cache` table, the Phase 7 model
+  comparison reused mini's answers and should be re-run (`eval/reproduce_e2e.sh`).
