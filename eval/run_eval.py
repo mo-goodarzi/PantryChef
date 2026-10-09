@@ -79,6 +79,7 @@ def pipeline_models(settings: Settings) -> str:
 class E2EVariant:
     options: SearchOptions | None  # None = the app's own pipeline
     final_allergen_check: bool = True
+    quantity_question: str | None = None  # None = QUANTITY_QUESTION from the settings
 
 
 def e2e_variants(settings: Settings) -> dict[str, E2EVariant]:
@@ -105,6 +106,10 @@ def e2e_variants(settings: Settings) -> dict[str, E2EVariant]:
         "no-safety": E2EVariant(
             SearchOptions(**no_sql, use_verifier=False), final_allergen_check=False
         ),
+        # quantity strategies (docs/decisions.md 2026-10-09)
+        "ask-never": E2EVariant(None, quantity_question="off"),
+        "ask-when-it-matters": E2EVariant(None, quantity_question="when_it_matters"),
+        "ask-always": E2EVariant(None, quantity_question="always"),
     }
 
 
@@ -132,8 +137,13 @@ def run_e2e(
     stopped = None
     for variant in variants:
         spec = options[variant]
+        variant_settings = eval_settings
+        if spec.quantity_question is not None:
+            variant_settings = eval_settings.model_copy(
+                update={"quantity_question": spec.quantity_question}
+            )
         app = chat_from_settings(
-            eval_settings, options=spec.options, final_allergen_check=spec.final_allergen_check
+            variant_settings, options=spec.options, final_allergen_check=spec.final_allergen_check
         )
         results = all_results.setdefault(variant, [])
         try:
@@ -182,7 +192,8 @@ def run_e2e(
 def e2e_models(settings: Settings) -> str:
     return (
         f"{pipeline_models(settings)}, allergy review {settings.allergy_review_model}, "
-        f"wish-fit {'on' if settings.wish_fit_enabled else 'off'}"
+        f"wish-fit {'on' if settings.wish_fit_enabled else 'off'}, "
+        f"quantity question in chat {settings.quantity_question}"
     )
 
 
@@ -193,7 +204,8 @@ def main() -> None:
     parser.add_argument(
         "--variants",
         default=None,
-        help="search: default all; e2e: chat, no-verifier, coverage-only",
+        help="search: default all; e2e: chat, no-verifier, coverage-only, sql-off, no-safety, "
+        "ask-never, ask-when-it-matters, ask-always",
     )
     parser.add_argument(
         "--cases", type=Path, default=None, help="default: cases/search.json or cases/e2e.json"

@@ -18,6 +18,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 from pantry_chef.agents.verifier import (
+    SCALE_DOWN_LIMIT,
     check_allergens,
     check_diet,
     check_other_allergies,
@@ -31,6 +32,7 @@ from pantry_chef.evaluation.metrics import GOOD_SCORE, MAX_MISSING_KEY, percenti
 from pantry_chef.evaluation.parsing_eval import same_item
 from pantry_chef.graph.runner import Conversation
 from pantry_chef.ingredients.allergens import Allergen
+from pantry_chef.ingredients.quantities import Amount, available_ratio
 from pantry_chef.llm import usage
 from pantry_chef.models.chat import (
     AmountReply,
@@ -98,10 +100,15 @@ class SimulatedUser:
         raise ValueError(f"unknown question kind: {kind}")
 
     def amount(self, item: str) -> AmountReply:
-        true = self.case.amounts.get(item)
+        true = true_amount(self.case, item)
         if true is None:
             return AmountReply(status=AmountStatus.UNKNOWN)
         return AmountReply(quantity=true.quantity, unit=true.unit, status=AmountStatus.KNOWN)
+
+
+def true_amount(case: E2ECase, name: str) -> TrueAmount | None:
+    """The hidden amount for an item ("egg" answers "eggs"), or None if the case has none."""
+    return next((a for item, a in case.amounts.items() if same_item(item, name)), None)
 
 
 # --- checking a recipe against the truth -------------------------------------------------
@@ -157,6 +164,27 @@ def truth_failures(conn: sqlite3.Connection, recipe_id: int, case: E2ECase) -> l
     missing = missing_key(candidate, case)
     if len(missing) > MAX_MISSING_KEY:
         failures.append(f"missing_key: {', '.join(missing)}")
+    return failures + too_little(candidate, case)
+
+
+def too_little(candidate: Candidate, case: E2ECase) -> list[str]:
+    """Key ingredients the user has less than half of (the verifier's scale-down limit),
+    by the TRUE amounts and the recipe's own amounts. Code only, and on every key
+    ingredient, not only those labeled "amount matters": an ingredient the labels miss is
+    still a recipe the user cannot make. Amounts that cannot be compared (grams vs cups)
+    are not failures; the report counts them as not checked."""
+    failures = []
+    for i in candidate.ingredients:
+        true = true_amount(case, i.canonical_name) or true_amount(case, i.name)
+        if not needs_match(i) or i.quantity is None or true is None:
+            continue
+        ratio = available_ratio(Amount(true.quantity, true.unit), Amount(i.quantity, i.unit))
+        if ratio is not None and ratio < SCALE_DOWN_LIMIT:
+            have = f"{true.quantity:g} {true.unit or ''}".strip()
+            need = f"{i.quantity:g} {i.unit or ''}".strip()
+            failures.append(
+                f"insufficient_quantity: {i.canonical_name} (have {have}, needs {need})"
+            )
     return failures
 
 
@@ -356,7 +384,8 @@ def summary_row(variant: str, s: dict) -> str:
         f"| {variant} | {s['task_success']:.0%} | {good} | {judge} "
         f"| {s['safety_violations']} | {s['unsafe_options_shown']} "
         f"| {s['rule_violation_rate']:.0%} | {s['no_recipe']} "
-        f"| {s['questions_per_request']:.2f} | {s['retries_per_request']:.2f} "
+        f"| {s['questions_per_request']:.2f} | {s['quantity_items_per_request']:.2f} "
+        f"| {s['retries_per_request']:.2f} "
         f"| {s['errors']} | {s['latency_p50_s']:.1f} | {s['latency_p95_s']:.1f} "
         f"| ${s['cost_usd']:.3f} | ${s['cost_per_case_usd']:.4f} |"
     )
@@ -392,15 +421,16 @@ def write_report(
         "",
         "| Variant | task success | good answer | mean judge | safety violations "
         "| unsafe options shown | rule violations (of recipes given) | no recipe "
-        "| questions / request | retries / request | errors | p50 s | p95 s | cost "
-        "| cost / case |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| questions / request | amounts asked / request | retries / request | errors "
+        "| p50 s | p95 s | cost | cost / case |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     lines += [summary_row(v, s) for v, s in summaries.items()]
     lines += [
         "",
         "Task success = a recipe that respects every true need (allergens, other "
-        "allergies, diets, time, at most one missing key ingredient), or an honest "
+        "allergies, diets, time, at most one missing key ingredient, at least half of "
+        "every key amount the case knows), or an honest "
         "reply when no recipe is right. Checked by code against the hand-written truth, "
         "not against what the pipeline understood. Good answer = task success AND the "
         f"judge rates the final recipe >= {GOOD_SCORE} for the user's message.",
