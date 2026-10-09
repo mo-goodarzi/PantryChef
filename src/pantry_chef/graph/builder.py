@@ -41,7 +41,7 @@ def build_graph(
     graph.add_conditional_edges("parse_request", nodes.after_parse_request, ["search", END])
     graph.add_conditional_edges(
         "search",
-        partial(nodes.after_search, ask_quantities=deps.ask_quantities),
+        partial(nodes.after_search, ask_quantities=deps.quantity_question != "off"),
         ["search", "quantity_check", "present"],
     )
     graph.add_edge("quantity_check", "present")

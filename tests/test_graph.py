@@ -62,7 +62,7 @@ class ScriptedLLM:
         return answer
 
 
-def make_deps(conn, state_conn, llm, find=None, ask_quantities=False, reverify=None):
+def make_deps(conn, state_conn, llm, find=None, quantity_question="off", reverify=None):
     verifier = Verifier(conn)
     return ChatDeps(
         llm=llm,
@@ -71,7 +71,7 @@ def make_deps(conn, state_conn, llm, find=None, ask_quantities=False, reverify=N
         steps=lambda recipe_id: load_steps(conn, recipe_id),
         servings=lambda recipe_id: load_servings(conn, recipe_id),
         profiles=ProfileStore(state_conn),
-        ask_quantities=ask_quantities,
+        quantity_question=quantity_question,
     )
 
 
@@ -339,6 +339,20 @@ def test_quantities_are_not_asked_while_the_step_is_off(enriched_conn, state_con
     assert turn.question.kind is QuestionKind.CHOICE
 
 
+@pytest.mark.parametrize(
+    ("strategy", "asks"), [("when_it_matters", False), ("always", True), ("off", False)]
+)
+def test_quantity_strategy_decides_which_items_are_asked(enriched_conn, state_conn, strategy, asks):
+    """Eggs here are a key item whose amount is labeled as not mattering."""
+    find = ScriptedFind(found(verified(1, quantity_matters=False), verified(2)))
+    chat = scripted_chat(enriched_conn, state_conn, find, quantity_question=strategy)
+    turn = through_safety(chat)
+    if asks:
+        assert turn.question.kind is QuestionKind.QUANTITIES and turn.question.items == ["egg"]
+    else:
+        assert turn.question.kind is QuestionKind.CHOICE
+
+
 def test_quantity_question_accepts_i_dont_know(enriched_conn, state_conn):
     find = ScriptedFind(found(verified(1, quantity_matters=True), verified(2)))
     seen = []
@@ -347,7 +361,9 @@ def test_quantity_question_accepts_i_dont_know(enriched_conn, state_conn):
         seen.append(items)
         return [verified(c.recipe_id).verification for c in candidates]
 
-    chat = scripted_chat(enriched_conn, state_conn, find, ask_quantities=True, reverify=reverify)
+    chat = scripted_chat(
+        enriched_conn, state_conn, find, quantity_question="when_it_matters", reverify=reverify
+    )
     turn = through_safety(chat)
     assert turn.question.kind is QuestionKind.QUANTITIES
     assert turn.question.items == ["egg"]
@@ -370,7 +386,9 @@ def test_quantity_answers_are_used_to_re_verify(enriched_conn, state_conn):
             for c in candidates
         ]
 
-    chat = scripted_chat(enriched_conn, state_conn, find, ask_quantities=True, reverify=reverify)
+    chat = scripted_chat(
+        enriched_conn, state_conn, find, quantity_question="when_it_matters", reverify=reverify
+    )
     through_safety(chat)
     turn = chat.reply(QuantityReply(amounts={"egg": AmountReply(quantity=1)}))
     assert [o.recipe_id for o in turn.question.options] == [2]

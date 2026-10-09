@@ -57,9 +57,9 @@ class Settings(BaseSettings):
     usage_weight: float = 0.5  # ingredient score = (1 - w) * coverage + w * pantry usage
 
     # Conversation
-    # The quantity question is built but off until the quantity-strategy eval has run
-    # (recipes have amounts since 2026-10-09, docs/decisions.md).
-    ask_quantities: bool = False
+    # The quantity question (docs/decisions.md): "off", "when_it_matters" (key items whose
+    # amount matters) or "always" (every non-staple pantry item the options use).
+    quantity_question: Literal["off", "when_it_matters", "always"] = "when_it_matters"
 
     log_level: str = "INFO"
 

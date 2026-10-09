@@ -69,7 +69,7 @@ class ChatDeps:
     steps: Callable[[int], list[str]]
     servings: Callable[[int], int | None] = lambda recipe_id: None
     profiles: ProfileStore | None = None
-    ask_quantities: bool = False  # off until the quantity-strategy eval (config.py)
+    quantity_question: str = "off"  # "off" | "when_it_matters" | "always" (config.py)
     # The last allergen check before options are shown. False only for the eval's
     # safety-layer comparisons; never off in the app.
     final_allergen_check: bool = True
@@ -114,14 +114,16 @@ def recipe_option(number: int, vc: VerifiedCandidate) -> RecipeOption:
     )
 
 
-def quantity_items(state: ChatState) -> list[str]:
-    """Key ingredients whose amount matters, that the user has, not asked about before."""
+def quantity_items(state: ChatState, always: bool = False) -> list[str]:
+    """Pantry items the options use, not asked about before: key ingredients whose amount
+    matters, or (always) every non-staple one."""
     items: dict[str, None] = {}
     for vc in state.results:
         status = vc.verification.ingredient_status
         for i in vc.candidate.ingredients:
             asked = i.canonical_name in state.asked_quantities
-            relevant = i.is_key and i.quantity_matters and not i.is_staple
+            matters = always or (i.is_key and i.quantity_matters)
+            relevant = matters and not i.is_staple
             if relevant and not asked and status.get(i.name) == "available":
                 items[i.canonical_name] = None
     return list(items)[:MAX_QUANTITY_ITEMS]
@@ -261,7 +263,7 @@ class ChatNodes:
             return update
 
     def quantity_check(self, state: ChatState) -> dict:
-        items = quantity_items(state)
+        items = quantity_items(state, always=self.deps.quantity_question == "always")
         if not items:
             return {}
         text = "How much do you have of: " + ", ".join(items) + "?"

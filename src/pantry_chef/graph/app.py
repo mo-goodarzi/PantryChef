@@ -107,7 +107,7 @@ def chat_from_settings(
         steps=lambda recipe_id: load_steps(conn, recipe_id),
         servings=lambda recipe_id: load_servings(conn, recipe_id),
         profiles=profiles,
-        ask_quantities=settings.ask_quantities,
+        quantity_question=settings.quantity_question,
         final_allergen_check=final_allergen_check,
     )
     graph = build_graph(deps, SqliteSaver(checkpoints))
