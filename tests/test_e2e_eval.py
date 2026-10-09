@@ -227,6 +227,7 @@ def test_the_judge_rates_the_final_recipe_against_the_users_message(
     s = summarize([result])
     assert s["mean_judge_score"] == 3 and s["good_answer_rate"] == 0.0  # safe, weak fit
     assert judged_case(case()).judged_wish == MESSAGE
+    assert judged_case(case(wish="breakfast")).judged_wish == "breakfast"
 
 
 def test_report_has_one_row_per_variant(tmp_path):

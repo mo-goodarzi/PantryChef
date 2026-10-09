@@ -57,6 +57,9 @@ class E2ECase(BaseModel):
     group: str
     safety_answer: str = "none"  # the answer to the first-visit safety question
     message: str  # the request, as the user types it
+    # what the user wants, without the pantry ("a quick dinner"): the judge rates only
+    # this, so a recipe is not marked down for leaving pantry items unused
+    wish: str | None = None
     # --- the truth, written by hand: what every recipe shown must respect ---
     pantry: list[str]  # what the user really has (for "can they make it")
     # recipe ingredient names the pantry also covers, beyond the whole-word rule
@@ -200,8 +203,11 @@ class E2EResult:
 
 
 def judged_case(case: E2ECase) -> SearchCase:
-    """The case as the judge sees it: the user's own message is the wish."""
-    return SearchCase(id=case.id, group=case.group, pantry=case.pantry, preferences=case.message)
+    """The case as the judge sees it: the hand-written wish (the whole message when a
+    case has none)."""
+    return SearchCase(
+        id=case.id, group=case.group, pantry=case.pantry, preferences=case.wish or case.message
+    )
 
 
 def run_case(
