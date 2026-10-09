@@ -57,7 +57,8 @@ description, ingredients, n_ingredients`.
 - **No ingredient quantities or servings.** The original ingredient lines with amounts
   ("4 cups blueberries") and servings come from a second file of the same author,
   `recipes_w_search_terms.csv`, and are shown to the user (`scripts/load_amounts.py`,
-  see `docs/decisions.md` 2026-10-09). They are display text, not parsed numbers yet.
+  see `docs/decisions.md` 2026-10-09), and parsed in code into `quantity` + `unit`
+  (`quantity_source = 'recipe_line'`) for the verifier.
 - Some names/descriptions are empty.
 
 **Download:** manual from Kaggle, or `kaggle datasets download -d
@@ -205,8 +206,8 @@ Acceptance criteria
 Tasks
 1. ~~Decide the quantity source~~ Done: LLM estimates in Phase 8 (irkaal dataset
    inspected and dropped, see `docs/decisions.md`). Update 2026-10-09: the original lines
-   from `recipes_w_search_terms.csv` are shown to the user; the estimator is only needed
-   for numbers the verifier can compare, if those lines are not parsed instead.
+   from `recipes_w_search_terms.csv` are shown to the user and parsed into numbers; the
+   Phase 8 LLM estimator is dropped.
 2. `config.py` with pydantic-settings.
 3. `db/schema.sql` as above; `db/connection.py`.
 4. `scripts/build_db.py`:
@@ -459,9 +460,9 @@ Acceptance criteria
 
 ---
 
-### Phase 8 — Video agent, quantity estimation and first deployment
-**Goal:** a verified YouTube link for the chosen recipe; estimated quantities for key
-ingredients.
+### Phase 8 — Video agent and first deployment
+**Goal:** a verified YouTube link for the chosen recipe. (Quantity estimation was dropped
+2026-10-09: amounts come from the recipe lines.)
 
 1. **Video search** (`agents/video.py`): YouTube Data API v3 `search.list` with query
    `"{recipe name} recipe"`, top 5 results (`type=video`, `videoEmbeddable=true`).
@@ -470,7 +471,9 @@ ingredients.
    + description). Score = overlap of the recipe's key ingredients mentioned + LLM judge
    ("same dish? yes/no + evidence"). Pick the best video above threshold; if none, return
    a YouTube search link and say no verified match was found.
-3. **Quantity estimation** (`agents/quantity_estimator.py`): for candidate recipes only,
+3. ~~**Quantity estimation**~~ Dropped 2026-10-09: amounts come from the recipe lines
+   (`db/amounts.py`, see `docs/decisions.md`). Original plan, kept for reference:
+   (`agents/quantity_estimator.py`): for candidate recipes only,
    LLM estimates amounts of key ingredients for the recipe's default servings (from name,
    steps, description); store in `recipe_ingredients` with `quantity_source='llm_estimate'`.
    The verifier treats estimates with tolerance (e.g. ±25%). Also estimate servings

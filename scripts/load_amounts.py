@@ -43,6 +43,11 @@ def main() -> None:
         f"  ingredient rows        {summary.rows_with_amounts:>10,} of {summary.rows_in_db:,} "
         f"({summary.rows_with_amounts / max(summary.rows_in_db, 1):.1%})"
     )
+    rows = max(summary.rows_with_amounts, 1)
+    print(f"  ... with a number      {summary.rows_with_quantity / rows:>10.1%}")
+    print(
+        f"  ... comparable         {summary.rows_comparable / rows:>10.1%}  (count or kitchen unit)"
+    )
 
 
 if __name__ == "__main__":

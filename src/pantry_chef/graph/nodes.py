@@ -69,7 +69,7 @@ class ChatDeps:
     steps: Callable[[int], list[str]]
     servings: Callable[[int], int | None] = lambda recipe_id: None
     profiles: ProfileStore | None = None
-    ask_quantities: bool = False  # off until recipes have amounts (Phase 8)
+    ask_quantities: bool = False  # off until the quantity-strategy eval (config.py)
     # The last allergen check before options are shown. False only for the eval's
     # safety-layer comparisons; never off in the app.
     final_allergen_check: bool = True

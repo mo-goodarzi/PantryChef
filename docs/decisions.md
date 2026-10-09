@@ -1004,3 +1004,38 @@ verifier's quantity check and the quantity question are unchanged. Parsing the l
 estimator; that is a separate decision for the owner.
 **Safety note:** allergen checks still use ingredient names only. A line can mention an
 alternative the name list does not ("1/3 cup melted butter or applesauce" for "oil").
+
+## 2026-10-09 — Recipe amounts parsed into numbers; LLM estimator dropped
+Each recipe line is now also parsed into `quantity` + `unit` in code
+(`db/amounts.py: parse_amount`, `quantity_source = 'recipe_line'`), so the verifier's
+existing quantity check (pint, unchanged) can compare it with what the user has.
+
+**Owner decisions:**
+- **Ranges take the lower number** ("3-4 lbs" → 3 pound): a recipe is rejected less often.
+- **The Phase 8 LLM quantity estimator is dropped.** Recipes not in the amounts file (4%)
+  and lines without a number keep `quantity = NULL`, which the verifier already treats as
+  "recipe amount unknown" (a note, never a failure).
+- **Allergen checks stay on ingredient names only**; the lines are not scanned for
+  allergens (e.g. "melted butter or applesauce" listed under "oil").
+
+**Parsing rules:** "1 1/2" / "1/2" / "1.5" numbers; packages multiply out
+("2 (8 ounce) bottles" → 16 ounce); "dozen" × 12; kitchen units go through the existing
+`UNIT_ALIASES`; count words ("large", "cloves", "eggs") and bare numbers are counts;
+containers without a size ("1 can", "2 packets", "1 bunch") keep their word as the unit,
+which the verifier cannot compare, so it only adds a note.
+
+**Results** on the 675,652 recipe-ingredient rows the quantity check looks at (key,
+quantity matters, not staple), including recipes missing from the file:
+
+| | Share |
+|---|---|
+| Has a number | 94.8% |
+| Count | 35.7% |
+| Weight (lb, oz, g, kg) | 27.4% |
+| Volume (cup, tbsp, tsp, ml...) | 29.8% |
+| Comparable in total | 92.9% |
+
+**Known limit:** weight and volume are never compared (no densities), so "500 g pasta"
+against "2 cups pasta" is a note, not a check.
+**Next:** the quantity question is still off (`ask_quantities = False`). It is turned on
+only after the Phase 7 quantity-strategy eval (never / always / when it matters).

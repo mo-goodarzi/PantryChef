@@ -41,7 +41,7 @@ CREATE TABLE recipe_ingredients (
   is_optional INTEGER DEFAULT 0,
   quantity REAL,
   unit TEXT,
-  quantity_source TEXT,              -- NULL | 'llm_estimate' (Phase 8)
+  quantity_source TEXT,              -- NULL | 'recipe_line' (parsed from amount_text)
   amount_text TEXT,                  -- original line, e.g. "4 cups blueberries" (db/amounts.py)
   PRIMARY KEY (recipe_id, ingredient_id)
 );
