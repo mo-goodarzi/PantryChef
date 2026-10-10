@@ -14,9 +14,9 @@ UI = Path(__file__).parents[1] / "ui" / "streamlit_app.py"
 
 @pytest.fixture
 def open_ui(make_client):  # noqa: F811
-    def start(llm=None, name=""):
+    def start(llm=None, name="", video=None):
         app = AppTest.from_file(str(UI), default_timeout=30)
-        app.session_state["client"] = make_client(llm or default_llm())
+        app.session_state["client"] = make_client(llm or default_llm(), video=video)
         app.run()
         if name:
             app.text_input(key="user_name").input(name).run()
@@ -81,6 +81,20 @@ def test_no_photo_means_no_image(open_ui):
     app = open_ui()
     through_safety(app)
     assert not app.get("image")
+
+
+def test_the_video_question_then_the_video_with_the_recipe(open_ui):
+    from .test_graph import a_video
+
+    app = open_ui(video=a_video)
+    through_safety(app)
+    app.button(key="choose_1").click().run()
+    assert app.button(key="video_yes") and app.button(key="video_no")
+
+    app.button(key="video_yes").click().run()
+    assert not app.exception
+    assert "Why it fits" in chat_text(app)
+    assert any("follow the list above" in c.value for c in app.caption)
 
 
 def test_show_me_other_recipes(open_ui):

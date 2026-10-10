@@ -25,6 +25,7 @@ from pantry_chef.models.chat import (
     QuestionKind,
     RecipeOption,
     SafetyReply,
+    VideoReply,
 )
 from pantry_chef.models.profile import UserProfile
 from pantry_chef.models.query import AmountStatus
@@ -46,6 +47,7 @@ STEP_OF_KIND = {
     QuestionKind.SAFETY_CONFIRM: 1,
     QuestionKind.QUANTITIES: 2,
     QuestionKind.CHOICE: 3,
+    QuestionKind.VIDEO: 4,
 }
 
 
@@ -270,11 +272,24 @@ def choice_cards(question: Question) -> None:
         st.rerun()
 
 
+def video_form(question: Question) -> None:
+    yes, no = st.columns(2)
+    if yes.button(
+        "Yes, find a video", key="video_yes", type="primary", icon=":material/smart_display:"
+    ):
+        answer(VideoReply(want=True), "Yes, find a video.")
+        st.rerun()
+    if no.button("No, just the recipe", key="video_no"):
+        answer(VideoReply(want=False), "No video, thanks.")
+        st.rerun()
+
+
 FORMS = {
     QuestionKind.SAFETY: safety_form,
     QuestionKind.SAFETY_CONFIRM: confirm_form,
     QuestionKind.QUANTITIES: quantity_form,
     QuestionKind.CHOICE: choice_cards,
+    QuestionKind.VIDEO: video_form,
 }
 
 
@@ -302,10 +317,27 @@ def show_answer(answer: FinalAnswer) -> None:
             st.markdown("\n".join(f"- {item}" for item in answer.adaptations))
     st.markdown("#### Steps")
     st.markdown("\n".join(f"{n}. {step}" for n, step in enumerate(answer.steps, start=1)))
+    show_video(answer)
     for note in answer.notes:
         st.caption(f":material/info: {note}")
     if answer.disclaimer:
         st.caption(f":material/medical_information: {answer.disclaimer}")
+
+
+def show_video(answer: FinalAnswer) -> None:
+    if answer.video:
+        st.markdown("#### Video")
+        st.video(answer.video.url)
+        st.caption(
+            f"{answer.video.title} ({answer.video.channel}). Checked against the recipe: "
+            f"{answer.video.match_evidence} The video may use other ingredients; follow the "
+            "list above for your allergies."
+        )
+    elif answer.video_search_url:
+        st.caption(
+            ":material/smart_display: No video clearly matched this recipe. "
+            f"[Search YouTube]({answer.video_search_url})"
+        )
 
 
 def show_message(role: str, content: str | FinalAnswer) -> None:

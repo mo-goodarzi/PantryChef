@@ -36,6 +36,7 @@ from pantry_chef.models.chat import (
     QuantityReply,
     QuestionKind,
     SafetyReply,
+    VideoReply,
 )
 from pantry_chef.models.query import AmountStatus, Diet, RecipeQuery
 from pantry_chef.models.recipe import Candidate, RecipeIngredient
@@ -67,7 +68,7 @@ class ScriptedLLM:
         return answer
 
 
-def make_deps(conn, state_conn, llm, find=None, quantity_question="off", reverify=None):
+def make_deps(conn, state_conn, llm, find=None, quantity_question="off", reverify=None, video=None):
     verifier = Verifier(conn)
     return ChatDeps(
         llm=llm,
@@ -78,6 +79,7 @@ def make_deps(conn, state_conn, llm, find=None, quantity_question="off", reverif
         image=lambda recipe_id: load_image_url(conn, recipe_id),
         profiles=ProfileStore(state_conn),
         quantity_question=quantity_question,
+        video=video,
     )
 
 
@@ -457,6 +459,82 @@ def test_no_new_search_after_the_last_attempt(enriched_conn, state_conn):
 
     turn = chat.reply(QuantityReply(amounts={"egg": ONE_EGG}))
     assert turn.done and "couldn't find" in turn.reply and len(find.queries) == 3
+
+
+# --- video --------------------------------------------------------------------------------
+
+
+def a_video(recipe, steps):
+    from pantry_chef.models.video import TextSource, VideoOutcome, VideoResult
+
+    found = VideoResult(
+        video_id="v1",
+        url="https://www.youtube.com/watch?v=v1",
+        title="How to make pancakes",
+        channel="c",
+        match_score=1.0,
+        match_evidence="Makes pancakes with flour, eggs and milk.",
+        text_source=TextSource.TRANSCRIPT,
+        verified=True,
+    )
+    assert steps, "the agent gets the recipe's steps"
+    return VideoOutcome(video=found, search_url="https://www.youtube.com/results?q=x")
+
+
+def video_chat(enriched_conn, state_conn, video):
+    llm = ScriptedLLM(safety_intake=SafetyAnswer(), request_parsing=BAKING)
+    return conversation(make_deps(enriched_conn, state_conn, llm, video=video))
+
+
+def choose_pancakes(chat):
+    options = through_safety(chat).question.options
+    pancakes = next(o for o in options if o.recipe_id == PANCAKES)
+    return chat.reply(ChoiceReply(choice=pancakes.number))
+
+
+def test_a_video_is_offered_after_the_choice_and_shown_when_wanted(enriched_conn, state_conn):
+    asked = []
+    chat = video_chat(enriched_conn, state_conn, lambda r, s: asked.append(r) or a_video(r, s))
+    turn = choose_pancakes(chat)
+    assert turn.question.kind is QuestionKind.VIDEO
+
+    answer = chat.reply(VideoReply(want=True)).answer
+    assert answer.video.video_id == "v1" and answer.video_search_url is None
+    assert [r.recipe_id for r in asked] == [PANCAKES]
+
+
+def test_no_video_wanted_means_no_search(enriched_conn, state_conn):
+    asked = []
+    chat = video_chat(enriched_conn, state_conn, lambda r, s: asked.append(r) or a_video(r, s))
+    choose_pancakes(chat)
+    answer = chat.reply(VideoReply(want=False)).answer
+    assert answer.video is None and answer.video_search_url is None and asked == []
+
+
+def test_no_verified_video_gives_a_search_link(enriched_conn, state_conn):
+    from pantry_chef.models.video import VideoOutcome
+
+    link = "https://www.youtube.com/results?search_query=pancakes"
+    chat = video_chat(enriched_conn, state_conn, lambda r, s: VideoOutcome(search_url=link))
+    choose_pancakes(chat)
+    answer = chat.reply(VideoReply(want=True)).answer
+    assert answer.video is None and answer.video_search_url == link
+
+
+def test_a_video_error_never_loses_the_recipe(enriched_conn, state_conn):
+    def broken(recipe, steps):
+        raise RuntimeError("transcript service down")
+
+    chat = video_chat(enriched_conn, state_conn, broken)
+    choose_pancakes(chat)
+    answer = chat.reply(VideoReply(want=True)).answer
+    assert answer.recipe_id == PANCAKES and answer.video is None
+    assert answer.video_search_url.startswith("https://www.youtube.com/results?search_query=")
+
+
+def test_without_a_video_agent_there_is_no_video_question(enriched_conn, state_conn):
+    turn = choose_pancakes(video_chat(enriched_conn, state_conn, None))
+    assert turn.done and turn.answer.recipe_id == PANCAKES
 
 
 # --- persistence and privacy --------------------------------------------------------------

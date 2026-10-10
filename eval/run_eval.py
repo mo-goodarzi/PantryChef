@@ -126,7 +126,10 @@ def run_e2e(
     # one state database for every LLM_MODEL: matcher answers are cached per model
     eval_state = Path("data/processed/eval_cache/state.db")
     eval_state.parent.mkdir(parents=True, exist_ok=True)
-    eval_settings = settings.model_copy(update={"state_db_path": eval_state})
+    # videos have their own eval (eval/video_eval.py): no video question, no quota used
+    eval_settings = settings.model_copy(
+        update={"state_db_path": eval_state, "youtube_api_key": None}
+    )
     conn = connect(settings.db_path)
     cases = load_e2e_cases(cases_path)[:limit]
     judge_llm = create_llm(settings.model_copy(update={"llm_model": settings.judge_model}))
