@@ -16,6 +16,7 @@ from langgraph.types import interrupt
 from pantry_chef.agents.feedback import build_feedback
 from pantry_chef.agents.finder import build_query, interpret_request
 from pantry_chef.agents.safety import DISCLAIMER, confirmation_message, interpret_safety_answer
+from pantry_chef.db.images import CARD, FULL, sized
 from pantry_chef.db.state import ProfileStore
 from pantry_chef.graph.state import MAX_ATTEMPTS, ChatState
 from pantry_chef.llm.factory import StructuredLLM
@@ -69,6 +70,7 @@ class ChatDeps:
     reverify: Callable[[list[Candidate], RecipeQuery, list[PantryItem]], list[VerificationResult]]
     steps: Callable[[int], list[str]]
     servings: Callable[[int], int | None] = lambda recipe_id: None
+    image: Callable[[int], str | None] = lambda recipe_id: None  # photo URL (db/images.py)
     profiles: ProfileStore | None = None
     quantity_question: str = "off"  # "off" | "when_it_matters" | "always" (config.py)
     # The last allergen check before options are shown. False only for the eval's
@@ -100,7 +102,7 @@ def ingredients_with_status(vc: VerifiedCandidate, statuses: set[str]) -> list[s
     return [i.name for i in vc.candidate.ingredients if status.get(i.name) in statuses]
 
 
-def recipe_option(number: int, vc: VerifiedCandidate) -> RecipeOption:
+def recipe_option(number: int, vc: VerifiedCandidate, image_url: str | None = None) -> RecipeOption:
     return RecipeOption(
         number=number,
         recipe_id=vc.candidate.recipe_id,
@@ -112,6 +114,7 @@ def recipe_option(number: int, vc: VerifiedCandidate) -> RecipeOption:
         also_needs=ingredients_with_status(vc, {"missing", "extra"}),
         warnings=vc.verification.warnings,
         fit_note=vc.verification.fit_note,
+        image_url=sized(image_url, CARD),
     )
 
 
@@ -304,7 +307,10 @@ class ChatNodes:
     def present(self, state: ChatState) -> dict:
         if not state.results:
             return {"reply": no_recipe_message(state.reason_counts)}
-        options = [recipe_option(n, vc) for n, vc in enumerate(state.results, start=1)]
+        options = [
+            recipe_option(n, vc, self.deps.image(vc.candidate.recipe_id))
+            for n, vc in enumerate(state.results, start=1)
+        ]
         note = None
         if len(options) < 2:
             note = "Only this recipe passed all checks; I searched a few times."
@@ -359,6 +365,7 @@ class ChatNodes:
                 why_it_fits=why,
                 ingredients=[i.amount_text or i.name for i in vc.candidate.ingredients],
                 servings=self.deps.servings(vc.candidate.recipe_id),
+                image_url=sized(self.deps.image(vc.candidate.recipe_id), FULL),
                 steps=self.deps.steps(vc.candidate.recipe_id),
                 adaptations=vc.verification.adaptations,
                 also_needs=ingredients_with_status(vc, {"missing", "extra"}),

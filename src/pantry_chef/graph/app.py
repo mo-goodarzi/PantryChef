@@ -10,7 +10,7 @@ from pantry_chef.agents.allergy_review import AllergyReviewer
 from pantry_chef.agents.wish_fit import WishFitChecker
 from pantry_chef.config import Settings
 from pantry_chef.db.connection import connect
-from pantry_chef.db.repository import load_servings, load_steps
+from pantry_chef.db.repository import load_image_url, load_servings, load_steps
 from pantry_chef.db.state import ProfileStore, open_state_db
 from pantry_chef.graph.builder import build_graph
 from pantry_chef.graph.nodes import ChatDeps
@@ -107,6 +107,7 @@ def chat_from_settings(
         reverify=verifier.verify_all,
         steps=lambda recipe_id: load_steps(conn, recipe_id),
         servings=lambda recipe_id: load_servings(conn, recipe_id),
+        image=lambda recipe_id: load_image_url(conn, recipe_id),
         profiles=profiles,
         quantity_question=settings.quantity_question,
         final_allergen_check=final_allergen_check,

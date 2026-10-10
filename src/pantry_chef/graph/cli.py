@@ -114,6 +114,8 @@ def render_question(question: Question) -> str:
 
 def render_answer(answer: FinalAnswer) -> str:
     lines = [f"{answer.name} ({answer.minutes} min)", f"Why it fits: {answer.why_it_fits}"]
+    if answer.image_url:
+        lines.append(f"Photo (Food.com): {answer.image_url}")
     serves = f" (serves {answer.servings})" if answer.servings else ""
     lines.append(f"Ingredients{serves}:")
     lines += [f" - {item}" for item in answer.ingredients]

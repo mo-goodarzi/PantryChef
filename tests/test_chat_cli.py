@@ -97,3 +97,6 @@ def test_answer_lists_one_ingredient_line_per_row_with_servings():
     assert "Ingredients (serves 4):\n - 4 cups blueberries, fresh or frozen\n" in text
     assert " - 1/4 cup granulated sugar" in text
     assert "(serves" not in render_answer(answer.model_copy(update={"servings": None}))
+    assert "Photo" not in text
+    with_photo = answer.model_copy(update={"image_url": "https://img.sndimg.com/p.jpg"})
+    assert "Photo (Food.com): https://img.sndimg.com/p.jpg" in render_answer(with_photo)
