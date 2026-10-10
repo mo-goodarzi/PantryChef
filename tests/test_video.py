@@ -252,3 +252,46 @@ def test_youtube_errors_raise_for_the_agent_to_handle():
     source = youtube(lambda request: httpx.Response(403, content=json.dumps(error)))
     with pytest.raises(httpx.HTTPStatusError):
         source.search("tortilla", 5)
+
+
+# --- YouTube blocking transcripts --------------------------------------------------------
+
+
+def test_no_captions_is_none_but_a_block_raises(monkeypatch):
+    from youtube_transcript_api import IpBlocked, TranscriptsDisabled
+
+    from pantry_chef.agents.video import TranscriptBlocked
+
+    source = youtube(lambda request: httpx.Response(200, json={}))
+
+    def disabled(video_id, languages):
+        raise TranscriptsDisabled(video_id)
+
+    monkeypatch.setattr(source.transcripts, "fetch", disabled)
+    assert source.transcript("v1") is None  # an answer about the video
+
+    def blocked(video_id, languages):
+        raise IpBlocked(video_id)
+
+    monkeypatch.setattr(source.transcripts, "fetch", blocked)
+    with pytest.raises(TranscriptBlocked):
+        source.transcript("v1")  # says nothing about the video
+
+
+class Blocked(FakeSource):
+    def transcript(self, video_id):
+        from pantry_chef.agents.video import TranscriptBlocked
+
+        self.transcript_calls.append(video_id)
+        raise TranscriptBlocked("IpBlocked")
+
+
+def test_a_blocked_transcript_falls_back_to_the_description_and_is_not_cached(tmp_path):
+    state = open_state_db(tmp_path / "s.db")
+    source = Blocked([video(1, description=GOOD)], {})
+    outcome = finder(source, Judge(same={"video 1"}), state).find(TORTILLA, STEPS)
+
+    assert outcome.video is not None and outcome.video.text_source is TextSource.DESCRIPTION
+    assert outcome.video.transcript_blocked
+    finder(source, Judge(same={"video 1"}), state).find(TORTILLA, STEPS)
+    assert source.searches == 2  # asked again next time, when transcripts may work
