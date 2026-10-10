@@ -101,6 +101,7 @@ pantry-chef/
 - Allergy review eval: `uv run python eval/run_allergy_review.py --models gpt-5.4-mini,gpt-5.4`
 - Parsing eval (safety intake + request parsing): `uv run python eval/run_parsing_eval.py --models gpt-5.4-mini,gpt-5.4`
 - Wish-fit eval: `uv run python eval/wish_fit_calibration.py export`, label the CSV, then `... score --models gpt-5.4-mini,gpt-5.4`
+- Video eval: `uv run python eval/video_eval.py export --n 40`, label `eval/reports/video_labels.csv` (yes/no), then `... score`
 - Judge calibration: `uv run python eval/judge_calibration.py export --results eval/reports/<run>.json`, then `... score`
 - Build embeddings: `uv run python scripts/build_embeddings.py`
 - Chat (full graph, terminal): `uv run python scripts/chat_cli.py --user <name>`

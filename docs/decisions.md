@@ -1188,3 +1188,27 @@ stricter about comparison videos.
 **Risk for deployment:** YouTube often blocks transcript requests from cloud servers;
 the agent then reads title + description automatically. The eval's "without transcript"
 variant measures what that costs.
+
+## 2026-10-10 — Video eval set up; YouTube blocks transcripts after ~100 requests
+**Eval** (`eval/video_eval.py`, as planned: 40 recipes, owner's labels): 40 random recipes
+with at least 5 ratings; three ways to pick a video from the same YouTube results:
+YouTube's first result (no check), the agent reading title + description only, and the
+agent with transcripts (the app). Every video any of them shows goes into one blind,
+shuffled sheet (`eval/reports/video_labels.csv`, no variant names); `score` reports
+precision (right of shown), videos shown, and recipes that get a right video. Search
+results and transcripts are cached in `data/processed/eval_cache/video_source.json`, so
+re-scoring spends no quota.
+
+**Finding: YouTube blocked transcript requests from this machine** (`IpBlocked`) after
+about 100 of them today (smoke tests + the first export), even locally. The first version
+treated a block like "this video has no transcript" and cached it.
+**Fix:** `YouTubeSource.transcript` returns None only for answers about the video
+(no transcript, disabled, unavailable, age restricted) and raises `TranscriptBlocked`
+for anything else; the agent then reads title + description and does not cache that
+recipe's answer; the eval cache never stores a block. The export notes blocked recipes
+(22 of 40 in the second export) and `score` marks the transcript row as not final.
+
+**Consequence for deployment:** transcripts are unreliable without a residential proxy
+(the library supports paid proxies; YouTube's official captions API only serves the
+owner's own videos). The eval's description-only row shows what the app does without
+them; the owner decides after labeling.
