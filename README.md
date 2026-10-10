@@ -192,16 +192,17 @@ nothing stops them (pad thai with peanuts, sticky chicken with sesame oil).
 
 **Quantity question** (24 cases where the user has a hidden, often too small amount, e.g.
 1 egg for a cake; recipe amounts come from the original Food.com lines; gpt-5.4-mini;
-`e2e_20261009-2127`):
+`e2e_20261010-1521`). When the answer rules out every option, the app searches again
+with the amounts:
 
-| Ask about amounts | task success | recipes the user cannot make | amounts asked / request | cost / conversation |
-|---|---|---|---|---|
-| never | 71% | 29% | 0 | $0.006 |
-| **when it matters** (the default) | **92%** | 4% | 2.1 | $0.006 |
-| always | 92% | 0% | 3.8 | $0.006 |
+| Ask about amounts | task success | good answer | recipes the user cannot make | amounts asked / request | cost / conversation |
+|---|---|---|---|---|---|
+| never | 71% | 67% | 29% | 0 | $0.006 |
+| **when it matters** (the default) | **96%** | **88%** | 4% | 1.9 | $0.007 |
+| always | 100% | 92% | 0% | 3.9 | $0.007 |
 
-Asking only about key ingredients whose amount matters gets the same success as asking
-about everything, with about half the items. The rows above this one were measured with
+Asking only about key ingredients whose amount matters gets nearly all of the gain with
+half the items; the one case it misses is milk, which is not asked by choice. The rows above this one were measured with
 the question off. One run of 24 cases: the "never" row moved 8 points between two runs.
 
 **Model for parsing, intake, rerank and matcher** (`LLM_MODEL`; same 50-case subset):
