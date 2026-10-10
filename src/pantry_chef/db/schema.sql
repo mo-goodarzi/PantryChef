@@ -18,7 +18,8 @@ CREATE TABLE recipes (
   -- is_high_protein: for the high protein goal, see ingredients/protein.py.
   n_key INTEGER,
   is_high_protein INTEGER,
-  servings INTEGER                   -- from recipes_w_search_terms.csv (db/amounts.py)
+  servings INTEGER,                  -- from recipes_w_search_terms.csv (db/amounts.py)
+  image_url TEXT                     -- first photo on Food.com's server (db/images.py)
 );
 
 CREATE TABLE ingredients (

@@ -100,6 +100,12 @@ def load_servings(conn: sqlite3.Connection, recipe_id: int) -> int | None:
     return row["servings"] if row else None
 
 
+def load_image_url(conn: sqlite3.Connection, recipe_id: int) -> str | None:
+    """The recipe's photo URL on Food.com's server, or None when it has none."""
+    row = conn.execute("SELECT image_url FROM recipes WHERE id = ?", (recipe_id,)).fetchone()
+    return row["image_url"] if row else None
+
+
 def recipe_summaries(conn: sqlite3.Connection, recipe_ids: list[int]) -> dict[int, dict]:
     """What an LLM (judge or reranker) sees about each recipe."""
     summaries = {}
