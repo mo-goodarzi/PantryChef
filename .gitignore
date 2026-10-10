@@ -34,6 +34,8 @@ chroma/
 
 # Eval outputs
 eval/reports/*.json
+# ...except which video each variant showed (small, needed to score the video eval)
+!eval/reports/video_choices.json
 
 # OS / editors
 .DS_Store
