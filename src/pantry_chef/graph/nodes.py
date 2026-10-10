@@ -64,7 +64,8 @@ class ChatDeps:
     """Everything the nodes need; tests pass fakes, chat_from_settings the real ones."""
 
     llm: StructuredLLM
-    find: Callable[[RecipeQuery], FindResult]  # search + verify (+ rerank)
+    # search + verify (+ rerank); the verifier also checks the amounts the user gave
+    find: Callable[[RecipeQuery, list[PantryItem]], FindResult]
     reverify: Callable[[list[Candidate], RecipeQuery, list[PantryItem]], list[VerificationResult]]
     steps: Callable[[int], list[str]]
     servings: Callable[[int], int | None] = lambda recipe_id: None
@@ -115,8 +116,10 @@ def recipe_option(number: int, vc: VerifiedCandidate) -> RecipeOption:
 
 
 def quantity_items(state: ChatState, always: bool = False) -> list[str]:
-    """Pantry items the options use, not asked about before: key ingredients whose amount
-    matters, or (always) every non-staple one."""
+    """Pantry items the options use: key ingredients whose amount matters, or (always)
+    every non-staple one. Asked at most once per request."""
+    if state.asked_quantities:
+        return []
     items: dict[str, None] = {}
     for vc in state.results:
         status = vc.verification.ingredient_status
@@ -227,7 +230,7 @@ class ChatNodes:
         assert state.query is not None
         attempt = state.attempts + 1
         with span("node.search", attempt=attempt):
-            result = self.deps.find(state.query)
+            result = self.deps.find(state.query, state.pantry_items)
             unsafe = (
                 allergen_violations(result.top, state.query)
                 if self.deps.final_allergen_check
@@ -280,13 +283,23 @@ class ChatNodes:
                 for c, v in zip(candidates, verifications, strict=True)
                 if v.status is not VerificationStatus.FAIL
             ]
+            reasons = Counter(r.code.value for v in verifications for r in v.reasons)
             score("questions_asked", state.questions_asked + len(items))
-            return {
+            update: dict = {
                 "pantry_items": pantry_items,
                 "asked_quantities": state.asked_quantities + items,
                 "questions_asked": state.questions_asked + len(items),
                 "results": results,
+                "reason_counts": dict(Counter(state.reason_counts) + reasons),
+                "retry": False,
             }
+            # Nothing left to show: search again, now with the amounts (the failed recipes
+            # are excluded and the search's verifier checks every new one).
+            if not results and state.attempts < MAX_ATTEMPTS:
+                feedback = build_feedback(state.query, verifications)
+                update |= {"query": feedback.query, "retry": True}
+            log.info("graph.quantity_check", items=len(items), left=len(results))
+            return update
 
     def present(self, state: ChatState) -> dict:
         if not state.results:
@@ -375,6 +388,10 @@ def after_search(state: ChatState, ask_quantities: bool) -> str:
     if state.retry:
         return "search"
     return "quantity_check" if ask_quantities else "present"
+
+
+def after_quantity_check(state: ChatState) -> str:
+    return "search" if state.retry else "present"
 
 
 def after_present(state: ChatState) -> str:

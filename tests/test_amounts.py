@@ -267,3 +267,27 @@ def test_verifier_compares_parsed_recipe_amounts_with_the_pantry(enriched_conn):
     assert [r.item for r in too_little.reasons if r.code is FailureCode.INSUFFICIENT_QUANTITY] == [
         normalize("milk")
     ]
+
+
+def test_the_search_filters_recipes_by_the_amounts_the_user_gave(enriched_conn):
+    """The search's own verifier sees the amounts: too little milk removes the pancakes."""
+    from pantry_chef.ingredients.normalize import normalize
+    from pantry_chef.models.query import AmountStatus, PantryItem, RecipeQuery
+    from pantry_chef.search.engine import find_verified
+
+    load_amounts(enriched_conn, amounts_frame([(PANCAKES, PANCAKE_LINES, 4)]))
+    query = RecipeQuery(ingredients=["flour", "butter", "eggs", "milk"])
+    milk = PantryItem(
+        name="milk",
+        canonical_name=normalize("milk"),
+        quantity=100,
+        unit="ml",
+        amount_status=AmountStatus.KNOWN,
+    )
+
+    def approved(pantry_items):
+        result = find_verified(enriched_conn, query, pantry_items=pantry_items)
+        return {vc.candidate.recipe_id for vc in result.approved}
+
+    assert PANCAKES in approved(None)
+    assert PANCAKES not in approved([milk])  # 100 ml of 1 3/4 cups
