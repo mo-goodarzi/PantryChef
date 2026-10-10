@@ -33,6 +33,7 @@ API_URL = os.environ.get("PANTRY_CHEF_API_URL", "http://localhost:8000")
 AMOUNT_CHOICES = {"I have": AmountStatus.KNOWN, "Don't know": AmountStatus.UNKNOWN,
                   "Plenty": AmountStatus.PLENTY}  # fmt: skip
 AVATARS = {"assistant": ":material/skillet:", "user": ":material/person:"}
+PHOTO_CREDIT = "Photo: Food.com"
 EXAMPLES = [
     "I have eggs, milk and toast. Something sweet for breakfast?",
     "Chicken, rice and an onion. Quick dinner under 30 minutes.",
@@ -232,6 +233,8 @@ def quantity_form(question: Question) -> None:
 
 def option_card(option: RecipeOption) -> None:
     with st.container(border=True):
+        if option.image_url:  # linked from Food.com, never copied
+            st.image(option.image_url, caption=PHOTO_CREDIT, width="stretch")
         st.markdown(f"**{option.number}. {title(option.name)}**  \n{minutes_badge(option.minutes)}")
         if option.why:
             st.caption(option.why)
@@ -279,6 +282,8 @@ FORMS = {
 
 
 def show_answer(answer: FinalAnswer) -> None:
+    if answer.image_url:
+        st.image(answer.image_url, caption=PHOTO_CREDIT, width="content")
     st.markdown(answer_markdown(answer))
     for warning in answer.warnings:
         st.warning(f"**Allergy:** {warning}", icon=":material/warning:")

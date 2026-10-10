@@ -30,6 +30,7 @@ class RecipeOption(BaseModel):
     also_needs: list[str] = Field(default_factory=list)  # missing non-key / key items
     warnings: list[str] = Field(default_factory=list)  # allergy review: leave out / check
     fit_note: str | None = None  # wish-fit check: "Partly fits: ..."
+    image_url: str | None = None  # card-size photo on Food.com's server
 
 
 class Question(BaseModel):
@@ -80,6 +81,7 @@ class FinalAnswer(BaseModel):
     why_it_fits: str
     ingredients: list[str]  # the recipe's own lines with amounts, or names where none
     servings: int | None = None
+    image_url: str | None = None  # full-size photo on Food.com's server
     steps: list[str]  # exactly as in the recipe database, never rewritten by an LLM
     adaptations: list[str] = Field(default_factory=list)
     also_needs: list[str] = Field(default_factory=list)

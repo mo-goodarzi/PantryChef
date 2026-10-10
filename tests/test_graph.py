@@ -16,7 +16,12 @@ from pantry_chef.agents.finder import RequestAnswer
 from pantry_chef.agents.safety import DISCLAIMER, AllergyMention, SafetyAnswer
 from pantry_chef.agents.verifier import Verifier
 from pantry_chef.db.amounts import load_amounts
-from pantry_chef.db.repository import load_recipe_ingredients, load_servings, load_steps
+from pantry_chef.db.repository import (
+    load_image_url,
+    load_recipe_ingredients,
+    load_servings,
+    load_steps,
+)
 from pantry_chef.db.state import ProfileStore
 from pantry_chef.graph import nodes
 from pantry_chef.graph.builder import build_graph
@@ -70,6 +75,7 @@ def make_deps(conn, state_conn, llm, find=None, quantity_question="off", reverif
         reverify=reverify or (lambda c, q, items: verifier.verify_all(c, q, items)),
         steps=lambda recipe_id: load_steps(conn, recipe_id),
         servings=lambda recipe_id: load_servings(conn, recipe_id),
+        image=lambda recipe_id: load_image_url(conn, recipe_id),
         profiles=ProfileStore(state_conn),
         quantity_question=quantity_question,
     )
@@ -132,6 +138,21 @@ def test_answer_shows_the_recipe_amounts_and_servings(enriched_conn, state_conn)
     assert answer.ingredients[0] == "2 cups flour"
     assert "1 3/4 cups milk" in answer.ingredients
     assert answer.servings == 4
+
+
+def test_cards_and_answer_show_the_recipe_photo(enriched_conn, state_conn):
+    url = "https://img.sndimg.com/food/image/upload/w_555,h_416,c_fit/v1/img/recipes/51/70/p.jpg"
+    enriched_conn.execute("UPDATE recipes SET image_url = ? WHERE id = ?", (url, PANCAKES))
+    llm = ScriptedLLM(safety_intake=SafetyAnswer(), request_parsing=BAKING)
+    chat = conversation(make_deps(enriched_conn, state_conn, llm))
+
+    options = through_safety(chat).question.options
+    pancakes = next(o for o in options if o.recipe_id == PANCAKES)
+    assert "/w_300,h_225,c_fill/" in pancakes.image_url  # card size
+    assert all(o.image_url is None for o in options if o.recipe_id != PANCAKES)
+
+    answer = chat.reply(ChoiceReply(choice=pancakes.number)).answer
+    assert "/w_555,h_416,c_fill/" in answer.image_url  # full size
 
 
 def test_answer_falls_back_to_names_without_amounts(enriched_conn, state_conn):

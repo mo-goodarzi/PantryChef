@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     raw_interactions_csv: Path = Path("data/raw/RAW_interactions.csv")
     # Same recipes with the original ingredient lines (amounts + units) and servings.
     amounts_csv: Path = Path("data/raw/recipes_w_search_terms.csv")
+    # Photo URLs per recipe (Kaggle irkaal "Food.com - Recipes and Reviews").
+    images_parquet: Path = Path("data/raw/recipes.parquet")
     db_path: Path = Path("data/processed/pantry.db")  # recipes: rebuilt, read-only at runtime
     state_db_path: Path = Path("data/processed/state.db")  # runtime: profiles, caches, chats
     chroma_path: Path = Path("data/processed/chroma")

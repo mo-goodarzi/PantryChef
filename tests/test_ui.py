@@ -62,6 +62,27 @@ def test_safety_questions_then_recipe_cards_then_the_recipe(open_ui):
     assert app.chat_input(key="request")  # ready for the next request
 
 
+def test_cards_and_the_recipe_show_photos_when_there_are_any(open_ui, enriched_conn):
+    enriched_conn.execute(
+        "UPDATE recipes SET image_url = 'https://img.sndimg.com/food/image/upload/"
+        "w_555,h_416,c_fit/v1/img/recipes/p.jpg'"
+    )
+    enriched_conn.commit()
+    app = open_ui()
+    through_safety(app)
+    cards = len(app.get("image"))
+    assert cards >= 2  # one photo per option card
+
+    app.button(key="choose_1").click().run()
+    assert not app.exception and "Photo: Food.com" in str(app.get("image")[-1].proto)
+
+
+def test_no_photo_means_no_image(open_ui):
+    app = open_ui()
+    through_safety(app)
+    assert not app.get("image")
+
+
 def test_show_me_other_recipes(open_ui):
     app = open_ui()
     through_safety(app)
