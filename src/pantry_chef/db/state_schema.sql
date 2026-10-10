@@ -16,3 +16,11 @@ CREATE TABLE IF NOT EXISTS profiles (      -- written only when consent_to_store
   profile_json TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS video_cache (   -- video agent answers per recipe (agents/video.py)
+  recipe_id INTEGER NOT NULL,
+  source TEXT NOT NULL,                    -- e.g. video_match:v1:gpt-5.4-mini:transcript
+  outcome_json TEXT NOT NULL,              -- VideoOutcome: verified video or search link
+  created_at TEXT,
+  PRIMARY KEY (recipe_id, source)
+);
