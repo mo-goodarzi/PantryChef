@@ -40,6 +40,17 @@ into `data/raw/`, then (about 20 s, safe to run again; run it again after every
 uv run python scripts/load_amounts.py        # "4 cups blueberries" instead of "blueberries"
 ```
 
+Add recipe photos: download `recipes.parquet` from
+[Food.com - Recipes and Reviews](https://www.kaggle.com/datasets/irkaal/foodcom-recipes-and-reviews)
+into `data/raw/`, then (safe to run again; run it again after every `build_db.py`). The
+app links to the photos on Food.com's server and never copies them; about half the
+recipes have one:
+
+```bash
+uv run python scripts/load_images.py         # photo URL per recipe
+uv run python scripts/check_images.py        # optional: how many of 500 random photos load
+```
+
 Build the recipe embeddings for semantic search (local model, about 17 minutes once):
 
 ```bash

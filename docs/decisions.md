@@ -1107,3 +1107,29 @@ documented in Phase 5b; until now it was once per item, so a new search could as
 q04 (100 g beef, "tacos") now gets a recipe the user can make, but the judge rates it 2
 (a burrito, not tacos), so the good-answer rate gains less than task success. The one
 failure left under "when it matters" is q06 (milk, not asked by owner choice).
+
+## 2026-10-10 — Recipe photos, linked from Food.com
+The owner asked to show recipe photos; irkaal's file (`recipes.parquet`, inspected
+2026-09-26 for amounts) has photo URLs per recipe.
+
+| Check | Result |
+|---|---|
+| Our recipes in the file | 99.9% |
+| Recipes with at least one photo | 51.6% (119,524 of 231,635); median 2 photos |
+| Server | all on `img.sndimg.com` (Food.com) |
+| Random photos that load (card size) | 500 / 500 (`scripts/check_images.py`, 2026-10-10) |
+
+**Owner decisions:**
+- **Link, never copy.** We store the first URL (`recipes.image_url`) and the browser
+  loads it from Food.com; the photos belong to Food.com and its users, and the UI credits
+  "Photo: Food.com". Copying all of them would be ~12 GB of other people's photos. Trade-off
+  accepted: a photo Food.com moves shows as broken; `check_images.py` measures how often.
+- **Shown on the option cards (300×225) and the chosen recipe (555×416).** The size is
+  part of the URL ("w_555,h_416,c_fit"), so cards ask the server for a smaller copy
+  (~48 KB instead of ~88 KB); a URL without that pattern is used unchanged.
+- **No photo, no placeholder:** half the recipes have none; the card simply has no image.
+- **No "View on Food.com" link:** recipe pages need the name in the address
+  (`/recipe/low-fat-berry-blue-frozen-dessert-38`; `/recipe/38` is a 404).
+
+The `.parquet` copy is read instead of `recipes.csv`, whose lists are R text
+(`c("...", "...")`). The terminal chat prints the photo link.

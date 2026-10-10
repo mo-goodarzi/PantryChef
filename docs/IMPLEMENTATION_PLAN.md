@@ -59,6 +59,8 @@ description, ingredients, n_ingredients`.
   `recipes_w_search_terms.csv`, and are shown to the user (`scripts/load_amounts.py`,
   see `docs/decisions.md` 2026-10-09), and parsed in code into `quantity` + `unit`
   (`quantity_source = 'recipe_line'`) for the verifier.
+- **No photos.** Photo URLs come from irkaal's `recipes.parquet` (same ids) and are linked,
+  never copied (`scripts/load_images.py`, `docs/decisions.md` 2026-10-10).
 - Some names/descriptions are empty.
 
 **Download:** manual from Kaggle, or `kaggle datasets download -d
