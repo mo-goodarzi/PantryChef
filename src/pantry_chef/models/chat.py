@@ -10,6 +10,7 @@ from enum import StrEnum
 from pydantic import BaseModel, Field
 
 from pantry_chef.models.query import AmountStatus
+from pantry_chef.models.video import VideoResult
 
 
 class QuestionKind(StrEnum):
@@ -17,6 +18,7 @@ class QuestionKind(StrEnum):
     SAFETY_CONFIRM = "safety_confirm"  # confirm the proposed profile + consent to store it
     QUANTITIES = "quantities"  # how much of the items that matter (one batched question)
     CHOICE = "choice"  # pick one of the approved recipes, or ask for more
+    VIDEO = "video"  # look for a matching YouTube video? (only with a YouTube key)
 
 
 class RecipeOption(BaseModel):
@@ -65,12 +67,17 @@ class ChoiceReply(BaseModel):
     more: bool = False  # "show me other recipes"
 
 
+class VideoReply(BaseModel):
+    want: bool  # look for a video of the chosen recipe
+
+
 # The answer model for each kind of question.
 REPLY_MODELS: dict[QuestionKind, type[BaseModel]] = {
     QuestionKind.SAFETY: SafetyReply,
     QuestionKind.SAFETY_CONFIRM: ConfirmReply,
     QuestionKind.QUANTITIES: QuantityReply,
     QuestionKind.CHOICE: ChoiceReply,
+    QuestionKind.VIDEO: VideoReply,
 }
 
 
@@ -88,6 +95,8 @@ class FinalAnswer(BaseModel):
     warnings: list[str] = Field(default_factory=list)  # allergy review: leave out / check
     notes: list[str] = Field(default_factory=list)  # e.g. allergies we can only check by name
     disclaimer: str | None = None  # when health-based restrictions were applied
+    video: VideoResult | None = None  # only a verified video (agents/video.py)
+    video_search_url: str | None = None  # asked for a video, none verified: a search link
 
 
 class Turn(BaseModel):

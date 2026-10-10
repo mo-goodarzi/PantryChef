@@ -28,11 +28,12 @@ def make_client(enriched_conn, tmp_path):
     recipes = Path(enriched_conn.execute("PRAGMA database_list").fetchone()["file"])
     started = []
 
-    def make(llm, checkpointer=None):
+    def make(llm, checkpointer=None, video=None):
         # Worker threads share these connections; the API serializes graph calls.
         conn = connect(recipes, check_same_thread=False)
         state = open_state_db(tmp_path / "state.db", check_same_thread=False)
-        graph = build_graph(make_deps(conn, state, llm), checkpointer or InMemorySaver())
+        deps = make_deps(conn, state, llm, video=video)
+        graph = build_graph(deps, checkpointer or InMemorySaver())
         chat = ChatApp(graph=graph, profiles=ProfileStore(state), connections=[conn, state])
         http = TestClient(create_app(lambda: chat))
         http.__enter__()  # runs the lifespan (startup)

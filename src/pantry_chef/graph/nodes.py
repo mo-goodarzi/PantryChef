@@ -16,6 +16,7 @@ from langgraph.types import interrupt
 from pantry_chef.agents.feedback import build_feedback
 from pantry_chef.agents.finder import build_query, interpret_request
 from pantry_chef.agents.safety import DISCLAIMER, confirmation_message, interpret_safety_answer
+from pantry_chef.agents.video import search_url
 from pantry_chef.db.images import CARD, FULL, sized
 from pantry_chef.db.state import ProfileStore
 from pantry_chef.graph.state import MAX_ATTEMPTS, ChatState
@@ -29,6 +30,7 @@ from pantry_chef.models.chat import (
     QuestionKind,
     RecipeOption,
     SafetyReply,
+    VideoReply,
 )
 from pantry_chef.models.profile import UserProfile
 from pantry_chef.models.query import AmountStatus, PantryItem, RecipeQuery
@@ -38,6 +40,7 @@ from pantry_chef.models.verification import (
     VerificationStatus,
     VerifiedCandidate,
 )
+from pantry_chef.models.video import VideoOutcome
 from pantry_chef.observability import get_logger, score, span
 from pantry_chef.search.engine import FindResult
 
@@ -71,6 +74,8 @@ class ChatDeps:
     steps: Callable[[int], list[str]]
     servings: Callable[[int], int | None] = lambda recipe_id: None
     image: Callable[[int], str | None] = lambda recipe_id: None  # photo URL (db/images.py)
+    # The video agent (agents/video.py); None without a YouTube key: no video question.
+    video: Callable[[Candidate, list[str]], VideoOutcome] | None = None
     profiles: ProfileStore | None = None
     quantity_question: str = "off"  # "off" | "when_it_matters" | "always" (config.py)
     # The last allergen check before options are shown. False only for the eval's
@@ -221,6 +226,7 @@ class ChatNodes:
                 "questions_asked": 0,
                 "shown_ids": [],
                 "chosen": None,
+                "video": None,
                 "answer": None,
                 "reply": None,
             }
@@ -342,6 +348,25 @@ class ChatNodes:
             score("user_accepted_recipe", 1)
             return {"chosen": state.results[reply.choice - 1], "shown_ids": shown}
 
+    def ask_video(self, state: ChatState) -> dict:
+        assert state.chosen is not None
+        text = "Would you like a YouTube video for this recipe? I'll check that it matches."
+        reply = VideoReply.model_validate(ask(Question(kind=QuestionKind.VIDEO, text=text)))
+        score("video_requested", int(reply.want))
+        if not reply.want:
+            return {"video": None}
+        return {"video": self.find_video(state.chosen.candidate)}
+
+    def find_video(self, recipe: Candidate) -> VideoOutcome:
+        """A verified video or a search link; the recipe is never lost to a video error."""
+        assert self.deps.video is not None
+        with span("node.find_video", recipe_id=recipe.recipe_id):
+            try:
+                return self.deps.video(recipe, self.deps.steps(recipe.recipe_id))
+            except Exception as error:  # LLM or transcript failure: fall back to a link
+                log.warning("graph.video_failed", error=type(error).__name__)
+                return VideoOutcome(search_url=search_url(f"{recipe.name} recipe"))
+
     def respond(self, state: ChatState) -> dict:
         assert state.chosen is not None
         vc = state.chosen
@@ -372,6 +397,10 @@ class ChatNodes:
                 warnings=vc.verification.warnings,
                 notes=notes,
                 disclaimer=health_disclaimer(state.profile, state.query),
+                video=state.video.video if state.video else None,
+                video_search_url=(
+                    state.video.search_url if state.video and not state.video.video else None
+                ),
             )
             return {"answer": answer}
 
@@ -401,7 +430,9 @@ def after_quantity_check(state: ChatState) -> str:
     return "search" if state.retry else "present"
 
 
-def after_present(state: ChatState) -> str:
+def after_present(state: ChatState, offer_video: bool = False) -> str:
     if state.reply is not None:
         return END
-    return "respond" if state.chosen is not None else "search"
+    if state.chosen is None:
+        return "search"
+    return "ask_video" if offer_video else "respond"

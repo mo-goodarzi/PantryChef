@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     # Ingredient labels (scripts/label_ingredients.py): their allergens feed the SQL filter.
     label_model: str = "gpt-5.4-mini"
     wish_fit_model: str = "gpt-5.4-mini"  # the wish-fit check (agents/wish_fit.py)
+    video_model: str = "gpt-5.4-mini"  # the video match check (agents/video.py)
     judge_model: str = "gpt-5.4-mini"  # eval only: the preference judge (keep it fixed)
     wish_fit_enabled: bool = True  # chat: remove recipes that clearly miss the wish
     llm_reasoning_effort: Literal["minimal", "low", "medium", "high"] = "low"

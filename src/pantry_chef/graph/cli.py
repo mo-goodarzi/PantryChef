@@ -25,6 +25,7 @@ from pantry_chef.models.chat import (
     QuestionKind,
     SafetyReply,
     Turn,
+    VideoReply,
 )
 from pantry_chef.models.query import AmountStatus
 
@@ -81,6 +82,8 @@ def read_answer(question: Question, read: Callable[[str], str]) -> BaseModel:
     if question.kind is QuestionKind.QUANTITIES:
         amounts = {item: parse_amount(read(f"  {item}: ")) for item in question.items}
         return QuantityReply(amounts=amounts)
+    if question.kind is QuestionKind.VIDEO:
+        return VideoReply(want=parse_yes_no(read("Find a video? (yes/no) ")))
     return parse_choice(read("your choice (number or 'more')> "))
 
 
@@ -124,6 +127,12 @@ def render_answer(answer: FinalAnswer) -> str:
         lines.append("Adapt: " + "; ".join(answer.adaptations))
     if answer.also_needs:
         lines.append("You also need: " + ", ".join(answer.also_needs))
+    if answer.video:
+        v = answer.video
+        lines.append(f"Video (checked against the recipe): {v.title} ({v.channel}) {v.url}")
+        lines.append("  The video may use other ingredients; follow the list above.")
+    elif answer.video_search_url:
+        lines.append(f"No video clearly matched this recipe. Search: {answer.video_search_url}")
     lines.append("Steps:")
     lines += [f" {n}. {step}" for n, step in enumerate(answer.steps, start=1)]
     lines += answer.notes

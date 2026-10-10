@@ -6,7 +6,8 @@ A multi-agent recipe assistant. Tell it what you have at home ("eggs, milk, toas
 it returns safe, suitable recipes you can actually make, checked against your allergies
 and diet, plus an optional matching YouTube video.
 
-**Status:** end-to-end evaluation of whole conversations (Phase 7), on top of the web UI
+**Status:** video agent (Phase 8, in progress: built, evaluation next) after the
+end-to-end evaluation of whole conversations (Phase 7), on top of the web UI
 and API (Phase 6): a Streamlit chat over a FastAPI backend, runnable with Docker Compose.
 The same conversation also runs in the terminal (Phase 5b). See
 [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for the design and build order.
@@ -90,6 +91,16 @@ uv run streamlit run ui/streamlit_app.py           # UI on :8501
 The API: `POST /sessions`, `POST /sessions/{id}/messages`, `POST /sessions/{id}/resume`
 (answer the pending question), `GET /sessions/{id}`, `DELETE /sessions/{id}?forget=true`,
 `DELETE /users/{user}/profile` ("delete my data"), `GET /health`.
+
+## Video for the chosen recipe
+
+With `YOUTUBE_API_KEY` in `.env`, the app asks after you pick a recipe whether you want a
+video. It searches YouTube for "<recipe name> recipe", reads each video's English
+transcript (or its title and description), and shows a video only when code finds at
+least half of the recipe's key ingredients in it **and** an LLM confirms it is the same
+dish. Otherwise you get a YouTube search link and are told no video matched. Each recipe
+costs one search (100 of the 10,000 free daily quota units) and is cached in `state.db`.
+Without the key, the question is never asked.
 
 ## Chat (terminal)
 

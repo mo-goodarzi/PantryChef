@@ -7,6 +7,7 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph.state import CompiledStateGraph
 
 from pantry_chef.agents.allergy_review import AllergyReviewer
+from pantry_chef.agents.video import VideoFinder, YouTubeSource
 from pantry_chef.agents.wish_fit import WishFitChecker
 from pantry_chef.config import Settings
 from pantry_chef.db.connection import connect
@@ -101,6 +102,16 @@ def chat_from_settings(
         )
 
     profiles = ProfileStore(state)
+    video = None
+    if settings.youtube_api_key is not None:  # without a key, no video question
+        video_llm = create_llm(settings.model_copy(update={"llm_model": settings.video_model}))
+        finder = VideoFinder(
+            YouTubeSource(settings.youtube_api_key.get_secret_value()),
+            video_llm,
+            settings.video_model,
+            state,
+        )
+        video = finder.find
     deps = ChatDeps(
         llm=llm,
         find=find,
@@ -108,6 +119,7 @@ def chat_from_settings(
         steps=lambda recipe_id: load_steps(conn, recipe_id),
         servings=lambda recipe_id: load_servings(conn, recipe_id),
         image=lambda recipe_id: load_image_url(conn, recipe_id),
+        video=video,
         profiles=profiles,
         quantity_question=settings.quantity_question,
         final_allergen_check=final_allergen_check,

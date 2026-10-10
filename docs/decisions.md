@@ -1153,3 +1153,38 @@ suites, gpt-5.4-mini.
   keeps the Spanish names (`huevos, papas, cebolla`: 1 of 3 tries), which match nothing;
   the case passed 3 of 3 when repeated (`1615`). Not caused by the amounts work; open:
   the request-parsing prompt could ask for English ingredient names.
+
+## 2026-10-10 — Phase 8: video agent
+Built as planned (`agents/video.py`, `ask_video` after the choice, then `respond`), with
+these choices inside the plan:
+
+- **Only when asked, only with a key.** After the user picks a recipe the graph asks
+  "Would you like a YouTube video?" (`QuestionKind.VIDEO`). Without `YOUTUBE_API_KEY` the
+  question is skipped. The e2e eval runs without the key (videos have their own eval), so
+  its questions-per-request stay comparable.
+- **YouTube's REST API through httpx** (already a dependency) instead of Google's client
+  library: two calls, `search.list` (100 units, top 5 embeddable videos) and `videos.list`
+  (1 unit, full descriptions). Transcripts: `youtube-transcript-api` (English captions).
+- **Verified = code AND model.** Code counts the recipe's key ingredients (not staples or
+  optional ones) the text mentions as whole words (`mentioned`: "chicken breast" counts on
+  "chicken"; "egg" does not match "eggplant"). Under half: rejected without an LLM call.
+  Otherwise the LLM (`video_match` v1, `VIDEO_MODEL`, default gpt-5.4-mini) answers
+  "same dish?" with one sentence of evidence. The transcript is marked as data, not
+  instructions (it is untrusted text).
+- **First verified video in YouTube's order** is returned, and checking stops there
+  (fewer transcripts and LLM calls). No match: a YouTube search link and "no video clearly
+  matched"; an unverified video is never shown as a match.
+- **Cached per recipe** in `state.db` (`video_cache`, keyed by prompt version, model and
+  text source); a search failure (quota, network) gives the link and is not cached; any
+  other error in the video step also falls back to the link, never losing the recipe.
+- **The UI says the video may use other ingredients**, so allergy users follow the
+  checked recipe, not the video.
+
+**Smoke test** (4 recipes, real API): 4 of 4 verified, 3-10 s each, 404 quota units,
+$0.006. One is borderline: "We Tested 50 Pancake Recipes Here's The Best One" (Tasty) was
+accepted for "pete's scratch pancakes"; the labeled eval decides if the prompt must be
+stricter about comparison videos.
+
+**Risk for deployment:** YouTube often blocks transcript requests from cloud servers;
+the agent then reads title + description automatically. The eval's "without transcript"
+variant measures what that costs.

@@ -100,3 +100,34 @@ def test_answer_lists_one_ingredient_line_per_row_with_servings():
     assert "Photo" not in text
     with_photo = answer.model_copy(update={"image_url": "https://img.sndimg.com/p.jpg"})
     assert "Photo (Food.com): https://img.sndimg.com/p.jpg" in render_answer(with_photo)
+
+
+def test_video_question_and_answer_lines():
+    from pantry_chef.graph.cli import read_answer, render_answer
+    from pantry_chef.models.chat import FinalAnswer, Question, QuestionKind, VideoReply
+    from pantry_chef.models.video import TextSource, VideoResult
+
+    question = Question(kind=QuestionKind.VIDEO, text="Would you like a video?")
+    assert read_answer(question, lambda prompt: "yes") == VideoReply(want=True)
+    assert read_answer(question, lambda prompt: "no") == VideoReply(want=False)
+
+    answer = FinalAnswer(
+        recipe_id=1, name="pancakes", minutes=20, why_it_fits=".", ingredients=[], steps=[]
+    )
+    video = VideoResult(
+        video_id="v1",
+        url="https://www.youtube.com/watch?v=v1",
+        title="Fluffy pancakes",
+        channel="Chef",
+        match_score=1.0,
+        match_evidence="e",
+        text_source=TextSource.TRANSCRIPT,
+        verified=True,
+    )
+    shown = render_answer(answer.model_copy(update={"video": video}))
+    assert (
+        "Video (checked against the recipe): Fluffy pancakes (Chef) https://www.youtube.com/watch?v=v1"
+        in shown
+    )
+    link = render_answer(answer.model_copy(update={"video_search_url": "https://yt/s"}))
+    assert "No video clearly matched this recipe. Search: https://yt/s" in link
