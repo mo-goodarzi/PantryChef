@@ -15,7 +15,7 @@ from pantry_chef.db.state import ProfileStore, open_state_db
 from pantry_chef.graph.builder import build_graph
 from pantry_chef.graph.nodes import ChatDeps
 from pantry_chef.llm.factory import create_llm
-from pantry_chef.models.query import RecipeQuery
+from pantry_chef.models.query import PantryItem, RecipeQuery
 from pantry_chef.observability import flush_tracing, tracing_from_settings
 from pantry_chef.search.engine import (
     FindResult,
@@ -86,7 +86,7 @@ def chat_from_settings(
         usage_weight=settings.usage_weight,
     )
 
-    def find(query: RecipeQuery) -> FindResult:
+    def find(query: RecipeQuery, pantry_items: list[PantryItem]) -> FindResult:
         return find_verified(
             conn,
             query,
@@ -97,6 +97,7 @@ def chat_from_settings(
             expander,
             allergy_reviewer,
             wish_checker,
+            pantry_items,
         )
 
     profiles = ProfileStore(state)

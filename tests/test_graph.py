@@ -66,7 +66,7 @@ def make_deps(conn, state_conn, llm, find=None, quantity_question="off", reverif
     verifier = Verifier(conn)
     return ChatDeps(
         llm=llm,
-        find=find or (lambda query: find_verified(conn, query, SearchOptions())),
+        find=find or (lambda query, items: find_verified(conn, query, pantry_items=items)),
         reverify=reverify or (lambda c, q, items: verifier.verify_all(c, q, items)),
         steps=lambda recipe_id: load_steps(conn, recipe_id),
         servings=lambda recipe_id: load_servings(conn, recipe_id),
@@ -267,9 +267,11 @@ class ScriptedFind:
     def __init__(self, *results):
         self.results = list(results)
         self.queries: list[RecipeQuery] = []
+        self.pantry_items: list[list] = []
 
-    def __call__(self, query):
+    def __call__(self, query, pantry_items=()):
         self.queries.append(query)
+        self.pantry_items.append(list(pantry_items))
         return self.results.pop(0) if len(self.results) > 1 else self.results[0]
 
 
@@ -394,6 +396,48 @@ def test_quantity_answers_are_used_to_re_verify(enriched_conn, state_conn):
     assert [o.recipe_id for o in turn.question.options] == [2]
 
 
+ONE_EGG = AmountReply(quantity=1, status=AmountStatus.KNOWN)
+
+
+def all_fail(candidates, query, items):  # the user has too little for every option
+    return [verified(c.recipe_id, "fail").verification for c in candidates]
+
+
+def test_when_the_amounts_rule_out_every_option_it_searches_again(enriched_conn, state_conn):
+    first = found(verified(1, quantity_matters=True), verified(2, quantity_matters=True))
+    find = ScriptedFind(first, found(verified(3, quantity_matters=True), verified(4)))
+    chat = scripted_chat(
+        enriched_conn, state_conn, find, quantity_question="when_it_matters", reverify=all_fail
+    )
+    assert through_safety(chat).question.kind is QuestionKind.QUANTITIES
+
+    turn = chat.reply(QuantityReply(amounts={"egg": ONE_EGG}))
+
+    # One question per request: the new options are shown without asking again.
+    assert turn.question.kind is QuestionKind.CHOICE
+    assert [o.recipe_id for o in turn.question.options] == [3, 4]
+    assert len(find.queries) == 2 and set(find.queries[1].exclude_recipe_ids) >= {1, 2}
+    [[egg]] = find.pantry_items[1:]  # the second search's verifier knows the amount
+    assert egg.canonical_name == "egg" and egg.quantity == 1
+
+
+def test_no_new_search_after_the_last_attempt(enriched_conn, state_conn):
+    """Two searches already ran (retry with feedback); the amounts then rule out the rest."""
+    find = ScriptedFind(
+        found(verified(1, quantity_matters=True), verified(2, "fail")),
+        found(verified(1, quantity_matters=True), verified(5, "fail")),
+        found(verified(3, quantity_matters=True)),
+    )
+    chat = scripted_chat(
+        enriched_conn, state_conn, find, quantity_question="when_it_matters", reverify=all_fail
+    )
+    assert through_safety(chat).question.kind is QuestionKind.QUANTITIES
+    assert len(find.queries) == 3
+
+    turn = chat.reply(QuantityReply(amounts={"egg": ONE_EGG}))
+    assert turn.done and "couldn't find" in turn.reply and len(find.queries) == 3
+
+
 # --- persistence and privacy --------------------------------------------------------------
 
 
@@ -508,7 +552,7 @@ def test_the_last_check_hides_allergens_even_with_every_search_layer_off(enriche
         enriched_conn,
         state_conn,
         llm,
-        find=lambda q: find_verified(enriched_conn, q, unsafe_search),
+        find=lambda q, items: find_verified(enriched_conn, q, unsafe_search),
     )
 
     def shown_with_eggs(deps):

@@ -2,7 +2,8 @@
 
 START -> load_profile -> [safety_question -> safety_confirm]* -> parse_request -> search
 search -> search (retry with verifier feedback, max 3 attempts) -> [quantity_check] ->
-present -> respond -> END; "show me more" goes from present back to search.
+present -> respond -> END; quantity_check goes back to search when the amounts rule out
+every option; "show me more" goes from present back to search.
 """
 
 from functools import partial
@@ -44,7 +45,7 @@ def build_graph(
         partial(nodes.after_search, ask_quantities=deps.quantity_question != "off"),
         ["search", "quantity_check", "present"],
     )
-    graph.add_edge("quantity_check", "present")
+    graph.add_conditional_edges("quantity_check", nodes.after_quantity_check, ["search", "present"])
     graph.add_conditional_edges("present", nodes.after_present, ["respond", "search", END])
     graph.add_edge("respond", END)
     return graph.compile(checkpointer=checkpointer)

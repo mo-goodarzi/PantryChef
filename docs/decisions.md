@@ -1076,12 +1076,34 @@ was 79% in the first run, so differences under ~10 points mean little at 24 case
 Same success as "always" with about half the items asked.
 
 **Still open (owner's decision):**
-- **No new search after the answer.** The amounts only re-check the options already
-  found; if all of them fail, the user gets "no recipe" (q04: 100 g beef for tacos; q11
-  under "always") instead of a search for recipes that need less. A fix would pass the
-  amounts into the search's verifier and retry with the failures as feedback.
+- **No new search after the answer** (decided below, 2026-10-10).
 - **Milk is labeled "amount does not matter"**, so "when it matters" never asks about it
   (q06: ½ cup of milk, pancakes need 1¼ cups). Relabeling is a `quantity_matters.md`
   prompt question.
 - **Amounts typed in the message are dropped** by request parsing ("I only have 1 egg"
   becomes "egg"), so the question can ask for something the user already said.
+
+## 2026-10-10 — Search again when the amounts rule out every option
+**Owner decisions** on the three open points of the quantity question:
+1. If the amounts rule out every option shown, **search again**.
+2. Milk stays "amount does not matter": not asked.
+3. Amounts typed in the message may be dropped by parsing; acceptable.
+
+**Change:** the search's verifier now gets the user's amounts (`find(query, pantry_items)`,
+`find_verified(..., pantry_items)`), so every search after the answer, including "show me
+more", leaves out recipes the user has too little for. When the answer rules out every
+option, `quantity_check` goes back to `search` with the failed recipes excluded, within the
+same 3 searches per request. The question is asked **at most once per request** (as
+documented in Phase 5b; until now it was once per item, so a new search could ask again).
+
+**Results** (`e2e_20261010-1521`, gpt-5.4-mini, $0.47; before = `e2e_20261009-2127`):
+
+| Strategy | task success before → after | no recipe before → after | good answer after |
+|---|---|---|---|
+| never | 71% → 71% | 0 → 0 | 67% |
+| when it matters (default) | 92% → **96%** | 1 → **0** | 88% |
+| always | 92% → **100%** | 2 → **0** | 92% |
+
+q04 (100 g beef, "tacos") now gets a recipe the user can make, but the judge rates it 2
+(a burrito, not tacos), so the good-answer rate gains less than task success. The one
+failure left under "when it matters" is q06 (milk, not asked by owner choice).

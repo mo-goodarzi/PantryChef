@@ -19,7 +19,7 @@ from pantry_chef.db.repository import (
 )
 from pantry_chef.ingredients.normalize import normalize
 from pantry_chef.ingredients.staples import is_staple
-from pantry_chef.models.query import RecipeQuery
+from pantry_chef.models.query import PantryItem, RecipeQuery
 from pantry_chef.models.recipe import Candidate, RecipeIngredient
 from pantry_chef.models.verification import (
     CheckResult,
@@ -281,6 +281,7 @@ def find_verified(
     expander: PantryExpander | None = None,
     allergy_reviewer: AllergyReviewer | None = None,
     wish_checker: WishFitChecker | None = None,
+    pantry_items: list[PantryItem] | None = None,
 ) -> FindResult:
     """Full pipeline: search -> verify -> allergy review -> (wish fit) -> (diversity) ->
     (rerank) -> top k.
@@ -317,7 +318,7 @@ def find_verified(
     )
     verifier = verifier if options.use_matcher and verifier else Verifier(conn)
     with span("search.verify", candidates=len(result.candidates)):
-        results = verifier.verify_all(result.candidates, query)
+        results = verifier.verify_all(result.candidates, query, pantry_items)
     found = FindResult(
         top=[],
         checked=[
