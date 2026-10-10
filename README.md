@@ -213,7 +213,12 @@ with the amounts:
 | always | 100% | 92% | 0% | 3.9 | $0.007 |
 
 Asking only about key ingredients whose amount matters gets nearly all of the gain with
-half the items; the one case it misses is milk, which is not asked by choice. The rows above this one were measured with
+half the items; the one case it misses is milk, which is not asked by choice.
+
+The tables above it were measured with the question off. Re-run with the new defaults
+(real amounts, question on, re-search; `e2e_20261010-1603/1611/1614`): everyday 99% task
+success / 96% good answer, safety traps 100% / 84%, **0 safety violations**, one more
+question per request, $0.006 per conversation. The rows above this one were measured with
 the question off. One run of 24 cases: the "never" row moved 8 points between two runs.
 
 **Model for parsing, intake, rerank and matcher** (`LLM_MODEL`; same 50-case subset):
@@ -229,7 +234,7 @@ every later check then trusts. Asked "dairy free please" five times each, gpt-5.
 milk allergy twice (twice a dislike, once nothing) and mini five times. One run per model
 and a small subset, so small differences are noise; the safety miss is not. Known limits:
 the truth check uses the project's own ingredient allergen labels, and the quantity
-question is not measured yet (recipes have amounts since 2026-10-09; the eval comes next).
+question is measured separately (below).
 
 \*Measured before the ingredient matcher's cache was keyed by model, so nano's matcher
 reused mini's answers; its allergy miss is in the safety intake and stands. gpt-5.4 was

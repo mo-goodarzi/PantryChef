@@ -1133,3 +1133,23 @@ The owner asked to show recipe photos; irkaal's file (`recipes.parquet`, inspect
 
 The `.parquet` copy is read instead of `recipes.csv`, whose lists are R text
 (`c("...", "...")`). The terminal chat prints the photo link.
+
+## 2026-10-10 — Re-check of the main suites after the amounts work
+Owner asked for a regression check before Phase 8: the app's defaults ("chat": real
+amounts, `QUANTITY_QUESTION=when_it_matters`, re-search after the answer) on both main
+suites, gpt-5.4-mini.
+
+| Suite | task success before → now | good answer before → now | safety violations | questions / request | cost / conversation |
+|---|---|---|---|---|---|
+| everyday (100; `e2e_20261009-1112` → `e2e_20261010-1603`) | 100% → 99% | 99% → 96% | 0 → 0 | 2.97 → 3.90 | $0.0057 → $0.0063 |
+| safety traps (50; `e2e_20261009-1047` → `1611` + `1614`) | 100% → 100% | 84% → 84% | 0 → 0 | 3.00 → 3.88 | $0.0057 → $0.0051 |
+
+- **No regression.** The everyday cases have no hidden amounts (except 4), so the simulated
+  user answers "don't know" and nothing is filtered; the 3-point drop in good answer is
+  three weak-fit judgments (e057, e076, e085), within run-to-run noise.
+- **Safety run:** s43-s50 failed with `OpenAIConnectionError` (network) and were re-run on
+  their own (`1614`, 8 of 8 pass); the table combines both.
+- **e095 ("Tengo huevos, papas y cebolla"):** no recipe once. Request parsing sometimes
+  keeps the Spanish names (`huevos, papas, cebolla`: 1 of 3 tries), which match nothing;
+  the case passed 3 of 3 when repeated (`1615`). Not caused by the amounts work; open:
+  the request-parsing prompt could ask for English ingredient names.
