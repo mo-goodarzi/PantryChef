@@ -10,6 +10,9 @@
    only a YouTube search link and is told no verified match was found: an unverified
    video is never shown as a match.
 
+YouTube blocks transcript requests after many of them (and often from cloud servers):
+the agent then reads title + description and does not cache that answer.
+
 Answers are cached per recipe (and prompt version, model and text source) in state.db, so
 a recipe costs one search (100 of the 10,000 daily quota units) at most once.
 """
@@ -22,7 +25,15 @@ from typing import Protocol
 from urllib.parse import quote_plus
 
 import httpx
-from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api import (
+    AgeRestricted,
+    InvalidVideoId,
+    NoTranscriptFound,
+    TranscriptsDisabled,
+    VideoUnavailable,
+    VideoUnplayable,
+    YouTubeTranscriptApi,
+)
 
 from pantry_chef.llm.factory import StructuredLLM
 from pantry_chef.llm.prompt_loader import load_prompt
@@ -76,12 +87,32 @@ GENERIC_WORDS = frozenset(
 )
 
 
+# Answers about the video itself: it has no English transcript. Anything else (IpBlocked,
+# RequestBlocked, failed requests, network) says nothing about the video.
+NO_TRANSCRIPT = (
+    NoTranscriptFound,
+    TranscriptsDisabled,
+    VideoUnavailable,
+    VideoUnplayable,
+    AgeRestricted,
+    InvalidVideoId,
+)
+
+
+class TranscriptBlocked(Exception):
+    """YouTube refused or failed the transcript request (it blocks an IP after many
+    requests, and often blocks cloud servers): try again later, never cache it."""
+
+
 class VideoSource(Protocol):
     """Where videos and their text come from (YouTube, or a fake in tests)."""
 
     def search(self, query: str, limit: int) -> list[VideoCandidate]: ...
 
-    def transcript(self, video_id: str) -> str | None: ...
+    def transcript(self, video_id: str) -> str | None:
+        """The English transcript, or None when the video has none; raises
+        TranscriptBlocked when YouTube did not answer."""
+        ...
 
 
 class YouTubeSource:
@@ -127,12 +158,13 @@ class YouTubeSource:
         return response.json()
 
     def transcript(self, video_id: str) -> str | None:
-        """The English captions as one text, or None (none, disabled, or blocked)."""
+        """The English captions as one text; None when the video has none."""
         try:
             fetched = self.transcripts.fetch(video_id, languages=["en"])
-        except Exception as error:  # the library raises many kinds; all mean "no text"
-            log.info("video.no_transcript", video_id=video_id, error=type(error).__name__)
+        except NO_TRANSCRIPT:
             return None
+        except Exception as error:  # blocked, failed request, network: not about the video
+            raise TranscriptBlocked(type(error).__name__) from error
         return " ".join(snippet.text for snippet in fetched)
 
 
@@ -206,6 +238,9 @@ class VideoFinder:
                 log.warning("video.search_failed", error=type(error).__name__)
                 return VideoOutcome(search_url=search_url(query))
             outcome = self.check_in_order(recipe, steps, videos, search_url(query))
+            blocked = sum(r.transcript_blocked for r in outcome.checked)
+            if blocked:
+                log.warning("video.transcripts_blocked", videos=blocked)
             log.info(
                 "video.found",
                 considered=len(videos),
@@ -215,7 +250,8 @@ class VideoFinder:
                 quota_used=getattr(self.source, "quota_used", None),
             )
         score("video_verified", int(outcome.video is not None))
-        self.store(recipe.recipe_id, outcome)
+        if not blocked:  # read without the transcripts it should have had: ask again later
+            self.store(recipe.recipe_id, outcome)
         return outcome
 
     def check_in_order(
@@ -231,7 +267,12 @@ class VideoFinder:
         return VideoOutcome(search_url=url, checked=checked)
 
     def check(self, recipe: Candidate, steps: list[str], video: VideoCandidate) -> VideoResult:
-        transcript = self.source.transcript(video.video_id) if self.use_transcripts else None
+        transcript, blocked = None, False
+        if self.use_transcripts:
+            try:
+                transcript = self.source.transcript(video.video_id)
+            except TranscriptBlocked:
+                blocked = True  # read the title + description instead
         source = TextSource.TRANSCRIPT if transcript else TextSource.DESCRIPTION
         text = transcript or f"{video.title}\n{video.description}"
         share = overlap(key_terms(recipe), text)
@@ -257,6 +298,7 @@ class VideoFinder:
             match_evidence=judgment.evidence,
             text_source=source,
             verified=judgment.same_dish and share >= MIN_OVERLAP,
+            transcript_blocked=blocked,
         )
 
     # --- cache (state.db) ---

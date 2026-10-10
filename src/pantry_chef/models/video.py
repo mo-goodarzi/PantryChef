@@ -35,6 +35,7 @@ class VideoResult(BaseModel):
     match_evidence: str  # the LLM's short reason
     text_source: TextSource
     verified: bool  # same dish (LLM) AND enough key ingredients mentioned (code)
+    transcript_blocked: bool = False  # YouTube refused the transcript; description read
 
 
 class VideoOutcome(BaseModel):
