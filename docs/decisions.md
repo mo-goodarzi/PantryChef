@@ -1327,3 +1327,12 @@ the API holds about 830 MB after a search, plus Streamlit; 1.1 GB of data (pantr
 - If the new search finds nothing, the earlier options are shown again with a note, and
   "more" is switched off (`Question.can_show_more`): another search would only repeat the
   failed one and cost LLM calls.
+
+## 2026-10-13 — "Back to the recipes" after a recipe is chosen
+- After the final answer, the user can go back to the same options (same numbers,
+  including ones added by "show me more") and choose another recipe or ask for more.
+- It is a graph route, not a state edit: `ChatState.back` sends the next run from START
+  straight to `present`, which re-asks the choice from the saved options. No search and
+  no LLM call, so the API's `/back` skips the demo limits. A new message always clears
+  `back`, so a stale flag cannot skip the request parsing.
+- Choosing another recipe asks the video question again, for that recipe.

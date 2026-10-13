@@ -153,6 +153,16 @@ def answer(reply, shown: str) -> None:
         st.session_state.error = error.message
 
 
+def back_to_recipes() -> None:
+    ss = st.session_state
+    ss.history.append(("user", "Back to the recipes."))
+    try:
+        record(client().back(ss.session_id))
+    except ApiError as error:
+        ss.history.pop()
+        st.session_state.error = error.message
+
+
 def reset_conversation(forget: bool = False) -> None:
     ss = st.session_state
     if ss.session_id is not None:
@@ -459,7 +469,12 @@ def main() -> None:
     turn = ss.turn
     if turn is not None and turn.question is not None:
         FORMS[turn.question.kind](turn.question)
-    elif text := st.chat_input("What do you have at home?", key="request") or example:
+        return
+    chosen = turn is not None and turn.type is TurnType.FINAL
+    if chosen and st.button("Back to the recipes", key="back", icon=":material/arrow_back:"):
+        back_to_recipes()
+        st.rerun()
+    if text := st.chat_input("What do you have at home?", key="request") or example:
         send(text)
         st.rerun()
 

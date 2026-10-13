@@ -462,6 +462,58 @@ def test_quantity_answers_are_used_to_re_verify(enriched_conn, state_conn):
 ONE_EGG = AmountReply(quantity=1, status=AmountStatus.KNOWN)
 
 
+def test_back_shows_the_same_recipes_again_without_searching(enriched_conn, state_conn):
+    find = ScriptedFind(found(verified(1), verified(2)), found(verified(3)))
+    chat = scripted_chat(enriched_conn, state_conn, find)
+    through_safety(chat)
+    chat.reply(ChoiceReply(more=True))
+    assert chat.reply(ChoiceReply(choice=3)).answer.recipe_id == 3
+    assert chat.can_go_back()
+
+    turn = chat.back()
+    assert [o.recipe_id for o in turn.question.options] == [1, 2, 3]  # same numbers
+    assert turn.question.note == "Added 1 more recipe after the earlier ones."
+    assert len(find.queries) == 2  # no new search
+    assert chat.reply(ChoiceReply(choice=1)).answer.recipe_id == 1
+    # Back again, then "more" still searches past everything shown.
+    chat.back()
+    chat.reply(ChoiceReply(more=True))
+    assert find.queries[2].exclude_recipe_ids == [1, 2, 3]
+
+
+def test_back_asks_for_the_video_again_for_the_new_choice(enriched_conn, state_conn):
+    chat = video_chat(enriched_conn, state_conn, a_video)
+    choose_pancakes(chat)
+    assert chat.reply(VideoReply(want=True)).answer.video is not None
+    options = chat.back().question.options
+    other = next(o for o in options if o.recipe_id != PANCAKES)
+    assert chat.reply(ChoiceReply(choice=other.number)).question.kind is QuestionKind.VIDEO
+    answer = chat.reply(VideoReply(want=False)).answer
+    assert answer.recipe_id == other.recipe_id and answer.video is None
+
+
+def test_back_is_refused_without_a_chosen_recipe(enriched_conn, state_conn):
+    find = ScriptedFind(found(verified(1), verified(2)))
+    chat = scripted_chat(enriched_conn, state_conn, find)
+    with pytest.raises(ValueError, match="no recipes to go back to"):
+        chat.back()  # nothing yet
+    through_safety(chat)
+    assert not chat.can_go_back()  # the options are still on screen
+    with pytest.raises(ValueError, match="no recipes to go back to"):
+        chat.back()
+
+
+def test_a_new_request_after_back_starts_from_the_top(enriched_conn, state_conn):
+    find = ScriptedFind(found(verified(1), verified(2)))
+    chat = scripted_chat(enriched_conn, state_conn, find)
+    through_safety(chat)
+    chat.reply(ChoiceReply(choice=1))
+    chat.back()
+    chat.send("I have flour, butter, eggs and milk")
+    assert len(find.queries) == 2  # searched again: a new request, not "back"
+    assert not chat.state().back
+
+
 def test_amounts_given_after_show_me_more_re_check_the_earlier_recipes(enriched_conn, state_conn):
     # The first options need no question; the new one does, and the answer rules out
     # recipe 1 from the first search as well.
@@ -684,6 +736,8 @@ def test_each_turn_is_a_trace_with_safety_scores(enriched_conn, state_conn, caps
 
 def test_routing():
     state = ChatState()
+    assert nodes.at_start(state) == "load_profile"
+    assert nodes.at_start(state.model_copy(update={"back": True})) == "present"
     assert nodes.after_load_profile(state) == "safety_question"
     assert nodes.after_parse_request(state) == nodes.END
     assert nodes.after_search(state.model_copy(update={"retry": True}), False) == "search"

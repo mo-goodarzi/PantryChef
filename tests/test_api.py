@@ -78,6 +78,10 @@ def test_a_whole_conversation_over_http(make_client):
     assert turn.type is TurnType.FINAL
     assert turn.answer.recipe_id == PANCAKES and turn.answer.steps
 
+    # Back to the recipes: the same options, ready for another choice.
+    turn = client.back(session)
+    assert turn.type is TurnType.CANDIDATES and pancakes in turn.question.options
+
     # No consent: closing deletes the conversation.
     client.close(session)
     assert client.session(session).profile is None
@@ -100,6 +104,15 @@ def test_a_choice_that_is_not_an_option_is_rejected(make_client):
     through_safety(client, session)
     with pytest.raises(ApiError, match="choose a number"):
         client.reply(session, ChoiceReply(choice=99))
+
+
+def test_back_without_a_chosen_recipe_is_a_conflict(make_client):
+    client = make_client(default_llm())
+    session = client.new_session()
+    through_safety(client, session)  # options are shown, nothing chosen yet
+    with pytest.raises(ApiError) as error:
+        client.back(session)
+    assert error.value.status == 409
 
 
 def test_resume_without_a_question_is_a_conflict(make_client):

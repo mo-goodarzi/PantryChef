@@ -4,7 +4,8 @@ START -> load_profile -> [safety_question -> safety_confirm]* -> parse_request -
 search -> search (retry with verifier feedback, max 3 attempts) -> [quantity_check] ->
 present -> [ask_video] -> respond -> END; quantity_check goes back to search when the
 amounts rule out every option; "show me more" goes from present back to search;
-ask_video only with a YouTube key.
+ask_video only with a YouTube key. "Back to the recipes" after an answer goes from START
+straight to present, with the same options.
 """
 
 from functools import partial
@@ -33,7 +34,7 @@ def build_graph(
     graph.add_node("ask_video", n.ask_video)
     graph.add_node("respond", n.respond)
 
-    graph.add_edge(START, "load_profile")
+    graph.add_conditional_edges(START, nodes.at_start, ["load_profile", "present"])
     graph.add_conditional_edges(
         "load_profile", nodes.after_load_profile, ["safety_question", "parse_request"]
     )
