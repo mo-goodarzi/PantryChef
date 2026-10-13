@@ -3,6 +3,7 @@
 import pytest
 
 from pantry_chef.graph.cli import parse_amount, parse_choice, parse_yes_no, run
+from pantry_chef.models.chat import AmountUnit
 from pantry_chef.models.query import AmountStatus
 
 from .test_graph import BAKING, ScriptedLLM, conversation, make_deps
@@ -22,6 +23,12 @@ from .test_graph import BAKING, ScriptedLLM, conversation, make_deps
 def test_parse_amount(text, quantity, unit, status):
     amount = parse_amount(text)
     assert (amount.quantity, amount.unit, amount.status) == (quantity, unit, status)
+
+
+def test_a_bare_number_takes_the_asked_unit():
+    assert parse_amount("400", AmountUnit.GRAMS).unit == "g"
+    assert parse_amount("2", AmountUnit.COUNT).unit is None
+    assert parse_amount("1 lb", AmountUnit.GRAMS).unit == "lb"  # a unit typed wins
 
 
 def test_parse_amount_rejects_words():
