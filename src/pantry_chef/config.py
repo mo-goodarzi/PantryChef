@@ -9,7 +9,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    # An empty value (KEY= in .env) means "not set", e.g. no YouTube key: no video question.
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_parse_none_str="")
 
     # Data paths
     raw_recipes_csv: Path = Path("data/raw/RAW_recipes.csv")
@@ -63,6 +64,10 @@ class Settings(BaseSettings):
     # The quantity question (docs/decisions.md): "off", "when_it_matters" (key items whose
     # amount matters) or "always" (every non-staple pantry item the options use).
     quantity_question: Literal["off", "when_it_matters", "always"] = "when_it_matters"
+
+    # Public demo limits (api/limits.py); off when unset. E.g. DAILY_BUDGET_USD=2.
+    daily_budget_usd: float | None = Field(default=None, gt=0)
+    max_turns_per_session: int | None = Field(default=None, gt=0)
 
     log_level: str = "INFO"
 

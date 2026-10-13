@@ -1279,3 +1279,23 @@ cake made with yellow cake mix and pudding), but every video it confirmed was ri
 **Caveat:** v2 was written after seeing v1's mistakes on these recipes (without copying
 them into the prompt), so these numbers are optimistic; a fresh set of recipes would be
 the fair test. LLM cost: export $0.25, about $0.006 per video request in the app.
+
+## 2026-10-13 — Deployment: Hugging Face Spaces; demo spending limits first
+**Owner decisions:** deploy on Hugging Face Spaces (a Docker Space needs a PRO account,
+$9/month; CPU Basic hardware, 2 vCPU and 16 GB, is free; the disk is not persistent and the
+Space sleeps after 48 h without visitors), with a daily LLM budget of **$2**. Compared with
+Render (2 GB, about $26/month) and Railway (about $12-15/month by usage). Measured need:
+the API holds about 830 MB after a search, plus Streamlit; 1.1 GB of data (pantry.db
+676 MB, chroma 438 MB) and a 128 MB embedding model.
+
+**Limits before anything is public** (`api/limits.py`, off unless set):
+- `DAILY_BUDGET_USD`: the API adds each turn's LLM cost (usage meter difference around
+  the turn; turns run one at a time under the API lock) to `daily_spend` in state.db, per
+  UTC day. Once today's total reaches the budget, every new turn gets HTTP 429 with a
+  message for the user ("come back tomorrow"); the UI already shows API errors. A turn
+  in progress can go slightly over (one turn is about $0.006).
+- `MAX_TURNS_PER_SESSION` (demo: 40): one conversation's messages + answers.
+- With a budget set, the app refuses to start if a configured model has no price, so the
+  cap can never miss a cost.
+- Settings: an empty value (`KEY=`) now means "not set" (`env_parse_none_str`); before,
+  an empty `YOUTUBE_API_KEY=` counted as a key and turned the video question on.

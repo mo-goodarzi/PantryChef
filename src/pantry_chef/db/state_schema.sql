@@ -24,3 +24,8 @@ CREATE TABLE IF NOT EXISTS video_cache (   -- video agent answers per recipe (ag
   created_at TEXT,
   PRIMARY KEY (recipe_id, source)
 );
+
+CREATE TABLE IF NOT EXISTS daily_spend (   -- LLM cost per UTC day, for the demo budget
+  day TEXT PRIMARY KEY,                    -- YYYY-MM-DD (UTC)
+  usd REAL NOT NULL                        -- api/limits.py
+);

@@ -9,6 +9,7 @@ from langgraph.graph.state import CompiledStateGraph
 from pantry_chef.agents.allergy_review import AllergyReviewer
 from pantry_chef.agents.video import VideoFinder, YouTubeSource
 from pantry_chef.agents.wish_fit import WishFitChecker
+from pantry_chef.api.limits import DemoLimits, require_prices
 from pantry_chef.config import Settings
 from pantry_chef.db.connection import connect
 from pantry_chef.db.repository import load_image_url, load_servings, load_steps
@@ -33,6 +34,7 @@ class ChatApp:
     graph: CompiledStateGraph
     profiles: ProfileStore | None = None
     connections: list[sqlite3.Connection] = field(default_factory=list)
+    limits: DemoLimits | None = None  # the public demo's budget and turn cap (API only)
 
     def close(self) -> None:
         flush_tracing()
@@ -125,4 +127,26 @@ def chat_from_settings(
         final_allergen_check=final_allergen_check,
     )
     graph = build_graph(deps, SqliteSaver(checkpoints))
-    return ChatApp(graph=graph, profiles=profiles, connections=[conn, state, checkpoints])
+    return ChatApp(
+        graph=graph,
+        profiles=profiles,
+        connections=[conn, state, checkpoints],
+        limits=demo_limits(settings, state),
+    )
+
+
+def demo_limits(settings: Settings, state: sqlite3.Connection) -> DemoLimits | None:
+    """The public demo's limits, or None when neither is set (local use)."""
+    if settings.daily_budget_usd is None and settings.max_turns_per_session is None:
+        return None
+    if settings.daily_budget_usd is not None:
+        require_prices(
+            [
+                settings.llm_model,
+                settings.allergy_review_model,
+                settings.hidden_allergen_model,
+                settings.wish_fit_model,
+                settings.video_model,
+            ]
+        )
+    return DemoLimits(state, settings.daily_budget_usd, settings.max_turns_per_session)

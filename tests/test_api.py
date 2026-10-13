@@ -28,13 +28,17 @@ def make_client(enriched_conn, tmp_path):
     recipes = Path(enriched_conn.execute("PRAGMA database_list").fetchone()["file"])
     started = []
 
-    def make(llm, checkpointer=None, video=None):
+    def make(llm, checkpointer=None, video=None, limits=None):
         # Worker threads share these connections; the API serializes graph calls.
         conn = connect(recipes, check_same_thread=False)
         state = open_state_db(tmp_path / "state.db", check_same_thread=False)
         deps = make_deps(conn, state, llm, video=video)
         graph = build_graph(deps, checkpointer or InMemorySaver())
-        chat = ChatApp(graph=graph, profiles=ProfileStore(state), connections=[conn, state])
+        if limits is not None:
+            limits.state = state
+        chat = ChatApp(
+            graph=graph, profiles=ProfileStore(state), connections=[conn, state], limits=limits
+        )
         http = TestClient(create_app(lambda: chat))
         http.__enter__()  # runs the lifespan (startup)
         started.append(http)
@@ -155,3 +159,31 @@ def test_client_reports_an_unreachable_api_clearly():
     with pytest.raises(ApiError) as error:
         client.new_session()
     assert error.value.status == 503 and "cannot reach" in error.value.message
+
+
+def test_demo_limits_answer_429_with_a_message_for_the_user(make_client, tmp_path):
+    from pantry_chef.api.client import ApiError
+    from pantry_chef.api.limits import DemoLimits
+
+    limits = DemoLimits(state=None, max_turns_per_session=2)  # state set by make_client
+    client = make_client(default_llm(), limits=limits)
+    session = client.new_session()
+    client.send(session, "I have flour, butter, eggs and milk")
+    client.reply(session, SafetyReply(text="none"))
+    with pytest.raises(ApiError) as error:
+        client.reply(session, ConfirmReply(correct=True))
+    assert error.value.status == 429 and "limit of 2 steps" in error.value.message
+    assert client.send(client.new_session(), "I have eggs").type  # a new conversation works
+
+
+def test_the_daily_budget_blocks_new_turns_when_spent(make_client):
+    from pantry_chef.api.client import ApiError
+    from pantry_chef.api.limits import DemoLimits, utc_today
+
+    limits = DemoLimits(state=None, daily_budget_usd=1.0)
+    client = make_client(default_llm(), limits=limits)
+    with limits.state:
+        limits.state.execute("INSERT INTO daily_spend VALUES (?, 1.5)", (utc_today(),))
+    with pytest.raises(ApiError) as error:
+        client.send(client.new_session(), "I have eggs")
+    assert error.value.status == 429 and "today's budget" in error.value.message
