@@ -15,7 +15,7 @@
   "17306": {
    "youtube_top1": "oGIzGvKiLtk",
    "description": "oGIzGvKiLtk",
-   "transcript": null
+   "transcript": "IOavsEZXP2k"
   },
   "22912": {
    "youtube_top1": "C_NGy4WpyT0",
@@ -110,7 +110,7 @@
   "140051": {
    "youtube_top1": "Ym2EipKdgsQ",
    "description": null,
-   "transcript": null
+   "transcript": "i1bJ_JyNusk"
   },
   "144878": {
    "youtube_top1": "OeobV_fXIo0",
@@ -120,12 +120,12 @@
   "145893": {
    "youtube_top1": "BUd6-Bttqgg",
    "description": null,
-   "transcript": null
+   "transcript": "vpsbaBtfZ_c"
   },
   "148110": {
    "youtube_top1": "GeVFpgEDjCg",
    "description": null,
-   "transcript": null
+   "transcript": "sshnnv4Oak4"
   },
   "173100": {
    "youtube_top1": "keL-z92x2AY",
@@ -165,7 +165,7 @@
   "212394": {
    "youtube_top1": "nyaOv6lOJjs",
    "description": null,
-   "transcript": null
+   "transcript": "1GMWn4IxVro"
   },
   "247605": {
    "youtube_top1": "UCj6VjBaBro",
@@ -175,17 +175,17 @@
   "304035": {
    "youtube_top1": "p3Kdj6b-eIA",
    "description": null,
-   "transcript": null
+   "transcript": "p3Kdj6b-eIA"
   },
   "322166": {
    "youtube_top1": "ZEGTaJ6jMNI",
    "description": "YzRAkb79fc8",
-   "transcript": "YzRAkb79fc8"
+   "transcript": "ZEGTaJ6jMNI"
   },
   "365298": {
    "youtube_top1": "QuQ4pIlg6rE",
    "description": "QuQ4pIlg6rE",
-   "transcript": "QuQ4pIlg6rE"
+   "transcript": null
   },
   "369923": {
    "youtube_top1": "M59kIod11kA",
@@ -195,36 +195,13 @@
   "395873": {
    "youtube_top1": "hlQAGfPDIaQ",
    "description": null,
-   "transcript": null
+   "transcript": "hlQAGfPDIaQ"
   },
   "457805": {
    "youtube_top1": "gXOcQolV5Fc",
    "description": "gXOcQolV5Fc",
-   "transcript": "gXOcQolV5Fc"
+   "transcript": "TbGJnlH4-C8"
   }
  },
- "transcript_blocked": [
-  17306,
-  38288,
-  134397,
-  135509,
-  140051,
-  144878,
-  145893,
-  148110,
-  173100,
-  185398,
-  191225,
-  192376,
-  197461,
-  204569,
-  212394,
-  247605,
-  304035,
-  322166,
-  365298,
-  369923,
-  395873,
-  457805
- ]
+ "transcript_blocked": []
 }
