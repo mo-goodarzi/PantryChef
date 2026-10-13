@@ -42,7 +42,20 @@ class Conversation:
 
     def send(self, message: str) -> Turn:
         """A new request from the user (starts from the top of the graph)."""
-        return self._run({"message": message, "user_id": self.user_id})
+        return self._run({"message": message, "user_id": self.user_id, "back": False})
+
+    def can_go_back(self) -> bool:
+        """A recipe was chosen and shown, and its options can be shown again."""
+        state = self.state()
+        offered = state.earlier or state.results
+        return self.pending_question() is None and state.answer is not None and bool(offered)
+
+    def back(self) -> Turn:
+        """Show the recipe options again after a recipe was chosen ("back to the
+        recipes"); the user can then choose another one or ask for more."""
+        if not self.can_go_back():
+            raise ValueError("there are no recipes to go back to")
+        return self._run({"back": True, "chosen": None, "video": None, "answer": None})
 
     def reply(self, answer: BaseModel) -> Turn:
         """Answer the pending question (SafetyReply, ConfirmReply, QuantityReply or

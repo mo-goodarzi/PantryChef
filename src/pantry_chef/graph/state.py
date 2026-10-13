@@ -37,6 +37,7 @@ class ChatState(BaseModel):
     questions_asked: int = 0
     # Options already shown for this request; "show me more" adds new ones after them.
     earlier: list[VerifiedCandidate] = Field(default_factory=list)
+    back: bool = False  # "back to the recipes": the next run starts at present
     note: str | None = None  # honest note when fewer than 2 recipes passed
     chosen: VerifiedCandidate | None = None
     video: VideoOutcome | None = None  # when the user asked for a video

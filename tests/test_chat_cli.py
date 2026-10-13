@@ -52,6 +52,8 @@ def test_a_whole_terminal_conversation(enriched_conn, state_conn):
             "no",  # remember? (no consent)
             "9",  # not an option: asked again
             "1",  # choose the first recipe
+            "back",  # the recipes again
+            "2",  # choose another one
             "quit",
         ]
     )
@@ -63,6 +65,8 @@ def test_a_whole_terminal_conversation(enriched_conn, state_conn):
     assert "No allergies" in text  # the confirmation
     assert "choose a number from 1 to" in text  # the bad choice was rejected
     assert "Steps:" in text and "Why it fits:" in text  # the final answer
+    assert text.count("Which one would you like to make?") == 2  # first, then after "back"
+    assert text.count("Steps:") == 2
 
 
 def test_chat_refuses_to_start_without_the_embeddings(enriched_conn, tmp_path):

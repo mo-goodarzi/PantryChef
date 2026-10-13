@@ -4,8 +4,8 @@ Usage:
     uv run python scripts/chat_cli.py --user alice
     uv run python scripts/chat_cli.py --user alice --thread <id>   # continue a conversation
 
-Type "quit" to leave. Without consent, the conversation (and the allergies in it) is
-deleted when you leave.
+After a recipe, type "back" to see the other recipes again. Type "quit" to leave. Without
+consent, the conversation (and the allergies in it) is deleted when you leave.
 """
 
 import argparse
@@ -149,7 +149,7 @@ def render_turn(turn: Turn) -> str:
     if turn.question is not None:
         return render_question(turn.question)
     if turn.answer is not None:
-        return render_answer(turn.answer)
+        return render_answer(turn.answer) + "\n(type 'back' to see the other recipes)"
     return turn.reply or ""
 
 
@@ -172,7 +172,10 @@ def run(chat: Conversation, read: Callable[[str], str], write: Callable[[str], N
                 return
             if not message:
                 continue
-            turn = chat.send(message)
+            if message.lower() in {"back", "b"} and chat.can_go_back():
+                turn = chat.back()
+            else:
+                turn = chat.send(message)
         else:
             try:
                 turn = chat.reply(read_answer(turn.question, read))

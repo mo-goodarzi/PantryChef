@@ -52,6 +52,10 @@ class PantryChefClient:
             self._call("POST", f"/sessions/{session_id}/resume", json=body).json()
         )
 
+    def back(self, session_id: str) -> TurnOut:
+        """After a recipe was chosen: show its options again."""
+        return TurnOut.model_validate(self._call("POST", f"/sessions/{session_id}/back").json())
+
     def session(self, session_id: str) -> SessionOut:
         return SessionOut.model_validate(self._call("GET", f"/sessions/{session_id}").json())
 

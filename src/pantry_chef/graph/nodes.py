@@ -240,6 +240,7 @@ class ChatNodes:
                 "asked_quantities": [],
                 "questions_asked": 0,
                 "earlier": [],
+                "back": False,
                 "chosen": None,
                 "video": None,
                 "answer": None,
@@ -352,7 +353,7 @@ class ChatNodes:
             )
         )
         assert state.query is not None
-        with span("node.present", options=len(options), more=reply.more):
+        with span("node.present", options=len(options), more=reply.more, back=state.back):
             if reply.more or reply.choice is None:
                 score("user_accepted_recipe", 0)
                 shown = {vc.candidate.recipe_id for vc in offered}
@@ -361,11 +362,17 @@ class ChatNodes:
                         "exclude_recipe_ids": sorted(set(state.query.exclude_recipe_ids) | shown)
                     }
                 )
-                return {"query": query, "attempts": 0, "results": [], "earlier": offered}
+                return {
+                    "query": query,
+                    "attempts": 0,
+                    "results": [],
+                    "earlier": offered,
+                    "back": False,
+                }
             if not 1 <= reply.choice <= len(options):
                 raise ValueError(f"choice must be 1..{len(options)}, got {reply.choice}")
             score("user_accepted_recipe", 1)
-            return {"chosen": offered[reply.choice - 1]}
+            return {"chosen": offered[reply.choice - 1], "back": False}
 
     def ask_video(self, state: ChatState) -> dict:
         assert state.chosen is not None
@@ -426,6 +433,11 @@ class ChatNodes:
 
 
 # --- routing -------------------------------------------------------------------------
+
+
+def at_start(state: ChatState) -> str:
+    """A new request, or "back to the recipes" after one was chosen."""
+    return "present" if state.back else "load_profile"
 
 
 def after_load_profile(state: ChatState) -> str:

@@ -61,6 +61,11 @@ def test_safety_questions_then_recipe_cards_then_the_recipe(open_ui):
     assert "Why it fits" in chat_text(app)
     assert app.chat_input(key="request")  # ready for the next request
 
+    app.button(key="back").click().run()
+    assert not app.exception
+    assert "Back to the recipes." in chat_text(app)
+    assert app.button(key="choose_2")  # the recipe cards are back
+
 
 def test_cards_and_the_recipe_show_photos_when_there_are_any(open_ui, enriched_conn):
     enriched_conn.execute(

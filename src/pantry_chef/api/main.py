@@ -3,6 +3,7 @@
 POST   /sessions                      new conversation -> session id
 POST   /sessions/{id}/messages        a request; runs until the next question or the end
 POST   /sessions/{id}/resume          answer the pending question
+POST   /sessions/{id}/back            after a recipe was chosen: its options again
 GET    /sessions/{id}                 pending question and profile
 DELETE /sessions/{id}?forget=true     end it (always deleted without consent or with forget)
 DELETE /users/{user_id}/profile       "delete my data"
@@ -114,6 +115,14 @@ def create_app(make_chat: Callable[[], ChatApp] = default_chat) -> FastAPI:
                     return TurnOut.from_turn(chat.reply(answer))
                 except (ValidationError, ValueError) as error:
                     raise HTTPException(422, str(error)) from error
+
+    @app.post("/sessions/{session_id}/back")
+    def back(session_id: str) -> TurnOut:
+        # No LLM call (the options are in the saved state), so no demo limits.
+        with conversation(session_id) as chat:
+            if not chat.can_go_back():
+                raise HTTPException(409, "there are no recipes to go back to")
+            return TurnOut.from_turn(chat.back())
 
     @app.get("/sessions/{session_id}")
     def get_session(session_id: str) -> SessionOut:
