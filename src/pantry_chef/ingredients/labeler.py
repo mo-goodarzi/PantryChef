@@ -1,9 +1,10 @@
 """Label ingredients with an LLM in batches, caching every result to a JSON file.
 
-There are two labeling tasks, each with its own prompt and cache file:
+There are three labeling tasks, each with its own prompt and cache file:
 - INGREDIENT_TASK: category, allergens, diet fields
 - QUANTITY_TASK: quantity_matters (kept separate so it can be redefined and relabeled
   cheaply without touching the other labels)
+- WEIGHT_TASK: grams per item and per cup (ingredients/weights.py)
 
 The cache makes runs resumable and reruns free: only names without a cached label are
 sent. Labels are stored as returned by the LLM; combining them with the rule-based
@@ -28,6 +29,8 @@ from pantry_chef.models.ingredient import (
     IngredientLabelBatch,
     QuantityLabel,
     QuantityLabelBatch,
+    WeightLabel,
+    WeightLabelBatch,
 )
 from pantry_chef.observability import get_logger, span
 
@@ -43,6 +46,7 @@ class LabelTask:
 
 INGREDIENT_TASK = LabelTask("ingredient_labeling", IngredientLabel, IngredientLabelBatch)
 QUANTITY_TASK = LabelTask("quantity_matters", QuantityLabel, QuantityLabelBatch)
+WEIGHT_TASK = LabelTask("ingredient_weights", WeightLabel, WeightLabelBatch)
 
 
 @dataclass

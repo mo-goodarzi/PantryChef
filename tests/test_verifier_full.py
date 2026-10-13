@@ -24,7 +24,7 @@ from pantry_chef.agents.verifier import (
 )
 from pantry_chef.db.repository import IngredientOption
 from pantry_chef.ingredients.allergens import Allergen
-from pantry_chef.ingredients.quantities import Amount, available_ratio
+from pantry_chef.ingredients.quantities import Amount, Weights, available_ratio
 from pantry_chef.models.matching import MatchLabel, MatchResult
 from pantry_chef.models.query import AmountStatus, Diet, PantryItem, RecipeQuery
 from pantry_chef.models.recipe import Candidate, RecipeIngredient
@@ -165,6 +165,41 @@ def test_weight_versus_volume_is_not_guessed():
     context = VerificationContext(pantry={"flour"}, pantry_items={"flour": item("flour", 100, "g")})
     result = check_quantities(flour, context)
     assert result.passed and "cannot compare" in result.notes[0]
+
+
+def breasts_recipe(n):
+    return cand(ing("chicken breasts", "chicken breast", qty_matters=True, quantity=n))
+
+
+def test_grams_are_compared_with_a_number_of_items_through_typical_weights():
+    """The question asks grams; the recipe says "2 chicken breasts" (about 400 g)."""
+    weights = {"chicken breast": Weights(piece_g=200, cup_g=140)}
+    for grams, passed in [(300, True), (150, False)]:
+        context = VerificationContext(
+            pantry={"chicken breast"},
+            pantry_items={"chicken breast": item("chicken breast", grams, "g")},
+            weights=weights,
+        )
+        result = check_quantities(breasts_recipe(2), context)
+        assert result.passed is passed
+        if passed:
+            assert result.adaptations == ["make 75% of the recipe (limited by chicken breasts)"]
+        else:
+            assert result.reasons[0].detail == "have 150 g, recipe needs 2 (about 400 g)"
+
+
+def test_without_typical_weights_grams_and_items_are_not_compared():
+    context = VerificationContext(
+        pantry={"chicken breast"},
+        pantry_items={"chicken breast": item("chicken breast", 10, "g")},
+    )
+    result = check_quantities(breasts_recipe(2), context)
+    assert result.passed and "cannot compare" in result.notes[0]
+
+
+def test_the_verifier_uses_the_weights_from_the_seed(enriched_conn):
+    assert Verifier(enriched_conn).weights["egg"].piece_g
+    assert Verifier(enriched_conn, weights={}).weights == {}
 
 
 def test_an_amount_is_used_even_when_the_label_says_it_does_not_matter():
