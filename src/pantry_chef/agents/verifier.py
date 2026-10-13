@@ -19,7 +19,14 @@ from pantry_chef.ingredients.allergens import Allergen, mentions_word
 from pantry_chef.ingredients.enrich import combine
 from pantry_chef.ingredients.matcher import ExactMatcher, Matcher
 from pantry_chef.ingredients.normalize import normalize
-from pantry_chef.ingredients.quantities import Amount, available_ratio
+from pantry_chef.ingredients.quantities import (
+    Amount,
+    Weights,
+    approximate_ratio,
+    available_ratio,
+    to_grams,
+)
+from pantry_chef.ingredients.weights import load_weights
 from pantry_chef.models.matching import MatchLabel, MatchResult
 from pantry_chef.models.query import (
     INGREDIENT_DIETS,
@@ -53,6 +60,8 @@ class VerificationContext:
     hidden_unchecked: set[str] = field(default_factory=set)  # ingredient names
     substitutes: dict[str, list[IngredientOption]] = field(default_factory=dict)
     pantry_facts: dict[str, IngredientOption] = field(default_factory=dict)  # by canonical
+    # Approximate grams per item / per cup, to compare "300 g" with "2 chicken breasts".
+    weights: dict[str, Weights] = field(default_factory=dict)  # by canonical
 
 
 def load_pantry_facts(conn: sqlite3.Connection, pantry: set[str]) -> dict[str, IngredientOption]:
@@ -186,7 +195,9 @@ def check_ingredients(
 def check_quantities(candidate: Candidate, context: VerificationContext) -> CheckResult:
     """Key ingredients where both amounts are known: any amount the user gave is used (the
     "amount matters" label only decides what the quantity question asks about).
-    Unknown or "plenty" is fine; >= 50% available -> scale the recipe down; less -> fail."""
+    Unknown or "plenty" is fine; >= 50% available -> scale the recipe down; less -> fail.
+    Amounts of different kinds (grams vs "2 breasts" or "1 cup") are compared through the
+    ingredient's typical weights; without them the amount is not checked (a note)."""
     reasons, notes, ratios = [], [], []
     for ingredient in candidate.ingredients:
         if not needs_match(ingredient):
@@ -201,9 +212,10 @@ def check_quantities(candidate: Candidate, context: VerificationContext) -> Chec
         if ingredient.quantity is None:
             notes.append(f"recipe amount of {ingredient.name} unknown")
             continue
-        ratio = available_ratio(
-            Amount(item.quantity, item.unit), Amount(ingredient.quantity, ingredient.unit)
-        )
+        have = Amount(item.quantity, item.unit)
+        need = Amount(ingredient.quantity, ingredient.unit)
+        weights = context.weights.get(ingredient.canonical_name)
+        ratio = approximate_ratio(have, need, weights)
         if ratio is None:
             notes.append(
                 f"cannot compare {item.unit or 'count'} with "
@@ -214,8 +226,7 @@ def check_quantities(candidate: Candidate, context: VerificationContext) -> Chec
                 FailureReason(
                     code=FailureCode.INSUFFICIENT_QUANTITY,
                     item=ingredient.canonical_name,
-                    detail=f"have {item.quantity:g} {item.unit or ''}, recipe needs "
-                    f"{ingredient.quantity:g} {ingredient.unit or ''}".replace("  ", " "),
+                    detail=shortfall_detail(have, need, weights),
                 )
             )
         elif ratio < 1:
@@ -231,6 +242,20 @@ def check_quantities(candidate: Candidate, context: VerificationContext) -> Chec
         adaptations=adaptations,
         notes=notes,
     )
+
+
+def shortfall_detail(have: Amount, need: Amount, weights: Weights | None) -> str:
+    """ "have 300 g, recipe needs 4 (about 800 g)": the grams when they were estimated."""
+
+    def shown(amount: Amount) -> str:
+        return f"{amount.value:g} {amount.unit or ''}".strip()
+
+    text = f"have {shown(have)}, recipe needs {shown(need)}"
+    if available_ratio(have, need) is None and weights is not None:
+        grams = to_grams(need, weights)
+        if grams is not None and need.unit != "g":
+            text += f" (about {grams:.0f} g)"
+    return text
 
 
 def check_allergens(candidate: Candidate, allergens: set[Allergen]) -> CheckResult:
@@ -446,10 +471,12 @@ class Verifier:
         conn: sqlite3.Connection,
         matcher: Matcher | None = None,
         hidden_checker: HiddenAllergenChecker | None = None,
+        weights: dict[str, Weights] | None = None,
     ):
         self.conn = conn
         self.matcher = matcher or ExactMatcher()
         self.hidden_checker = hidden_checker
+        self.weights = load_weights() if weights is None else weights
 
     def prepare(
         self,
@@ -486,6 +513,7 @@ class Verifier:
             hidden_unchecked=unchecked,
             substitutes=load_substitutes(self.conn, missing_extra),
             pantry_facts=load_pantry_facts(self.conn, pantry),
+            weights=self.weights,
         )
 
     def verify_all(

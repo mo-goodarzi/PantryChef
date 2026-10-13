@@ -31,6 +31,7 @@ from pantry_chef.graph.state import ChatState
 from pantry_chef.ingredients.allergens import Allergen
 from pantry_chef.models.chat import (
     AmountReply,
+    AmountUnit,
     ChoiceReply,
     ConfirmReply,
     QuantityReply,
@@ -432,6 +433,7 @@ def test_quantity_question_accepts_i_dont_know(enriched_conn, state_conn):
     turn = through_safety(chat)
     assert turn.question.kind is QuestionKind.QUANTITIES
     assert turn.question.items == ["egg"]
+    assert turn.question.units == {"egg": AmountUnit.COUNT}  # "how many eggs?"
 
     turn = chat.reply(QuantityReply(amounts={"egg": AmountReply(status=AmountStatus.UNKNOWN)}))
     assert turn.question.kind is QuestionKind.CHOICE

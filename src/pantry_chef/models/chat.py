@@ -21,6 +21,13 @@ class QuestionKind(StrEnum):
     VIDEO = "video"  # look for a matching YouTube video? (only with a YouTube key)
 
 
+class AmountUnit(StrEnum):
+    """How the quantity question asks for one item."""
+
+    GRAMS = "g"  # weighed: "how many grams of chicken breast?"
+    COUNT = "count"  # counted: "how many eggs?"
+
+
 class RecipeOption(BaseModel):
     number: int  # 1-based, what the user types
     recipe_id: int
@@ -39,6 +46,7 @@ class Question(BaseModel):
     kind: QuestionKind
     text: str
     items: list[str] = Field(default_factory=list)  # QUANTITIES: canonical ingredient names
+    units: dict[str, AmountUnit] = Field(default_factory=dict)  # QUANTITIES: per item
     options: list[RecipeOption] = Field(default_factory=list)  # CHOICE
     note: str | None = None  # e.g. "only one recipe passed all checks"
     can_show_more: bool = True  # CHOICE: False once a "show me more" search found nothing
@@ -55,7 +63,7 @@ class ConfirmReply(BaseModel):
 
 class AmountReply(BaseModel):
     quantity: float | None = Field(default=None, ge=0)
-    unit: str | None = None  # None = a count ("2" eggs)
+    unit: str | None = None  # None = a count ("2" eggs); the UI sends "g" or None
     status: AmountStatus = AmountStatus.UNKNOWN
 
 

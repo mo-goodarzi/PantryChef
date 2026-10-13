@@ -20,8 +20,11 @@ from pantry_chef.agents.video import search_url
 from pantry_chef.db.images import CARD, FULL, sized
 from pantry_chef.db.state import ProfileStore
 from pantry_chef.graph.state import MAX_ATTEMPTS, ChatState
+from pantry_chef.ingredients.quantities import unit_kind
+from pantry_chef.ingredients.weights import load_weights
 from pantry_chef.llm.factory import StructuredLLM
 from pantry_chef.models.chat import (
+    AmountUnit,
     ChoiceReply,
     ConfirmReply,
     FinalAnswer,
@@ -138,6 +141,25 @@ def quantity_items(state: ChatState, always: bool = False) -> list[str]:
             if relevant and not asked and status.get(i.name) == "available":
                 items[i.canonical_name] = None
     return list(items)[:MAX_QUANTITY_ITEMS]
+
+
+def ask_unit(state: ChatState, item: str) -> AmountUnit:
+    """Ask for a number when the options mostly count the item ("2 eggs"), else grams
+    ("1 lb", "1 cup"); the verifier converts between them with typical weights."""
+    kinds = Counter(
+        unit_kind(i.unit)
+        for vc in state.results
+        for i in vc.candidate.ingredients
+        if i.canonical_name == item and i.quantity is not None
+    )
+    counted, measured = kinds["count"], kinds["weight"] + kinds["volume"]
+    if counted or measured:
+        return AmountUnit.COUNT if counted > measured else AmountUnit.GRAMS
+    # No amounts in the options: a number for things only ever counted (eggs), else grams.
+    weights = load_weights().get(item)
+    if weights and weights.piece_g and not weights.cup_g:
+        return AmountUnit.COUNT
+    return AmountUnit.GRAMS
 
 
 def merge_amounts(pantry: list[PantryItem], reply: QuantityReply) -> list[PantryItem]:
@@ -295,8 +317,9 @@ class ChatNodes:
         if not items:
             return {}
         text = "How much do you have of: " + ", ".join(items) + "?"
+        units = {item: ask_unit(state, item) for item in items}
         reply = QuantityReply.model_validate(
-            ask(Question(kind=QuestionKind.QUANTITIES, text=text, items=items))
+            ask(Question(kind=QuestionKind.QUANTITIES, text=text, items=items, units=units))
         )
         assert state.query is not None
         with span("node.quantity_check", items=len(items)):

@@ -10,6 +10,7 @@ uses native Streamlit elements, badges and Material icons, so no custom CSS is n
 
 import contextlib
 import os
+import uuid
 
 import streamlit as st
 
@@ -17,6 +18,7 @@ from pantry_chef.api.client import ApiError, PantryChefClient
 from pantry_chef.api.schemas import TurnOut, TurnType
 from pantry_chef.models.chat import (
     AmountReply,
+    AmountUnit,
     ChoiceReply,
     ConfirmReply,
     FinalAnswer,
@@ -33,6 +35,8 @@ from pantry_chef.models.query import AmountStatus
 API_URL = os.environ.get("PANTRY_CHEF_API_URL", "http://localhost:8000")
 AMOUNT_CHOICES = {"I have": AmountStatus.KNOWN, "Don't know": AmountStatus.UNKNOWN,
                   "Plenty": AmountStatus.PLENTY}  # fmt: skip
+# How each item is asked: the input's label, its step and the unit sent (None = a count).
+UNIT_INPUTS = {AmountUnit.GRAMS: ("grams", 50.0, "g"), AmountUnit.COUNT: ("how many", 1.0, None)}
 AVATARS = {"assistant": ":material/skillet:", "user": ":material/person:"}
 PHOTO_CREDIT = "Photo: Food.com"
 EXAMPLES = [
@@ -99,7 +103,7 @@ def profile_markdown(profile: UserProfile) -> str:
     if profile.dislikes:
         lines.append(":material/thumb_down: Leaving out: " + ", ".join(profile.dislikes))
     if profile.consent_to_store:
-        lines.append(":material/bookmark_added: Saved for next time")
+        lines.append(":material/bookmark_added: Saved for new conversations here")
     else:
         lines.append(":material/visibility_off: Not saved")
     return "  \n".join(lines)
@@ -113,6 +117,9 @@ def init_state() -> None:
     if "client" not in ss:
         ss.client = PantryChefClient(API_URL)
     ss.setdefault("session_id", None)
+    # Who the saved profile belongs to: random per browser session, never a name, so no
+    # one can load (or delete) someone else's allergies by typing their name.
+    ss.setdefault("user_id", uuid.uuid4().hex)
     ss.setdefault("history", [])  # (role, markdown or FinalAnswer)
     ss.setdefault("turn", None)  # the latest TurnOut
 
@@ -137,7 +144,7 @@ def send(text: str) -> None:
         with st.spinner("Looking through your pantry…"):
             if ss.session_id is None:
                 ss.session_id = client().new_session()
-            record(client().send(ss.session_id, text, user_id=ss.get("user_name") or None))
+            record(client().send(ss.session_id, text, user_id=ss.user_id))
     except ApiError as error:
         ss.history.append(("assistant", f"Sorry, that did not work: {error.message}"))
 
@@ -195,9 +202,10 @@ def confirm_form(question: Question) -> None:
     with st.form("confirm", border=True):
         correct = st.radio("Is this right?", ["Yes", "No"], key="confirm_correct", horizontal=True)
         consent = st.checkbox(
-            "Remember this for next time",
+            "Remember this for my next conversations",
             key="confirm_consent",
-            help="Saved under your name in the sidebar. You can delete it at any time.",
+            help="Used again for new conversations in this browser tab, until you close or "
+            "reload it. You can delete it at any time.",
         )
         if st.form_submit_button("Continue", key="confirm_send", type="primary"):
             ok = correct == "Yes"
@@ -212,9 +220,10 @@ def quantity_form(question: Question) -> None:
         st.caption("Only the amounts that change which recipes work.")
         amounts = {}
         for item in question.items:
+            label, step, unit = UNIT_INPUTS[question.units.get(item, AmountUnit.COUNT)]
             st.markdown(f"**{item}**")
-            status_col, amount_col, unit_col = st.columns([2, 1, 1], vertical_alignment="bottom")
-            status = status_col.radio(
+            status_col, amount_col = st.columns([3, 2], vertical_alignment="bottom")
+            choice = status_col.radio(
                 item,
                 list(AMOUNT_CHOICES),
                 key=f"qty_status_{item}",
@@ -222,22 +231,24 @@ def quantity_form(question: Question) -> None:
                 label_visibility="collapsed",
             )
             quantity = amount_col.number_input(
-                "Amount", min_value=0.0, key=f"qty_value_{item}", label_visibility="collapsed"
+                label,
+                min_value=0.0,
+                value=None,
+                step=step,
+                format="%g",
+                placeholder=label,
+                key=f"qty_value_{item}",
             )
-            unit = unit_col.text_input(
-                "Unit",
-                key=f"qty_unit_{item}",
-                placeholder="unit, e.g. g",
-                help="Leave empty for a count, e.g. 2 eggs.",
-                label_visibility="collapsed",
-            )
-            known = AMOUNT_CHOICES[status] is AmountStatus.KNOWN
+            status = AMOUNT_CHOICES[choice]
+            if status is AmountStatus.KNOWN and quantity is None:
+                status = AmountStatus.UNKNOWN  # "I have" without a number: not known
+            known = status is AmountStatus.KNOWN
             amounts[item] = AmountReply(
                 quantity=quantity if known else None,
-                unit=(unit.strip() or None) if known else None,
-                status=AMOUNT_CHOICES[status],
+                unit=unit if known else None,
+                status=status,
             )
-        st.caption("Amount and unit are used only when you pick **I have**.")
+        st.caption("The amount is used only when you pick **I have**; leave it empty if unsure.")
         if st.form_submit_button("Continue", key="qty_send", type="primary"):
             answer(QuantityReply(amounts=amounts), "Here is what I have.")
             st.rerun()
@@ -407,12 +418,6 @@ def sidebar() -> None:
     with st.sidebar:
         st.header(":material/skillet: PantryChef", anchor=False)
         st.caption("Recipes from what you already have.")
-        st.text_input(
-            "Your name",
-            key="user_name",
-            placeholder="e.g. alice",
-            help="Only needed to remember your allergies and diets between visits.",
-        )
         profile = None
         if ss.session_id is not None:
             try:
@@ -431,8 +436,11 @@ def sidebar() -> None:
         if st.button(
             "Delete my data", key="delete_data", icon=":material/delete:", width="stretch"
         ):
-            name = ss.get("user_name")
-            deleted = client().delete_profile(name) if name else False
+            try:
+                deleted = client().delete_profile(ss.user_id)
+            except ApiError as error:
+                ss.error = f"Could not delete your data: {error.message}"
+                st.rerun()
             reset_conversation(forget=True)
             ss.notice = "Your saved profile was deleted." if deleted else "Nothing was saved."
             st.rerun()

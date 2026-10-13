@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from pantry_chef.graph.runner import Conversation
 from pantry_chef.models.chat import (
     AmountReply,
+    AmountUnit,
     ChoiceReply,
     ConfirmReply,
     FinalAnswer,
@@ -47,19 +48,21 @@ def parse_yes_no(text: str) -> bool:
     raise ValueError("please answer yes or no")
 
 
-def parse_amount(text: str) -> AmountReply:
-    """ "2" -> 2 (a count), "200 g" -> 200 g, "don't know" -> unknown, "plenty"."""
+def parse_amount(text: str, unit: AmountUnit = AmountUnit.COUNT) -> AmountReply:
+    """ "2" -> 2 in the asked unit (a count, or grams), "200 g" -> 200 g,
+    "don't know" -> unknown, "plenty"."""
     words = text.strip().lower()
     if words in UNKNOWN_WORDS:
         return AmountReply(status=AmountStatus.UNKNOWN)
     if words in PLENTY_WORDS:
         return AmountReply(status=AmountStatus.PLENTY)
-    number, _, unit = words.partition(" ")
+    number, _, given = words.partition(" ")
     try:
         quantity = float(number)
     except ValueError:
         raise ValueError("type a number (e.g. 2 or 200 g), 'don't know' or 'plenty'") from None
-    return AmountReply(quantity=quantity, unit=unit.strip() or None, status=AmountStatus.KNOWN)
+    asked = "g" if unit is AmountUnit.GRAMS else None
+    return AmountReply(quantity=quantity, unit=given.strip() or asked, status=AmountStatus.KNOWN)
 
 
 def parse_choice(text: str) -> ChoiceReply:
@@ -80,7 +83,11 @@ def read_answer(question: Question, read: Callable[[str], str]) -> BaseModel:
         consent = correct and parse_yes_no(read("Remember it for next time? (yes/no) "))
         return ConfirmReply(correct=correct, consent_to_store=consent)
     if question.kind is QuestionKind.QUANTITIES:
-        amounts = {item: parse_amount(read(f"  {item}: ")) for item in question.items}
+        amounts = {}
+        for item in question.items:
+            unit = question.units.get(item, AmountUnit.COUNT)
+            hint = "grams" if unit is AmountUnit.GRAMS else "how many"
+            amounts[item] = parse_amount(read(f"  {item} ({hint}): "), unit)
         return QuantityReply(amounts=amounts)
     if question.kind is QuestionKind.VIDEO:
         return VideoReply(want=parse_yes_no(read("Find a video? (yes/no) ")))

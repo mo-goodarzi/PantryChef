@@ -47,6 +47,29 @@ class QuantityLabelBatch(BaseModel):
     labels: list[QuantityLabel]
 
 
+class WeightLabel(BaseModel):
+    """Approximate grams, so an amount in grams can be compared with "2 chicken breasts"
+    or "1 cup shredded cheddar" (ingredients/weights.py)."""
+
+    name: str = Field(description="The ingredient name exactly as given in the input.")
+    piece_g: float | None = Field(
+        default=None,
+        gt=0,
+        description="Grams in ONE item as recipes count it (one egg, one chicken breast, "
+        "one slice of bacon), or null if recipes do not count it in items.",
+    )
+    cup_g: float | None = Field(
+        default=None,
+        gt=0,
+        description="Grams in ONE US cup in the form recipes usually measure it "
+        "(shredded cheese, chopped onion), or null if it is not measured by volume.",
+    )
+
+
+class WeightLabelBatch(BaseModel):
+    labels: list[WeightLabel]
+
+
 class Substitute(BaseModel):
     name: str = Field(description="An ingredient from the vocabulary.")
     note: str = Field(description="Short note on when or how to substitute (max 12 words).")
