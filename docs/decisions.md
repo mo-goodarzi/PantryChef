@@ -1299,3 +1299,21 @@ the API holds about 830 MB after a search, plus Streamlit; 1.1 GB of data (pantr
   cap can never miss a cost.
 - Settings: an empty value (`KEY=`) now means "not set" (`env_parse_none_str`); before,
   an empty `YOUTUBE_API_KEY=` counted as a key and turned the video question on.
+
+## 2026-10-13 — The Hugging Face Space
+- **One container, two processes** (`deploy/space/start.sh`): the API on 127.0.0.1:8000
+  (never public) and Streamlit on the Space port 7860. A Space exposes one port, and the UI
+  already talks to the API over HTTP, so nothing in the app changes.
+- **Data from a private dataset repo at start** (`pantry_chef.deploy fetch`, `HF_TOKEN`
+  secret with read access): pantry.db, chroma/, the allergy-review and hidden-allergen
+  caches, and a state.db seed with only the paid matcher/video caches (16,188 matcher
+  answers; no profiles, conversations or spend; tested). `publish_data.py` refuses a
+  public repo. wish_fit.json is not shipped (it holds wishes people typed).
+- **The Space Dockerfile is generated** from the project's Dockerfile (same build, other
+  port and start command; tested), so the two cannot drift apart.
+- **Known limits of free Space hardware:** the disk is wiped on restart, so saved profiles
+  and the day's spend counter start over after a restart (the Space restarts when it
+  wakes from sleep or is redeployed). The real backstop is therefore a **spending limit on
+  the OpenAI side**: a separate API key in an OpenAI project with a monthly budget.
+  YouTube will likely block transcripts from the Space; the video check then reads title
+  and description (measured: 37 of 40 right).

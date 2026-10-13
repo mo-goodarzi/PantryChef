@@ -108,6 +108,7 @@ pantry-chef/
 - API: `uv run uvicorn pantry_chef.api.main:app --reload`
 - UI: `uv run streamlit run ui/streamlit_app.py` (talks to the API at `PANTRY_CHEF_API_URL`)
 - Docker (API + UI, `./data` mounted): `docker compose up --build`
+- Hugging Face Space (after `hf auth login`): `uv run python scripts/publish_data.py --repo <user>/pantry-chef-data` (private), then `uv run python scripts/deploy_space.py --space <user>/pantry-chef --data-repo <user>/pantry-chef-data`
 - Eval: `uv run python eval/run_eval.py --suite <name>`
 - End-to-end eval (simulated user, spending cap): `uv run python eval/run_eval.py --suite e2e --cases eval/cases/safety.json --variants chat,no-safety --max-cost 2`; all Phase 7 reports: `eval/reproduce_e2e.sh`
 
