@@ -39,3 +39,6 @@ backgroundColor = "#221A15"
 
 [client]
 toolbarMode = "minimal"  # hide the developer "Deploy" button
+
+[browser]
+gatherUsageStats = false  # no usage statistics sent to Streamlit (also on the public Space)
