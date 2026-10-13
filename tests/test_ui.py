@@ -119,7 +119,8 @@ def test_show_me_other_recipes(open_ui):
     through_safety(app)
     app.button(key="choose_more").click().run()
     assert not app.exception
-    assert "Show me other recipes." in chat_text(app)
+    assert "Show me more recipes." in chat_text(app)
+    assert app.button(key="choose_1")  # the earlier recipes stay on the page
 
 
 def test_profile_in_the_sidebar_and_delete_my_data(open_ui):

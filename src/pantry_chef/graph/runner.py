@@ -18,7 +18,11 @@ from pantry_chef.observability import trace
 
 def check_choice(answer: ChoiceReply, question: Question) -> None:
     """Reject a choice that is not one of the shown options (before resuming the graph)."""
-    if question.kind is not QuestionKind.CHOICE or answer.more:
+    if question.kind is not QuestionKind.CHOICE:
+        return
+    if answer.more:
+        if not question.can_show_more:
+            raise ValueError("there are no other recipes to show; choose one of these")
         return
     if not 1 <= (answer.choice or 0) <= len(question.options):
         raise ValueError(f"choose a number from 1 to {len(question.options)}")
