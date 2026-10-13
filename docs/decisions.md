@@ -1368,3 +1368,14 @@ the API holds about 830 MB after a search, plus Streamlit; 1.1 GB of data (pantr
   comparable lines for a gram answer 29% -> 97%, for a number 38% -> 64%. The reference
   values were written down by hand from USDA standard portions and leave out the prompt's
   own examples; worth a spot-check by the owner.
+
+## 2026-10-13 — v1.0: the public demo is live
+https://huggingface.co/spaces/mogoodarzi/pantry-chef, deployed from `main` at `b71497b`
+(after a first upload had missed #44-#46, merged in another session; `deploy_space.py`
+now deploys only a clean, up-to-date `main` and names the commit). Start-up: data from the
+private dataset in seconds, the API and the embedding model in about a minute, then the
+UI. The owner's browser test passed (allergy, amounts in grams and counts, photos,
+amounts, back to recipes, video); the Space logs show no errors, and as expected YouTube
+blocked transcripts on the server, so the video check read title and description.
+Limits on: $2 per UTC day, 40 steps per conversation; OpenAI-side project budget as the
+backstop. Phase 8's acceptance criteria are met; tagged `v1.0`.
