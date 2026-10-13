@@ -21,5 +21,6 @@ Demo notes:
 - Recipes, photos and amounts come from Food.com datasets on Kaggle; this is not medical
   advice, and you should always check ingredients for your allergies yourself.
 - The demo has a daily budget for AI calls; when it is used up, try again tomorrow.
-- "Remember me" lasts only until the Space restarts (its disk is not kept).
+- "Remember me" is kept for new conversations in the same browser tab (until you close or
+  reload it, or the Space restarts); there are no names, so no one else can load it.
 - The first visit after a quiet period wakes the Space up, which takes a minute or two.

@@ -1336,3 +1336,35 @@ the API holds about 830 MB after a search, plus Streamlit; 1.1 GB of data (pantr
   no LLM call, so the API's `/back` skips the demo limits. A new message always clears
   `back`, so a stale flag cannot skip the request parsing.
 - Choosing another recipe asks the video question again, for that recipe.
+
+## 2026-10-13 — Pre-deploy fixes: profiles per browser, amounts in grams or a number
+- **No names in the web UI** (owner decision). Before, the sidebar's "Your name" keyed the
+  saved profile, so on the public demo anyone typing the same name (common names!) got
+  that person's allergies loaded, the safety question skipped, recipes filtered for the
+  wrong allergies, and could see or delete them. Now the UI makes a random id per browser
+  session (`st.session_state.user_id`): "remember me" covers new conversations in the
+  same tab, until it is closed or reloaded. The API and the CLI's `--user` are unchanged.
+- **The amounts form no longer says "I have 0"** when left untouched: the number box
+  starts empty, and "I have" without a number is sent as "don't know". Before, every
+  counted item (eggs, onions) was sent as 0, which failed every recipe using it.
+- **Grams or a number, per item** (owner decision). The question carries a unit per item
+  (`Question.units`): a number when most of the options count it ("2 eggs"), else grams
+  ("1 lb", "1 cup"); without amounts in the options, a number only for things never
+  measured by volume (eggs). No free-text unit any more.
+- **Approximate weights to compare across kinds** (owner decision, over "no
+  conversions"). Recipes measure the same ingredient in different ways, so a gram answer
+  could only be checked against 29% of the lines. Each amount-matters ingredient now has
+  grams per item and per cup (LLM labels, `ingredient_weights` prompt v2, gpt-5.4-mini,
+  about $1 for 5,929 names). The exact comparison is always used when the units are alike;
+  the weights only when they differ, and a reason says "about 400 g". Prompt v2 reads a
+  bare name as the whole thing ("1 chicken" = 1,600 g) and leaves the item weight empty
+  when recipes count it in very different items (spinach in leaves or bunches): a wrong
+  item weight could reject a recipe, a missing one only skips the check.
+- **Kept as a seed file in the repository** (`ingredients/seed/weights.json`, like
+  relations.json), not in pantry.db: reviewable in the pull request, and the Space needs
+  no new data upload.
+- Measured (`eval/weights_eval.py`, `weights_20261013-1826`): 41 of 42 hand-written USDA
+  reference weights within 25% (median error 1.2%; worst: red bell pepper 160 g vs 119 g);
+  comparable lines for a gram answer 29% -> 97%, for a number 38% -> 64%. The reference
+  values were written down by hand from USDA standard portions and leave out the prompt's
+  own examples; worth a spot-check by the owner.

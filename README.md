@@ -156,7 +156,9 @@ Which one would you like to make?
 ```
 
 The first conversation asks about allergies, diets and health once; the profile is kept
-only if you agree (in `data/processed/state.db`, keyed by a hashed name). Without consent,
+only if you agree (in `data/processed/state.db`, keyed by a hashed id: the `--user` name in
+the terminal, a random id per browser tab in the web UI, so no one can load someone else's
+allergies by typing their name). Without consent,
 the conversation is deleted when you leave. Health conditions are turned into restrictions
 you confirm (diabetes -> low sugar); the condition itself is never stored or traced.
 Needs the database, the embeddings and `OPENAI_API_KEY`. With `LANGFUSE_*` keys set, every
@@ -255,6 +257,15 @@ with the amounts:
 
 Asking only about key ingredients whose amount matters gets nearly all of the gain with
 half the items; the one case it misses is milk, which is not asked by choice.
+
+**Grams or a number.** Each item is asked as a number ("how many eggs?") or in grams
+("chicken breast, grams?"), whichever way the recipes on screen mostly measure it. Recipes
+measure the same thing differently (chicken breast: about 5,800 recipes count it, 3,800
+weigh it), so each ingredient has approximate grams per item and per cup (LLM labels in
+`ingredients/seed/weights.json`), used only when the units differ. On the 640,852 recipe
+lines the question can be about, an answer in grams can now be checked against 97% of
+them (29% before) and a number against 64% (38%); the labels are within 25% of USDA
+reference weights for 41 of 42 items, median error 1.2% (`weights_20261013-1826`).
 
 The tables above it were measured with the question off. Re-run with the new defaults
 (real amounts, question on, re-search; `e2e_20261010-1603/1611/1614`): everyday 99% task
