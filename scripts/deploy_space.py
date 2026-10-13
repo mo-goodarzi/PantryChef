@@ -8,13 +8,16 @@ Usage:
     uv run python scripts/deploy_space.py ... --dry-run     # only build the folder
 
 The Space Dockerfile is the project's Dockerfile with the Space's start command, so the
-two never drift apart. Secrets are NOT set by this script: add OPENAI_API_KEY,
+two never drift apart. Only a clean checkout of the latest `main` is deployed (fetched
+first), and the Space commit names that git commit, so the live version is always known.
+Secrets are NOT set by this script: add OPENAI_API_KEY,
 YOUTUBE_API_KEY and HF_TOKEN (read access to the data repo) in the Space settings.
 """
 
 import argparse
 import re
 import shutil
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -30,6 +33,27 @@ def space_dockerfile(dockerfile: str) -> str:
     if count != 1:
         raise ValueError("Dockerfile does not end with EXPOSE + CMD; update deploy_space.py")
     return body
+
+
+def git(*args: str) -> str:
+    return subprocess.run(
+        ["git", *args], cwd=ROOT, check=True, capture_output=True, text=True
+    ).stdout.strip()
+
+
+def deployable_commit() -> str:
+    """The commit to deploy, or SystemExit unless this is a clean, up-to-date `main`."""
+    git("fetch", "--quiet", "origin", "main")
+    problems = []
+    if git("rev-parse", "--abbrev-ref", "HEAD") != "main":
+        problems.append("not on main")
+    if git("status", "--porcelain"):
+        problems.append("uncommitted changes")
+    if git("rev-parse", "HEAD") != git("rev-parse", "origin/main"):
+        problems.append("local main differs from origin/main (git pull / push first)")
+    if problems:
+        raise SystemExit("Not deploying: " + "; ".join(problems))
+    return git("rev-parse", "--short", "HEAD")
 
 
 def build(dest: Path) -> list[str]:
@@ -56,6 +80,7 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
+    commit = "dry-run" if args.dry_run else deployable_commit()
     with tempfile.TemporaryDirectory() as tmp:
         files = build(Path(tmp))
         print("Space files:", ", ".join(files))
@@ -74,9 +99,12 @@ def main() -> None:
         for key, value in variables.items():
             api.add_space_variable(args.space, key, value)
         api.upload_folder(
-            folder_path=tmp, repo_id=args.space, repo_type="space", commit_message="Deploy"
+            folder_path=tmp,
+            repo_id=args.space,
+            repo_type="space",
+            commit_message=f"Deploy {commit} (github.com/mo-goodarzi/PantryChef)",
         )
-    print(f"Uploaded: https://huggingface.co/spaces/{args.space}")
+    print(f"Uploaded {commit}: https://huggingface.co/spaces/{args.space}")
     print(
         "Set these secrets in the Space settings if not done yet: OPENAI_API_KEY, "
         "YOUTUBE_API_KEY, HF_TOKEN (read access to the data repo)."
