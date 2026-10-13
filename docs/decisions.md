@@ -1239,3 +1239,43 @@ The owner's "no" labels are about a main ingredient that differs (the video adds
 leaves out the eggs, has no sour cream), not seasoning or brand.
 
 Open: how to change the check (owner's decision); then re-measure on the same 40 recipes.
+
+## 2026-10-13 — Video check v2 and a marked fallback (option A + C)
+**Owner decisions:** rework the check (A) and, when no video passes, show YouTube's top
+result marked "not confirmed to match this recipe" instead of only a search link (C).
+This changes the plan's "otherwise a search link" rule; a video is still never presented
+as a match unless both checks pass.
+
+**Changes:**
+- **Ingredient count** reads title + description + transcript together (not the
+  transcript alone) and is a loose sanity check: at least a quarter of the key
+  ingredients (was half). On the 58 labeled videos it lets through 48 of 51 "yes" (the
+  old rule: 29); no count rule stops the "no" videos, which are near misses that mention
+  the ingredients too, so that is the LLM's job.
+- **Prompt `video_match` v2:** sees title, description and transcript; "same dish" =
+  same kind of dish with the same MAIN ingredients; seasoning, brand, a close swap, shape
+  or size are fine; a main ingredient added or missing, or another dish, is not. The
+  examples in the prompt are deliberately not taken from the 40 eval recipes.
+- **Fallback:** `VideoOutcome.fallback` = YouTube's top result when nothing is verified
+  (`FinalAnswer.video_fallback`); the UI shows it under a warning, the CLI says
+  "not confirmed".
+- **Eval:** the sheet now keeps every label, also for videos only an earlier version
+  showed; the report has the app row (derived: check, else fallback) and a "wrong ones
+  shown as confirmed" column.
+
+**Results** (same 40 recipes; 63 labeled videos, 1 open that no row uses;
+`video_20261013-1231`, v1 = `video_20261013-1201`):
+
+| | recipes with a right video | wrong shown | wrong shown as confirmed |
+|---|---|---|---|
+| YouTube's first result | 36 | 4 | — |
+| v1 check | 26 | 4 | 4 |
+| v2 check, nothing else | 27 | 0 | 0 |
+| **the app: v2 check + marked fallback** | **39** | 1 | **0** |
+| the app without transcripts (description check + fallback) | 37 | 2 | 1 |
+
+v2 alone is still cautious (the LLM rejects 11 good first results, e.g. a Mountain Dew
+cake made with yellow cake mix and pudding), but every video it confirmed was right.
+**Caveat:** v2 was written after seeing v1's mistakes on these recipes (without copying
+them into the prompt), so these numbers are optimistic; a fresh set of recipes would be
+the fair test. LLM cost: export $0.25, about $0.006 per video request in the app.

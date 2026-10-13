@@ -97,14 +97,24 @@ The API: `POST /sessions`, `POST /sessions/{id}/messages`, `POST /sessions/{id}/
 With `YOUTUBE_API_KEY` in `.env`, the app asks after you pick a recipe whether you want a
 video. It searches YouTube for "<recipe name> recipe", reads each video's English
 transcript (or its title and description), and shows a video only when code finds at
-least half of the recipe's key ingredients in it **and** an LLM confirms it is the same
-dish. Otherwise you get a YouTube search link and are told no video matched. Each recipe
+least a quarter of the recipe's key ingredients in its title, description or transcript
+**and** an LLM confirms it is the same dish. Otherwise you get YouTube's top result,
+clearly marked as **not confirmed** to match the recipe, plus a search link. Each recipe
 costs one search (100 of the 10,000 free daily quota units) and is cached in `state.db`.
 Without the key, the question is never asked.
 
-First measurement (40 random recipes, owner's blind labels, `video_20261013-1201`): YouTube's
-first result is already right for 36 of 40; the check as built finds a right video for
-only 26, with as many wrong ones (4). It is being reworked (see `docs/decisions.md`).
+Measured on 40 random recipes with the owner's blind labels (`video_20261013-1231`):
+
+| How the video is picked | recipes with a right video | wrong videos shown | wrong ones shown as confirmed |
+|---|---|---|---|
+| YouTube's first result, no check | 36 | 4 | — |
+| first version of the check (v1) | 26 | 4 | 4 |
+| **the app** (check v2, else YouTube's first marked not confirmed) | **39** | 1 | **0** |
+
+The v2 check alone is never wrong on this set (27 of 27) but too cautious, so the marked
+fallback recovers the rest. Without transcripts (YouTube often blocks them on servers)
+the app gets 37 of 40 right, 1 wrong one shown as confirmed. Prompt v2 was written after
+looking at v1's mistakes on these recipes, so a fresh set would be the fair test.
 
 ## Chat (terminal)
 
