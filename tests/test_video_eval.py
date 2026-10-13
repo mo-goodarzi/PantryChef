@@ -82,6 +82,19 @@ def test_summarize_precision_and_coverage():
     assert s["transcript"]["shown"] == 2 and s["transcript"]["precision"] == 1.0
     assert s["transcript"]["right_of_recipes"] == 1 / 3
     assert s["description"]["shown_rate"] == 2 / 3 and s["description"]["wrong"] == 1
+    assert s["description"]["wrong_confirmed"] == 1 and s["youtube_top1"]["wrong_confirmed"] == 0
+
+
+def test_the_app_shows_the_checked_video_else_youtubes_first_as_unconfirmed():
+    choices = {
+        1: {"youtube_top1": "a", "description": None, "transcript": "b"},
+        2: {"youtube_top1": "c", "description": None, "transcript": None},
+        3: {"youtube_top1": "d", "description": None, "transcript": None},
+    }
+    labels = {(1, "b"): True, (2, "c"): False, (3, "d"): True}
+    app = summarize(choices, labels)["app"]
+    assert (app["shown"], app["right"], app["wrong"]) == (3, 2, 1)
+    assert app["wrong_confirmed"] == 0  # the wrong one was the unconfirmed fallback
 
 
 def test_a_blocked_transcript_is_not_cached_by_the_eval(tmp_path):
@@ -94,3 +107,14 @@ def test_a_blocked_transcript_is_not_cached_by_the_eval(tmp_path):
     with pytest.raises(Exception, match="IpBlocked"):
         cached.transcript("v1")
     assert "v1" not in cached.data["transcript"]
+
+
+def test_labels_of_videos_an_earlier_run_showed_are_kept(tmp_path):
+    path = tmp_path / "labels.csv"
+    write_sheet(sheet_rows(runs()), path)
+    path.write_text(path.read_text().replace("watch?v=v1,video 1,c,,", "watch?v=v1,video 1,c,no,"))
+    only_v2 = [
+        RecipeRun(recipe=TORTILLA, steps=STEPS, videos=[video(2)], chosen={"transcript": "v2"})
+    ]
+    assert write_sheet(sheet_rows(only_v2), path) == 1  # v2 still unlabeled
+    assert read_labels(path) == {(TORTILLA.recipe_id, "v1"): False}  # v1's label kept
