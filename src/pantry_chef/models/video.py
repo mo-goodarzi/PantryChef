@@ -39,8 +39,10 @@ class VideoResult(BaseModel):
 
 
 class VideoOutcome(BaseModel):
-    """What the user gets: a verified video, or only a YouTube search link."""
+    """What the user gets: a verified video; otherwise YouTube's top result, shown as
+    not confirmed (owner decision 2026-10-13); and always a YouTube search link."""
 
     video: VideoResult | None = None  # only ever a verified one
+    fallback: VideoResult | None = None  # YouTube's top result when nothing was verified
     search_url: str
     checked: list[VideoResult] = Field(default_factory=list)  # every video looked at (eval)

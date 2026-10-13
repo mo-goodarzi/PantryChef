@@ -521,6 +521,20 @@ def test_no_verified_video_gives_a_search_link(enriched_conn, state_conn):
     assert answer.video is None and answer.video_search_url == link
 
 
+def test_an_unconfirmed_top_result_is_passed_on_as_a_fallback(enriched_conn, state_conn):
+    from pantry_chef.models.video import VideoOutcome
+
+    top = a_video(None, ["step"]).video.model_copy(update={"verified": False})
+    link = "https://www.youtube.com/results?search_query=pancakes"
+    chat = video_chat(
+        enriched_conn, state_conn, lambda r, s: VideoOutcome(fallback=top, search_url=link)
+    )
+    choose_pancakes(chat)
+    answer = chat.reply(VideoReply(want=True)).answer
+    assert answer.video is None and answer.video_fallback.video_id == "v1"
+    assert answer.video_search_url == link
+
+
 def test_a_video_error_never_loses_the_recipe(enriched_conn, state_conn):
     def broken(recipe, steps):
         raise RuntimeError("transcript service down")

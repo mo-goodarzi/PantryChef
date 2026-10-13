@@ -398,6 +398,7 @@ class ChatNodes:
                 notes=notes,
                 disclaimer=health_disclaimer(state.profile, state.query),
                 video=state.video.video if state.video else None,
+                video_fallback=state.video.fallback if state.video else None,
                 video_search_url=(
                     state.video.search_url if state.video and not state.video.video else None
                 ),
