@@ -6,8 +6,11 @@ A multi-agent recipe assistant. Tell it what you have at home ("eggs, milk, toas
 it returns safe, suitable recipes you can actually make, checked against your allergies
 and diet, plus an optional matching YouTube video.
 
-**Status:** video agent (Phase 8, in progress: built, evaluation next) after the
-end-to-end evaluation of whole conversations (Phase 7), on top of the web UI
+**Live demo:** https://huggingface.co/spaces/mogoodarzi/pantry-chef (`v1.0`)
+
+**Status:** `v1.0`, evaluated and deployed (Phase 8): a checked YouTube video for the chosen
+recipe and a public demo on Hugging Face Spaces, after the end-to-end evaluation of whole
+conversations (Phase 7), on top of the web UI
 and API (Phase 6): a Streamlit chat over a FastAPI backend, runnable with Docker Compose.
 The same conversation also runs in the terminal (Phase 5b). See
 [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for the design and build order.

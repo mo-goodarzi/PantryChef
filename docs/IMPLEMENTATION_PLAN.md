@@ -489,9 +489,11 @@ precision of "verified" videos, and with vs. without transcript check.
 4. **Deploy** an MVP (see Phase 11, tasks 1–2).
 
 Acceptance criteria
-- Video agent never returns an unverified video as verified.
-- Quota usage per request logged.
-- Public demo running. Tag `v1.0`.
+- Video agent never returns an unverified video as verified. Done: 0 wrong videos shown
+  as confirmed on 40 labeled recipes; unverified ones are marked "not confirmed".
+- Quota usage per request logged. Done (`video.found`, `quota_used`).
+- Public demo running. Tag `v1.0`. Done 2026-10-13:
+  https://huggingface.co/spaces/mogoodarzi/pantry-chef
 
 ---
 
