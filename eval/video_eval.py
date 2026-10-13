@@ -9,16 +9,21 @@
    yes = you could cook this recipe by following the video (the same dish, mostly the same
    main ingredients; small variations are fine). no = another dish, a compilation, a review
    or vlog, or too little of the recipe to follow. `note` is optional.
-3. Score (writes eval/reports/video_<stamp>.md):
+3. If YouTube blocked transcripts during the export, later (when it answers again) fill in
+   only the transcript choice of those recipes; other choices and your labels stay:
+       uv run python eval/video_eval.py rerun-blocked
+   then label any new rows.
+4. Score (writes eval/reports/video_<stamp>.md):
        uv run python eval/video_eval.py score
 """
 
 import argparse
 import json
+import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from pantry_chef.agents.video import VideoFinder, YouTubeSource
+from pantry_chef.agents.video import VIDEOS_PER_SEARCH, VideoFinder, YouTubeSource
 from pantry_chef.config import get_settings
 from pantry_chef.db.connection import connect
 from pantry_chef.db.repository import load_steps
@@ -26,6 +31,7 @@ from pantry_chef.evaluation.e2e import load_candidate
 from pantry_chef.evaluation.video_eval import (
     VARIANTS,
     CachedSource,
+    RecipeRun,
     pick_recipes,
     read_labels,
     run_recipe,
@@ -43,7 +49,7 @@ SHEET = REPORTS / "video_labels.csv"
 SOURCE_CACHE = Path("data/processed/eval_cache/video_source.json")
 
 
-def export(n: int) -> None:
+def setup() -> tuple[sqlite3.Connection, CachedSource, dict[str, VideoFinder]]:
     settings = get_settings()
     if settings.youtube_api_key is None:
         raise SystemExit("YOUTUBE_API_KEY is missing in .env")
@@ -54,6 +60,25 @@ def export(n: int) -> None:
         "description": VideoFinder(source, llm, settings.video_model, use_transcripts=False),
         "transcript": VideoFinder(source, llm, settings.video_model, use_transcripts=True),
     }
+    return conn, source, finders
+
+
+def save_choices(model: str, prompt: str, choices: dict, blocked: list[int]) -> None:
+    saved = {"model": model, "prompt": prompt, "choices": choices, "transcript_blocked": blocked}
+    CHOICES.write_text(json.dumps(saved, indent=1) + "\n")
+
+
+def warn_if_blocked(blocked: int) -> None:
+    if blocked:
+        print(
+            f"\nWARNING: YouTube blocked transcripts for {blocked} recipes; their 'transcript' "
+            "choice read only title + description. Later, run: "
+            "uv run python eval/video_eval.py rerun-blocked"
+        )
+
+
+def export(n: int) -> None:
+    conn, source, finders = setup()
     start = usage.snapshot()
     runs = []
     for i, recipe_id in enumerate(pick_recipes(conn, n), start=1):
@@ -65,28 +90,47 @@ def export(n: int) -> None:
             f"[{i}/{n}] {run.recipe.name[:50]:50} "
             + " ".join(f"{v}={run.chosen[v]}" for v in VARIANTS)
         )
-    CHOICES.write_text(
-        json.dumps(
-            {
-                "model": settings.video_model,
-                "prompt": f"video_match v{finders['transcript'].prompt.version}",
-                "choices": {str(r.recipe.recipe_id): r.chosen for r in runs},
-                "transcript_blocked": [r.recipe.recipe_id for r in runs if r.blocked],
-            },
-            indent=1,
-        )
-        + "\n"
+    finder = finders["transcript"]
+    save_choices(
+        finder.model,
+        f"video_match v{finder.prompt.version}",
+        {str(r.recipe.recipe_id): r.chosen for r in runs},
+        [r.recipe.recipe_id for r in runs if r.blocked],
     )
     todo = write_sheet(sheet_rows(runs), SHEET)
-    blocked = sum(r.blocked for r in runs)
-    if blocked:
-        print(
-            f"\nWARNING: YouTube blocked transcripts for {blocked} recipes; their 'transcript' "
-            "choice read only title + description. Run export again later (cached results "
-            "are reused, only the missing transcripts are fetched)."
-        )
+    warn_if_blocked(sum(r.blocked for r in runs))
     print(f"\nLLM cost ${usage.priced_cost(usage.since(start)):.3f}")
     print(f"Label {todo} rows in {SHEET} (yes/no), then: uv run python eval/video_eval.py score")
+
+
+def rerun_blocked() -> None:
+    """The transcript choice again, only for recipes whose transcripts were blocked."""
+    saved = json.loads(CHOICES.read_text())
+    conn, source, finders = setup()
+    start = usage.snapshot()
+    still_blocked = []
+    for recipe_id in saved["transcript_blocked"]:
+        recipe = load_candidate(conn, recipe_id)
+        outcome = finders["transcript"].find(recipe, load_steps(conn, recipe_id))
+        chosen = outcome.video.video_id if outcome.video else None
+        saved["choices"][str(recipe_id)]["transcript"] = chosen
+        if any(r.transcript_blocked for r in outcome.checked):
+            still_blocked.append(recipe_id)
+        print(f"{recipe.name[:50]:50} transcript={chosen}")
+    save_choices(saved["model"], saved["prompt"], saved["choices"], still_blocked)
+    runs = [
+        RecipeRun(
+            recipe=(recipe := load_candidate(conn, int(recipe_id))),
+            steps=load_steps(conn, recipe.recipe_id),
+            videos=source.search(f"{recipe.name} recipe", VIDEOS_PER_SEARCH),
+            chosen=chosen,
+        )
+        for recipe_id, chosen in saved["choices"].items()
+    ]
+    todo = write_sheet(sheet_rows(runs), SHEET)  # keeps every label already given
+    warn_if_blocked(len(still_blocked))
+    print(f"\nLLM cost ${usage.priced_cost(usage.since(start)):.3f}")
+    print(f"{todo} rows still need a label in {SHEET}")
 
 
 def score() -> None:
@@ -135,11 +179,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("export").add_argument("--n", type=int, default=40)
+    sub.add_parser("rerun-blocked")
     sub.add_parser("score")
     args = parser.parse_args()
     configure_logging("WARNING")
     if args.command == "export":
         export(args.n)
+    elif args.command == "rerun-blocked":
+        rerun_blocked()
     else:
         score()
 

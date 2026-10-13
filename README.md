@@ -102,6 +102,10 @@ dish. Otherwise you get a YouTube search link and are told no video matched. Eac
 costs one search (100 of the 10,000 free daily quota units) and is cached in `state.db`.
 Without the key, the question is never asked.
 
+First measurement (40 random recipes, owner's blind labels, `video_20261013-1201`): YouTube's
+first result is already right for 36 of 40; the check as built finds a right video for
+only 26, with as many wrong ones (4). It is being reworked (see `docs/decisions.md`).
+
 ## Chat (terminal)
 
 ```bash

@@ -1212,3 +1212,30 @@ recipe's answer; the eval cache never stores a block. The export notes blocked r
 (the library supports paid proxies; YouTube's official captions API only serves the
 owner's own videos). The eval's description-only row shows what the app does without
 them; the owner decides after labeling.
+
+## 2026-10-13 — Video eval results: the check rejects too many good videos
+Owner's blind labels on 58 videos (50 yes, 7 no, 1 still open) for 40 random rated
+recipes (`eval/reports/video_20261013-1201.md`). The transcript row was completed after
+YouTube lifted the block (`eval/video_eval.py rerun-blocked`: only the blocked recipes'
+transcript choices were redone, so existing labels stayed valid).
+
+| Way to pick the video | recipes with a right video | wrong videos shown | recipes given only a link |
+|---|---|---|---|
+| YouTube's first result, no check | **36 of 40 (90%)** | 4 | 0 |
+| agent, transcript (the app) | 26 of 40 (65%) | 4 | 9 |
+| agent, title + description only | 23 of 40 (57%) | 2 | 15 |
+
+**The check is a net loss as built:** as many wrong videos as YouTube's first result, and
+10 fewer recipes with a right one. Of YouTube's 4 wrong first results it avoided 3 (apple
+martini, Mexican beef, shrimp-feta casseroles) and kept 1 (coconut refrigerator cake).
+Why it rejected the 19 good first results (re-checked one by one):
+- **11 by the ingredient count.** It reads only the transcript, and short or music-only
+  videos say few ingredient names (0% for "How to Make Pineapple Water",
+  "Traditional Flammkuchen"); the title and description are not counted.
+- **7 by the LLM**, stricter than the owner on variations the owner accepted (Mountain Dew
+  cake with yellow instead of orange cake mix, London broil seasoned differently, a lemon
+  loaf for a lemon pound cake).
+The owner's "no" labels are about a main ingredient that differs (the video adds rice,
+leaves out the eggs, has no sour cream), not seasoning or brand.
+
+Open: how to change the check (owner's decision); then re-measure on the same 40 recipes.
