@@ -267,8 +267,10 @@ def choice_cards(question: Question) -> None:
         for column, option in zip(st.columns(2), question.options[start : start + 2], strict=False):
             with column:
                 option_card(option)
-    if st.button("Show me other recipes", key="choose_more", icon=":material/refresh:"):
-        answer(ChoiceReply(more=True), "Show me other recipes.")
+    if question.can_show_more and st.button(
+        "Show me more recipes", key="choose_more", icon=":material/add:"
+    ):
+        answer(ChoiceReply(more=True), "Show me more recipes.")
         st.rerun()
 
 

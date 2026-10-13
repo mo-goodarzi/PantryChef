@@ -41,6 +41,7 @@ class Question(BaseModel):
     items: list[str] = Field(default_factory=list)  # QUANTITIES: canonical ingredient names
     options: list[RecipeOption] = Field(default_factory=list)  # CHOICE
     note: str | None = None  # e.g. "only one recipe passed all checks"
+    can_show_more: bool = True  # CHOICE: False once a "show me more" search found nothing
 
 
 class SafetyReply(BaseModel):

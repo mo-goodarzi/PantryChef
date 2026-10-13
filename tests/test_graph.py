@@ -329,13 +329,53 @@ def test_no_retry_when_feedback_cannot_change_the_query(enriched_conn, state_con
     assert turn.done and "couldn't find" in turn.reply
 
 
-def test_show_me_more_never_repeats_a_recipe(enriched_conn, state_conn):
+def test_show_me_more_adds_new_recipes_after_the_earlier_ones(enriched_conn, state_conn):
     find = ScriptedFind(found(verified(1), verified(2)), found(verified(3), verified(4)))
     chat = scripted_chat(enriched_conn, state_conn, find)
     through_safety(chat)
     turn = chat.reply(ChoiceReply(more=True))
-    assert find.queries[1].exclude_recipe_ids == [1, 2]
+    assert find.queries[1].exclude_recipe_ids == [1, 2]  # never repeats a recipe
+    assert [o.recipe_id for o in turn.question.options] == [1, 2, 3, 4]
+    assert [o.number for o in turn.question.options] == [1, 2, 3, 4]
+    assert turn.question.note == "Added 2 more recipes after the earlier ones."
+    assert turn.question.can_show_more
+
+    turn = chat.reply(ChoiceReply(more=True))
+    assert find.queries[2].exclude_recipe_ids == [1, 2, 3, 4]
+
+
+def test_an_earlier_recipe_can_still_be_chosen_after_show_me_more(enriched_conn, state_conn):
+    find = ScriptedFind(found(verified(1), verified(2)), found(verified(3), verified(4)))
+    chat = scripted_chat(enriched_conn, state_conn, find)
+    through_safety(chat)
+    chat.reply(ChoiceReply(more=True))
+    assert chat.reply(ChoiceReply(choice=2)).answer.recipe_id == 2
+
+
+def test_show_me_more_with_nothing_new_keeps_the_earlier_recipes(enriched_conn, state_conn):
+    find = ScriptedFind(found(verified(1), verified(2)), found())
+    chat = scripted_chat(enriched_conn, state_conn, find)
+    through_safety(chat)
+    turn = chat.reply(ChoiceReply(more=True))
+    assert [o.recipe_id for o in turn.question.options] == [1, 2]
+    assert "couldn't find other recipes" in turn.question.note
+    assert not turn.question.can_show_more
+    # Searching again would find nothing new: "more" is refused before resuming.
+    with pytest.raises(ValueError, match="no other recipes"):
+        chat.reply(ChoiceReply(more=True))
+    assert len(find.queries) == 2
+    assert chat.reply(ChoiceReply(choice=1)).answer.recipe_id == 1
+
+
+def test_a_new_request_starts_without_the_earlier_recipes(enriched_conn, state_conn):
+    find = ScriptedFind(found(verified(1), verified(2)), found(verified(3), verified(4)))
+    chat = scripted_chat(enriched_conn, state_conn, find)
+    through_safety(chat)
+    chat.reply(ChoiceReply(more=True))
+    chat.reply(ChoiceReply(choice=1))
+    turn = chat.send("I have flour, butter, eggs and milk")
     assert [o.recipe_id for o in turn.question.options] == [3, 4]
+    assert turn.question.note is None
 
 
 def test_empty_pantry_asks_for_ingredients_without_searching(enriched_conn, state_conn):
@@ -420,6 +460,31 @@ def test_quantity_answers_are_used_to_re_verify(enriched_conn, state_conn):
 
 
 ONE_EGG = AmountReply(quantity=1, status=AmountStatus.KNOWN)
+
+
+def test_amounts_given_after_show_me_more_re_check_the_earlier_recipes(enriched_conn, state_conn):
+    # The first options need no question; the new one does, and the answer rules out
+    # recipe 1 from the first search as well.
+    first = found(verified(1), verified(2))
+    find = ScriptedFind(first, found(verified(3, quantity_matters=True)))
+    checked = []
+
+    def reverify(candidates, query, items):
+        checked.append([c.recipe_id for c in candidates])
+        return [
+            verified(c.recipe_id, "fail" if c.recipe_id == 1 else "pass").verification
+            for c in candidates
+        ]
+
+    chat = scripted_chat(
+        enriched_conn, state_conn, find, quantity_question="when_it_matters", reverify=reverify
+    )
+    assert through_safety(chat).question.kind is QuestionKind.CHOICE
+    assert chat.reply(ChoiceReply(more=True)).question.kind is QuestionKind.QUANTITIES
+
+    turn = chat.reply(QuantityReply(amounts={"egg": ONE_EGG}))
+    assert checked == [[1, 2, 3]]
+    assert [o.recipe_id for o in turn.question.options] == [2, 3]
 
 
 def all_fail(candidates, query, items):  # the user has too little for every option

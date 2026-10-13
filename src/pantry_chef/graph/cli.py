@@ -84,7 +84,8 @@ def read_answer(question: Question, read: Callable[[str], str]) -> BaseModel:
         return QuantityReply(amounts=amounts)
     if question.kind is QuestionKind.VIDEO:
         return VideoReply(want=parse_yes_no(read("Find a video? (yes/no) ")))
-    return parse_choice(read("your choice (number or 'more')> "))
+    hint = "number or 'more'" if question.can_show_more else "number"
+    return parse_choice(read(f"your choice ({hint})> "))
 
 
 # --- showing turns -------------------------------------------------------------------

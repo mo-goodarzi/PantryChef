@@ -165,6 +165,21 @@ def no_recipe_message(reason_counts: dict[str, int]) -> str:
     return text + " Try adding a few more ingredients."
 
 
+def passed(results: list[VerifiedCandidate]) -> list[VerifiedCandidate]:
+    return [vc for vc in results if vc.verification.status is not VerificationStatus.FAIL]
+
+
+def choice_note(earlier: int, new: int) -> str | None:
+    """Above the options: what "show me more" added, or why there is only one."""
+    if earlier and not new:
+        return "I couldn't find other recipes that pass all checks; these are the earlier ones."
+    if earlier:
+        return f"Added {new} more recipe{'s' if new > 1 else ''} after the earlier ones."
+    if new < 2:
+        return "Only this recipe passed all checks; I searched a few times."
+    return None
+
+
 def health_disclaimer(profile: UserProfile | None, query: RecipeQuery | None) -> str | None:
     if profile and query and set(profile.health_diets) & set(query.diets):
         return DISCLAIMER
@@ -224,7 +239,7 @@ class ChatNodes:
                 "pantry_items": [],
                 "asked_quantities": [],
                 "questions_asked": 0,
-                "shown_ids": [],
+                "earlier": [],
                 "chosen": None,
                 "video": None,
                 "answer": None,
@@ -285,19 +300,23 @@ class ChatNodes:
         assert state.query is not None
         with span("node.quantity_check", items=len(items)):
             pantry_items = merge_amounts(state.pantry_items, reply)
-            candidates = [vc.candidate for vc in state.results]
+            # Options shown before "show me more" are checked again too: the amounts
+            # apply to them as well.
+            candidates = [vc.candidate for vc in state.earlier + state.results]
             verifications = self.deps.reverify(candidates, state.query, pantry_items)
-            results = [
+            rechecked = [
                 VerifiedCandidate(candidate=c, verification=v)
                 for c, v in zip(candidates, verifications, strict=True)
-                if v.status is not VerificationStatus.FAIL
             ]
+            earlier = passed(rechecked[: len(state.earlier)])
+            results = passed(rechecked[len(state.earlier) :])
             reasons = Counter(r.code.value for v in verifications for r in v.reasons)
             score("questions_asked", state.questions_asked + len(items))
             update: dict = {
                 "pantry_items": pantry_items,
                 "asked_quantities": state.asked_quantities + items,
                 "questions_asked": state.questions_asked + len(items),
+                "earlier": earlier,
                 "results": results,
                 "reason_counts": dict(Counter(state.reason_counts) + reasons),
                 "retry": False,
@@ -311,42 +330,42 @@ class ChatNodes:
             return update
 
     def present(self, state: ChatState) -> dict:
-        if not state.results:
+        # "Show me more" adds the new options after the earlier ones, which keep their
+        # numbers, so the user can still pick a recipe from the first search.
+        offered = state.earlier + state.results
+        if not offered:
             return {"reply": no_recipe_message(state.reason_counts)}
         options = [
             recipe_option(n, vc, self.deps.image(vc.candidate.recipe_id))
-            for n, vc in enumerate(state.results, start=1)
+            for n, vc in enumerate(offered, start=1)
         ]
-        note = None
-        if len(options) < 2:
-            note = "Only this recipe passed all checks; I searched a few times."
+        found_more = bool(state.results)
         reply = ChoiceReply.model_validate(
             ask(
                 Question(
                     kind=QuestionKind.CHOICE,
                     text="Which one would you like to make?",
                     options=options,
-                    note=note,
+                    note=choice_note(len(state.earlier), len(state.results)),
+                    can_show_more=found_more,
                 )
             )
         )
         assert state.query is not None
-        shown = state.shown_ids + [o.recipe_id for o in options]
         with span("node.present", options=len(options), more=reply.more):
             if reply.more or reply.choice is None:
                 score("user_accepted_recipe", 0)
+                shown = {vc.candidate.recipe_id for vc in offered}
                 query = state.query.model_copy(
                     update={
-                        "exclude_recipe_ids": sorted(
-                            set(state.query.exclude_recipe_ids) | set(shown)
-                        )
+                        "exclude_recipe_ids": sorted(set(state.query.exclude_recipe_ids) | shown)
                     }
                 )
-                return {"query": query, "attempts": 0, "results": [], "shown_ids": shown}
+                return {"query": query, "attempts": 0, "results": [], "earlier": offered}
             if not 1 <= reply.choice <= len(options):
                 raise ValueError(f"choice must be 1..{len(options)}, got {reply.choice}")
             score("user_accepted_recipe", 1)
-            return {"chosen": state.results[reply.choice - 1], "shown_ids": shown}
+            return {"chosen": offered[reply.choice - 1]}
 
     def ask_video(self, state: ChatState) -> dict:
         assert state.chosen is not None

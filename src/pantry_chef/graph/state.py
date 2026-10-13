@@ -35,7 +35,8 @@ class ChatState(BaseModel):
     pantry_items: list[PantryItem] = Field(default_factory=list)  # amounts the user gave
     asked_quantities: list[str] = Field(default_factory=list)  # never ask twice
     questions_asked: int = 0
-    shown_ids: list[int] = Field(default_factory=list)
+    # Options already shown for this request; "show me more" adds new ones after them.
+    earlier: list[VerifiedCandidate] = Field(default_factory=list)
     note: str | None = None  # honest note when fewer than 2 recipes passed
     chosen: VerifiedCandidate | None = None
     video: VideoOutcome | None = None  # when the user asked for a video

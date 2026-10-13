@@ -1317,3 +1317,13 @@ the API holds about 830 MB after a search, plus Streamlit; 1.1 GB of data (pantr
   the OpenAI side**: a separate API key in an OpenAI project with a monthly budget.
   YouTube will likely block transcripts from the Space; the video check then reads title
   and description (measured: 37 of 40 right).
+
+## 2026-10-13 — "Show me more" adds recipes instead of replacing them
+- The new search's recipes are added **after** the earlier ones, which keep their numbers,
+  so the user can still pick a recipe from the first search (before, they disappeared).
+  The new search still excludes every recipe already shown.
+- When amounts are asked after "more", the earlier options are re-verified with them too,
+  and any that now fail are dropped.
+- If the new search finds nothing, the earlier options are shown again with a note, and
+  "more" is switched off (`Question.can_show_more`): another search would only repeat the
+  failed one and cost LLM calls.
