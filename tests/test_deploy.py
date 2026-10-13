@@ -6,6 +6,7 @@ import re
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
 
 from pantry_chef.db.state import ProfileStore, open_state_db
@@ -139,3 +140,33 @@ def test_publish_refuses_a_public_repo(monkeypatch, tmp_path):
         assert "is public" in str(stop)
     else:
         raise AssertionError("expected a refusal")
+
+
+def test_only_a_clean_up_to_date_main_is_deployed(monkeypatch):
+    deploy_space = load_script("deploy_space")
+    state = {"branch": "main", "status": "", "head": "abc", "origin": "abc"}
+
+    def fake_git(*args):
+        if args[0] == "fetch":
+            return ""
+        if args[:2] == ("rev-parse", "--abbrev-ref"):
+            return state["branch"]
+        if args[0] == "status":
+            return state["status"]
+        if args == ("rev-parse", "HEAD"):
+            return state["head"]
+        if args == ("rev-parse", "origin/main"):
+            return state["origin"]
+        return "abc1234"  # --short HEAD
+
+    monkeypatch.setattr(deploy_space, "git", fake_git)
+    assert deploy_space.deployable_commit() == "abc1234"
+    for change, reason in [
+        ({"branch": "feature"}, "not on main"),
+        ({"status": " M ui/streamlit_app.py"}, "uncommitted changes"),
+        ({"origin": "def"}, "differs from origin/main"),
+    ]:
+        monkeypatch.setitem(state, next(iter(change)), next(iter(change.values())))
+        with pytest.raises(SystemExit, match=reason):
+            deploy_space.deployable_commit()
+        state.update({"branch": "main", "status": "", "head": "abc", "origin": "abc"})
