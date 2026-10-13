@@ -92,6 +92,22 @@ The API: `POST /sessions`, `POST /sessions/{id}/messages`, `POST /sessions/{id}/
 (answer the pending question), `GET /sessions/{id}`, `DELETE /sessions/{id}?forget=true`,
 `DELETE /users/{user}/profile` ("delete my data"), `GET /health`.
 
+## Hugging Face Space (public demo)
+
+The demo runs as a Docker Space: one container starts the API (inside the container only)
+and the UI on the Space's port; the recipe data is downloaded at start from a **private**
+dataset repo (the Kaggle data is not ours to publish). A daily LLM budget and a per-
+conversation step limit protect the API key (`DAILY_BUDGET_USD`, `MAX_TURNS_PER_SESSION`).
+
+```bash
+hf auth login                                     # a write token; Docker Spaces need PRO
+uv run python scripts/publish_data.py --repo <user>/pantry-chef-data       # private, ~1.2 GB
+uv run python scripts/deploy_space.py --space <user>/pantry-chef --data-repo <user>/pantry-chef-data
+```
+
+Then add the secrets in the Space settings: `OPENAI_API_KEY`, `YOUTUBE_API_KEY` and
+`HF_TOKEN` (a read token for the data repo).
+
 ## Video for the chosen recipe
 
 With `YOUTUBE_API_KEY` in `.env`, the app asks after you pick a recipe whether you want a
