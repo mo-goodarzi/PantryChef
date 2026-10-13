@@ -130,4 +130,8 @@ def test_video_question_and_answer_lines():
         in shown
     )
     link = render_answer(answer.model_copy(update={"video_search_url": "https://yt/s"}))
-    assert "No video clearly matched this recipe. Search: https://yt/s" in link
+    assert "Search YouTube: https://yt/s" in link
+    top = video.model_copy(update={"verified": False})
+    shown = render_answer(answer.model_copy(update={"video_fallback": top}))
+    assert "Top YouTube result, not confirmed to match this recipe: Fluffy pancakes" in shown
+    assert "checked against the recipe" not in shown

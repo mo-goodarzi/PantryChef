@@ -99,8 +99,8 @@ def test_the_prompt_has_every_variable():
         steps="s",
         video_title="t",
         channel="c",
-        text_source="transcript",
-        text="x",
+        description="d",
+        transcript="x",
     )
     assert "$" not in text
 
@@ -174,6 +174,8 @@ def test_an_llm_no_is_never_shown_as_verified():
     assert outcome.video is None
     assert outcome.search_url.startswith("https://www.youtube.com/results?search_query=")
     assert len(outcome.checked) == 2 and not any(r.verified for r in outcome.checked)
+    # YouTube's top result as a fallback, never marked verified
+    assert outcome.fallback.video_id == "v1" and not outcome.fallback.verified
 
 
 def test_without_a_transcript_the_title_and_description_are_read():
@@ -295,3 +297,22 @@ def test_a_blocked_transcript_falls_back_to_the_description_and_is_not_cached(tm
     assert outcome.video.transcript_blocked
     finder(source, Judge(same={"video 1"}), state).find(TORTILLA, STEPS)
     assert source.searches == 2  # asked again next time, when transcripts may work
+
+
+def test_the_title_and_description_count_even_with_a_transcript():
+    """A music-only video: the transcript names nothing, the title names the dish."""
+    pineapple = TORTILLA.model_copy(
+        update={"name": "pineapple water", "ingredients": [ingredient("pineapple")]}
+    )
+    clip = VideoCandidate(video_id="v1", title="How to Make Pineapple Water", channel="c")
+    source = FakeSource([clip], {"v1": "[Music] [Music]"})
+    judge = Judge(same={"How to Make Pineapple Water"})
+    outcome = finder(source, judge).find(pineapple, STEPS)
+
+    assert judge.asked == ["How to Make Pineapple Water"]  # passed the loose check
+    assert outcome.video is not None and outcome.video.text_source is TextSource.TRANSCRIPT
+
+
+def test_no_videos_at_all_means_no_fallback():
+    outcome = finder(FakeSource([], {}), Judge(set())).find(TORTILLA, STEPS)
+    assert outcome.video is None and outcome.fallback is None and outcome.search_url

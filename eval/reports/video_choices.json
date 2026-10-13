@@ -1,6 +1,6 @@
 {
  "model": "gpt-5.4-mini",
- "prompt": "video_match v1",
+ "prompt": "video_match v2",
  "choices": {
   "10490": {
    "youtube_top1": "lb1R1azInIA",
@@ -9,13 +9,13 @@
   },
   "13564": {
    "youtube_top1": "aFjv1PBToWM",
-   "description": "aFjv1PBToWM",
+   "description": "-ncPYUoGU80",
    "transcript": "aFjv1PBToWM"
   },
   "17306": {
    "youtube_top1": "oGIzGvKiLtk",
-   "description": "oGIzGvKiLtk",
-   "transcript": "IOavsEZXP2k"
+   "description": "AUFgFKxPTWg",
+   "transcript": "oGIzGvKiLtk"
   },
   "22912": {
    "youtube_top1": "C_NGy4WpyT0",
@@ -24,18 +24,18 @@
   },
   "29490": {
    "youtube_top1": "19JUbSz7iG0",
-   "description": "XXNCOeTiQuU",
+   "description": "19JUbSz7iG0",
    "transcript": "19JUbSz7iG0"
   },
   "30738": {
    "youtube_top1": "pYzGU5CEZOk",
-   "description": null,
+   "description": "UOV83yHrVTE",
    "transcript": "UOV83yHrVTE"
   },
   "32783": {
    "youtube_top1": "Zo_klJUfTdQ",
    "description": null,
-   "transcript": "Zo_klJUfTdQ"
+   "transcript": null
   },
   "38288": {
    "youtube_top1": "ME2n7nQwAKw",
@@ -55,17 +55,17 @@
   "63798": {
    "youtube_top1": "9C-RuG-iVXg",
    "description": "c7FTD_LINVE",
-   "transcript": "5l-5Aw45OLQ"
+   "transcript": "c7FTD_LINVE"
   },
   "64104": {
    "youtube_top1": "GgxTCyZIjxA",
    "description": "QLr0tDy9ugw",
-   "transcript": "GgxTCyZIjxA"
+   "transcript": "QLr0tDy9ugw"
   },
   "70005": {
    "youtube_top1": "8lLaXfaSiKI",
-   "description": "N1NdAhr9TWQ",
-   "transcript": null
+   "description": "8lLaXfaSiKI",
+   "transcript": "8lLaXfaSiKI"
   },
   "76787": {
    "youtube_top1": "E0bOy1FWkXA",
@@ -85,17 +85,17 @@
   "88479": {
    "youtube_top1": "2nGFEndetWU",
    "description": "Gy4PNtIqH7s",
-   "transcript": "Gy4PNtIqH7s"
+   "transcript": null
   },
   "91379": {
    "youtube_top1": "gyZTjayHpC0",
-   "description": "gyZTjayHpC0",
+   "description": null,
    "transcript": "77A3PZmp0oo"
   },
   "132249": {
    "youtube_top1": "YWnXOo1zYJ8",
    "description": "YWnXOo1zYJ8",
-   "transcript": "YWnXOo1zYJ8"
+   "transcript": null
   },
   "134397": {
    "youtube_top1": "6OT14Ne3BVo",
@@ -109,8 +109,8 @@
   },
   "140051": {
    "youtube_top1": "Ym2EipKdgsQ",
-   "description": null,
-   "transcript": "i1bJ_JyNusk"
+   "description": "hYJrhUj4JcI",
+   "transcript": "hYJrhUj4JcI"
   },
   "144878": {
    "youtube_top1": "OeobV_fXIo0",
@@ -125,12 +125,12 @@
   "148110": {
    "youtube_top1": "GeVFpgEDjCg",
    "description": null,
-   "transcript": "sshnnv4Oak4"
+   "transcript": null
   },
   "173100": {
    "youtube_top1": "keL-z92x2AY",
-   "description": "7R801Fn_fPs",
-   "transcript": "7R801Fn_fPs"
+   "description": null,
+   "transcript": null
   },
   "176227": {
    "youtube_top1": "IHJKUtjlwTY",
@@ -155,22 +155,22 @@
   "197461": {
    "youtube_top1": "9kvkhxa3K_w",
    "description": "9kvkhxa3K_w",
-   "transcript": "9kvkhxa3K_w"
+   "transcript": "NTs3cEaA_Ho"
   },
   "204569": {
    "youtube_top1": "lZXXOkr1ol4",
-   "description": "KIN0u64VS-Q",
+   "description": null,
    "transcript": "KIN0u64VS-Q"
   },
   "212394": {
    "youtube_top1": "nyaOv6lOJjs",
    "description": null,
-   "transcript": "1GMWn4IxVro"
+   "transcript": null
   },
   "247605": {
    "youtube_top1": "UCj6VjBaBro",
-   "description": "Oi3rj3r6DkI",
-   "transcript": "Oi3rj3r6DkI"
+   "description": "UCj6VjBaBro",
+   "transcript": "UCj6VjBaBro"
   },
   "304035": {
    "youtube_top1": "p3Kdj6b-eIA",
@@ -185,11 +185,11 @@
   "365298": {
    "youtube_top1": "QuQ4pIlg6rE",
    "description": "QuQ4pIlg6rE",
-   "transcript": null
+   "transcript": "QuQ4pIlg6rE"
   },
   "369923": {
    "youtube_top1": "M59kIod11kA",
-   "description": null,
+   "description": "efo7as2bK5g",
    "transcript": null
   },
   "395873": {
@@ -200,7 +200,7 @@
   "457805": {
    "youtube_top1": "gXOcQolV5Fc",
    "description": "gXOcQolV5Fc",
-   "transcript": "TbGJnlH4-C8"
+   "transcript": "gXOcQolV5Fc"
   }
  },
  "transcript_blocked": []

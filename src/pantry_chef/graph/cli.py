@@ -131,8 +131,11 @@ def render_answer(answer: FinalAnswer) -> str:
         v = answer.video
         lines.append(f"Video (checked against the recipe): {v.title} ({v.channel}) {v.url}")
         lines.append("  The video may use other ingredients; follow the list above.")
-    elif answer.video_search_url:
-        lines.append(f"No video clearly matched this recipe. Search: {answer.video_search_url}")
+    elif answer.video_fallback:
+        v = answer.video_fallback
+        lines.append(f"Top YouTube result, not confirmed to match this recipe: {v.title} {v.url}")
+    if not answer.video and answer.video_search_url:
+        lines.append(f"Search YouTube: {answer.video_search_url}")
     lines.append("Steps:")
     lines += [f" {n}. {step}" for n, step in enumerate(answer.steps, start=1)]
     lines += answer.notes

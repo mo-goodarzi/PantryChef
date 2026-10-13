@@ -97,6 +97,23 @@ def test_the_video_question_then_the_video_with_the_recipe(open_ui):
     assert any("follow the list above" in c.value for c in app.caption)
 
 
+def test_an_unconfirmed_video_is_shown_with_a_warning(open_ui):
+    from pantry_chef.models.video import VideoOutcome
+
+    from .test_graph import a_video
+
+    def top_result(recipe, steps):
+        top = a_video(recipe, steps).video.model_copy(update={"verified": False})
+        return VideoOutcome(fallback=top, search_url="https://www.youtube.com/results?q=x")
+
+    app = open_ui(video=top_result)
+    through_safety(app)
+    app.button(key="choose_1").click().run()
+    app.button(key="video_yes").click().run()
+    assert not app.exception
+    assert any("No video was confirmed" in w.value for w in app.warning)
+
+
 def test_show_me_other_recipes(open_ui):
     app = open_ui()
     through_safety(app)

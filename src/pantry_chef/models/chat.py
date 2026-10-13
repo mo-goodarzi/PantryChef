@@ -96,6 +96,8 @@ class FinalAnswer(BaseModel):
     notes: list[str] = Field(default_factory=list)  # e.g. allergies we can only check by name
     disclaimer: str | None = None  # when health-based restrictions were applied
     video: VideoResult | None = None  # only a verified video (agents/video.py)
+    # Asked for a video, none verified: YouTube's top result, shown as not confirmed
+    video_fallback: VideoResult | None = None
     video_search_url: str | None = None  # asked for a video, none verified: a search link
 
 

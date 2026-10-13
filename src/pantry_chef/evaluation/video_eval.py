@@ -23,6 +23,21 @@ from pantry_chef.models.recipe import Candidate
 from pantry_chef.models.video import VideoCandidate
 
 VARIANTS = ["youtube_top1", "description", "transcript"]
+# What the app shows: the transcript check's video, else YouTube's first result marked as
+# not confirmed (owner decision 2026-10-13). Derived from the two, not run separately.
+REPORTED = [*VARIANTS, "app"]
+CONFIRMED = {"youtube_top1": False, "description": True, "transcript": True}
+
+
+def shown(choice: dict[str, str | None], variant: str) -> tuple[str | None, bool]:
+    """(video shown, shown as confirmed) for one recipe."""
+    if variant == "app":
+        if choice["transcript"]:
+            return choice["transcript"], True
+        return choice["youtube_top1"], False
+    return choice[variant], CONFIRMED[variant]
+
+
 SHEET_FIELDS = [
     "recipe_id",
     "recipe_name",
@@ -131,13 +146,15 @@ def video_id_of(row: dict) -> str:
 
 
 def write_sheet(rows: list[dict], path: Path) -> int:
-    """Write the sheet, keeping labels already given for the same recipe and video.
+    """Write the sheet, keeping every label already given: rows of this run take their
+    old label, and labeled rows of earlier runs (another prompt version) stay at the end.
     Returns how many rows still need a label."""
     old = {(r["recipe_id"], video_id_of(r)): r for r in read_sheet(path)} if path.exists() else {}
     for row in rows:
-        kept = old.get((str(row["recipe_id"]), video_id_of(row)))
+        kept = old.pop((str(row["recipe_id"]), video_id_of(row)), None)
         if kept:
             row["label"], row["note"] = kept["label"], kept["note"]
+    rows = rows + [r for r in old.values() if r["label"].strip()]
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=SHEET_FIELDS)
@@ -162,20 +179,25 @@ def read_labels(path: Path) -> dict[tuple[int, str], bool]:
 
 
 def summarize(choices: dict[int, dict[str, str | None]], labels: dict) -> dict[str, dict]:
-    """Per variant: recipes, videos shown, how many are right, precision, unlabeled."""
+    """Per reported variant: videos shown, right / wrong (by the owner's labels), wrong
+    ones shown as confirmed (the number that must stay 0), unlabeled."""
     result = {}
-    for variant in VARIANTS:
-        shown = [(rid, c[variant]) for rid, c in choices.items() if c.get(variant)]
-        labeled = [labels[key] for key in shown if key in labels]
-        right = sum(labeled)
+    for variant in REPORTED:
+        videos = [(rid, *shown(c, variant)) for rid, c in choices.items()]
+        videos = [(rid, video, confirmed) for rid, video, confirmed in videos if video]
+        labeled = [
+            (labels[(rid, v)], confirmed) for rid, v, confirmed in videos if (rid, v) in labels
+        ]
+        right = sum(label for label, _ in labeled)
         result[variant] = {
             "recipes": len(choices),
-            "shown": len(shown),
-            "shown_rate": len(shown) / len(choices) if choices else 0.0,
+            "shown": len(videos),
+            "shown_rate": len(videos) / len(choices) if choices else 0.0,
             "right": right,
             "wrong": len(labeled) - right,
+            "wrong_confirmed": sum(confirmed and not label for label, confirmed in labeled),
             "precision": right / len(labeled) if labeled else None,
             "right_of_recipes": right / len(choices) if choices else 0.0,  # useful videos
-            "unlabeled": len(shown) - len(labeled),
+            "unlabeled": len(videos) - len(labeled),
         }
     return result

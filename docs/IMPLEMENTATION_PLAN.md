@@ -472,7 +472,9 @@ Acceptance criteria
 2. **Video verification:** fetch transcript with `youtube-transcript-api` (fallback: title
    + description). Score = overlap of the recipe's key ingredients mentioned + LLM judge
    ("same dish? yes/no + evidence"). Pick the best video above threshold; if none, return
-   a YouTube search link and say no verified match was found.
+   a YouTube search link and say no verified match was found. (Changed 2026-10-13 by the
+   owner after the eval: if none, show YouTube's top result marked "not confirmed",
+   plus the search link; see `docs/decisions.md`.)
 3. ~~**Quantity estimation**~~ Dropped 2026-10-09: amounts come from the recipe lines
    (`db/amounts.py`, see `docs/decisions.md`). Original plan, kept for reference:
    (`agents/quantity_estimator.py`): for candidate recipes only,

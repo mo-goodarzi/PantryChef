@@ -333,11 +333,17 @@ def show_video(answer: FinalAnswer) -> None:
             f"{answer.video.match_evidence} The video may use other ingredients; follow the "
             "list above for your allergies."
         )
-    elif answer.video_search_url:
-        st.caption(
-            ":material/smart_display: No video clearly matched this recipe. "
-            f"[Search YouTube]({answer.video_search_url})"
+    elif answer.video_fallback:
+        st.markdown("#### Video")
+        st.warning(
+            "No video was confirmed to match this recipe. This is YouTube's top result: "
+            "it may use other ingredients or steps, so follow the recipe above.",
+            icon=":material/help:",
         )
+        st.video(answer.video_fallback.url)
+        st.caption(f"{answer.video_fallback.title} ({answer.video_fallback.channel})")
+    if not answer.video and answer.video_search_url:
+        st.caption(f":material/smart_display: [More videos on YouTube]({answer.video_search_url})")
 
 
 def show_message(role: str, content: str | FinalAnswer) -> None:

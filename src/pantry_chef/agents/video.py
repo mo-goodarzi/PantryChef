@@ -1,14 +1,16 @@
 """Video agent: a YouTube video that really shows how to cook the chosen recipe.
 
 1. Search YouTube for "<recipe name> recipe" (top 5 embeddable videos).
-2. For each video, in YouTube's order, read what it says: the English transcript, or the
-   title + description when there is none.
-3. Code counts how many of the recipe's key ingredients the text mentions; below half, the
-   video is rejected without asking the LLM (saves calls).
+2. For each video, in YouTube's order, read what it says: title, description and the
+   English transcript (when there is one).
+3. Code counts how many of the recipe's key ingredients that text mentions; below a
+   quarter, the video is rejected without asking the LLM (a loose check that saves calls).
 4. The LLM judges "same dish?" from the text, with a short piece of evidence.
 5. The first video that passes both is returned as verified. If none does, the user gets
-   only a YouTube search link and is told no verified match was found: an unverified
-   video is never shown as a match.
+   YouTube's top result marked "not confirmed to match this recipe" (and a search link):
+   an unverified video is never shown as a match. Measured on 40 recipes with the owner's
+   labels (docs/decisions.md): every verified video was right, and the fallback recovers
+   the good videos the check is too cautious about.
 
 YouTube blocks transcript requests after many of them (and often from cloud servers):
 the agent then reads title + description and does not cache that answer.
@@ -53,8 +55,12 @@ SEARCH_URL = "https://www.googleapis.com/youtube/v3/search"
 VIDEOS_URL = "https://www.googleapis.com/youtube/v3/videos"
 SEARCH_COST, VIDEOS_COST = 100, 1  # YouTube Data API quota units per call
 VIDEOS_PER_SEARCH = 5
-MIN_OVERLAP = 0.5  # share of key ingredients the text must mention
+# A loose sanity check: share of key ingredients the title + description + transcript
+# mention. Telling right from wrong videos is the LLM's job: the owner's "no" videos are
+# near misses that mention the ingredients too (docs/decisions.md 2026-10-13).
+MIN_OVERLAP = 0.25
 MAX_TEXT_CHARS = 6000  # of the transcript sent to the LLM (~1,500 tokens)
+MAX_DESCRIPTION_CHARS = 1500
 # Words that say nothing about which ingredient it is ("fresh basil" -> "basil").
 GENERIC_WORDS = frozenset(
     {
@@ -265,7 +271,9 @@ class VideoFinder:
             checked.append(result)
             if result.verified:
                 return VideoOutcome(video=result, search_url=url, checked=checked)
-        return VideoOutcome(search_url=url, checked=checked)
+        # Nothing verified: YouTube's top result, which the UI marks as not confirmed.
+        fallback = checked[0] if checked else None
+        return VideoOutcome(fallback=fallback, search_url=url, checked=checked)
 
     def check(self, recipe: Candidate, steps: list[str], video: VideoCandidate) -> VideoResult:
         transcript, blocked = None, False
@@ -275,8 +283,9 @@ class VideoFinder:
             except TranscriptBlocked:
                 blocked = True  # read the title + description instead
         source = TextSource.TRANSCRIPT if transcript else TextSource.DESCRIPTION
-        text = transcript or f"{video.title}\n{video.description}"
-        share = overlap(key_terms(recipe), text)
+        share = overlap(
+            key_terms(recipe), f"{video.title}\n{video.description}\n{transcript or ''}"
+        )
         judgment = VideoJudgment(same_dish=False, evidence="too few key ingredients mentioned")
         if share >= MIN_OVERLAP:
             judgment = self.llm.generate(
@@ -287,8 +296,8 @@ class VideoFinder:
                 steps=" ".join(steps[:3])[:600] or "none listed",
                 video_title=video.title,
                 channel=video.channel,
-                text_source=source.value,
-                text=text[:MAX_TEXT_CHARS],
+                description=video.description[:MAX_DESCRIPTION_CHARS] or "none",
+                transcript=(transcript or "none (no English transcript)")[:MAX_TEXT_CHARS],
             )
         return VideoResult(
             video_id=video.video_id,

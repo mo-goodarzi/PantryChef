@@ -29,6 +29,7 @@ from pantry_chef.db.connection import connect
 from pantry_chef.db.repository import load_steps
 from pantry_chef.evaluation.e2e import load_candidate
 from pantry_chef.evaluation.video_eval import (
+    REPORTED,
     VARIANTS,
     CachedSource,
     RecipeRun,
@@ -141,7 +142,8 @@ def score() -> None:
     names = {
         "youtube_top1": "YouTube's first result, no check",
         "description": "checked, title + description only",
-        "transcript": "checked with the transcript (the app)",
+        "transcript": "checked with the transcript, nothing else",
+        "app": "**the app**: checked video, else YouTube's first marked not confirmed",
     }
     lines = [
         f"# Video agent eval — {stamp}",
@@ -150,15 +152,16 @@ def score() -> None:
         f"`{SHEET.name}` (blind, by the owner)",
         "",
         "| Variant | videos shown | precision (right of shown) | wrong videos shown "
-        "| recipes with a right video | unlabeled |",
-        "|---|---|---|---|---|---|",
+        "| wrong ones shown as confirmed | recipes with a right video | unlabeled |",
+        "|---|---|---|---|---|---|---|",
     ]
-    for variant in VARIANTS:
+    for variant in REPORTED:
         s = result[variant]
         precision = "-" if s["precision"] is None else f"{s['precision']:.0%}"
         lines.append(
             f"| {names[variant]} | {s['shown']} of {s['recipes']} ({s['shown_rate']:.0%}) "
-            f"| {precision} | {s['wrong']} | {s['right_of_recipes']:.0%} | {s['unlabeled']} |"
+            f"| {precision} | {s['wrong']} | {s['wrong_confirmed']} "
+            f"| {s['right']} ({s['right_of_recipes']:.0%}) | {s['unlabeled']} |"
         )
     blocked = saved.get("transcript_blocked", [])
     if blocked:
