@@ -220,6 +220,7 @@ class VideoFinder:
     ):
         self.source = source
         self.llm = llm
+        self.model = model
         self.prompt = load_prompt("video_match")
         self.state = state
         self.use_transcripts = use_transcripts
