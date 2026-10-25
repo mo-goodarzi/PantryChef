@@ -1379,3 +1379,29 @@ amounts, back to recipes, video); the Space logs show no errors, and as expected
 blocked transcripts on the server, so the video check read title and description.
 Limits on: $2 per UTC day, 40 steps per conversation; OpenAI-side project budget as the
 backstop. Phase 8's acceptance criteria are met; tagged `v1.0`.
+
+## 2026-10-25 — Servings question after the choice; amounts scaled in code
+- **Where:** a new `ask_servings` node after `present` (the choice) and before
+  `ask_video`. The amounts belong to one recipe, so the question comes once it is chosen.
+  It is skipped when the recipe does not say how many it serves (21% of recipes; servings
+  of 1 are stored as unknown, see the amounts entry), and the recipe is shown as written.
+- **Source:** the existing `recipes.servings` (from `recipes_w_search_terms.csv`), not
+  `RecipeServings` in irkaal's `recipes.csv`: the two agree on 99.99% of the 136k recipes
+  both have, and ours covers more (183k vs 149k). The extra 13k in irkaal's file are
+  mostly the site default of 1.
+- **Code, no model:** factor = wanted / recipe servings, applied to the leading number of
+  each line (`ingredients/scaling.py`) and to the parsed quantity. Ranges scale both ends,
+  packages scale by count, and unit words follow the number ("1 cup", "2 cups").
+  Kitchen fractions (eighths and thirds), whole numbers from 100 on, never below 1/8.
+- **Re-checked against the user's amounts:** with any amount known, the scaled recipe goes
+  through the verifier again (`reverify`); a shortfall becomes a note ("For 12 servings
+  you may not have enough egg: have 2, recipe needs 6 eggs"), not a failure. The user
+  chose the recipe and the number, so we warn rather than take it away.
+- **Steps are never rewritten** (as before): the answer says cooking times and pan sizes
+  are for the original servings.
+- Measured on all 2,025,765 lines with amounts: the scaler changes a line exactly when
+  the amount parser found a number in it, except 27 lines. Most of those are parser
+  mistakes the scaler correctly leaves alone ("1% low-fat milk", "7-Up soda", "9-inch pie
+  shell"); a few have a unit glued to the number ("2oz pine nuts") and are not scaled.
+- Not done (open): converting units as amounts grow (16 teaspoons -> 1/3 cup), and
+  seasoning or leavening that does not scale linearly. The amounts are exact multiples.
