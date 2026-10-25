@@ -2,7 +2,7 @@
 
 import pytest
 
-from pantry_chef.graph.cli import parse_amount, parse_choice, parse_yes_no, run
+from pantry_chef.graph.cli import parse_amount, parse_choice, parse_servings, parse_yes_no, run
 from pantry_chef.models.chat import AmountUnit
 from pantry_chef.models.query import AmountStatus
 
@@ -146,3 +146,34 @@ def test_video_question_and_answer_lines():
     shown = render_answer(answer.model_copy(update={"video_fallback": top}))
     assert "Top YouTube result, not confirmed to match this recipe: Fluffy pancakes" in shown
     assert "checked against the recipe" not in shown
+
+
+def test_parse_servings():
+    assert parse_servings(" 6 ").servings == 6
+    assert parse_servings("").servings is None  # Enter keeps the recipe as written
+    with pytest.raises(ValueError, match="whole number"):
+        parse_servings("two")
+    with pytest.raises(ValueError):  # outside 1..100
+        parse_servings("0")
+
+
+def test_servings_question_and_scaled_answer_lines():
+    from pantry_chef.graph.cli import read_answer, render_answer
+    from pantry_chef.models.chat import FinalAnswer, Question, QuestionKind
+
+    question = Question(kind=QuestionKind.SERVINGS, text="How many?", servings=4)
+    prompts = []
+    reply = read_answer(question, lambda prompt: prompts.append(prompt) or "2")
+    assert reply.servings == 2 and "Enter for 4" in prompts[0]
+
+    answer = FinalAnswer(
+        recipe_id=1,
+        name="rice",
+        minutes=20,
+        why_it_fits="Uses your rice.",
+        ingredients=["1 cup rice"],
+        servings=2,
+        scaled_from=4,
+        steps=["cook"],
+    )
+    assert "Ingredients (for 2 servings; the recipe serves 4):" in render_answer(answer)

@@ -12,12 +12,15 @@ from pydantic import BaseModel, Field
 from pantry_chef.models.query import AmountStatus
 from pantry_chef.models.video import VideoResult
 
+MAX_SERVINGS = 100
+
 
 class QuestionKind(StrEnum):
     SAFETY = "safety"  # allergies, diets, health (first session only)
     SAFETY_CONFIRM = "safety_confirm"  # confirm the proposed profile + consent to store it
     QUANTITIES = "quantities"  # how much of the items that matter (one batched question)
     CHOICE = "choice"  # pick one of the approved recipes, or ask for more
+    SERVINGS = "servings"  # how many servings to make (only when the recipe says)
     VIDEO = "video"  # look for a matching YouTube video? (only with a YouTube key)
 
 
@@ -50,6 +53,7 @@ class Question(BaseModel):
     options: list[RecipeOption] = Field(default_factory=list)  # CHOICE
     note: str | None = None  # e.g. "only one recipe passed all checks"
     can_show_more: bool = True  # CHOICE: False once a "show me more" search found nothing
+    servings: int | None = None  # SERVINGS: what the recipe makes as written
 
 
 class SafetyReply(BaseModel):
@@ -76,6 +80,10 @@ class ChoiceReply(BaseModel):
     more: bool = False  # "show me other recipes"
 
 
+class ServingsReply(BaseModel):
+    servings: int | None = Field(default=None, ge=1, le=MAX_SERVINGS)  # None = as written
+
+
 class VideoReply(BaseModel):
     want: bool  # look for a video of the chosen recipe
 
@@ -86,6 +94,7 @@ REPLY_MODELS: dict[QuestionKind, type[BaseModel]] = {
     QuestionKind.SAFETY_CONFIRM: ConfirmReply,
     QuestionKind.QUANTITIES: QuantityReply,
     QuestionKind.CHOICE: ChoiceReply,
+    QuestionKind.SERVINGS: ServingsReply,
     QuestionKind.VIDEO: VideoReply,
 }
 
@@ -96,7 +105,8 @@ class FinalAnswer(BaseModel):
     minutes: int
     why_it_fits: str
     ingredients: list[str]  # the recipe's own lines with amounts, or names where none
-    servings: int | None = None
+    servings: int | None = None  # what the amounts above make
+    scaled_from: int | None = None  # the recipe's own servings, when the amounts were scaled
     image_url: str | None = None  # full-size photo on Food.com's server
     steps: list[str]  # exactly as in the recipe database, never rewritten by an LLM
     adaptations: list[str] = Field(default_factory=list)

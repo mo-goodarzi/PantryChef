@@ -42,6 +42,7 @@ from pantry_chef.models.chat import (
     Question,
     QuestionKind,
     SafetyReply,
+    ServingsReply,
     VideoReply,
 )
 from pantry_chef.models.query import AmountStatus, Diet
@@ -98,6 +99,8 @@ class SimulatedUser:
             return QuantityReply(amounts={item: self.amount(item) for item in question.items})
         if kind is QuestionKind.CHOICE:
             return ChoiceReply(choice=1)
+        if kind is QuestionKind.SERVINGS:
+            return ServingsReply()  # as written: amounts are checked for the recipe itself
         if kind is QuestionKind.VIDEO:
             return VideoReply(want=False)
         raise ValueError(f"unknown question kind: {kind}")

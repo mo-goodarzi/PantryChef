@@ -234,3 +234,22 @@ def test_an_unreachable_api_is_shown_not_crashed():
     ask(app, "I have eggs")
     assert not app.exception
     assert "cannot reach the PantryChef API" in chat_text(app)
+
+
+def test_the_servings_question_scales_the_recipe(open_ui, enriched_conn):
+    from .test_graph import PANCAKES, load_pancake_amounts
+
+    load_pancake_amounts(enriched_conn)
+    enriched_conn.commit()
+    app = open_ui()
+    through_safety(app)
+    options = app.session_state["turn"].question.options
+    number = next(o.number for o in options if o.recipe_id == PANCAKES)
+    app.button(key=f"choose_{number}").click().run()
+    assert "serves 4" in chat_text(app)
+    assert app.number_input(key="servings_value").value == 4  # what the recipe makes
+
+    app.number_input(key="servings_value").set_value(2)
+    app.button(key="servings_send").click().run()
+    assert not app.exception
+    assert any("For 2 servings (the recipe serves 4)" in c.value for c in app.caption)

@@ -111,6 +111,18 @@ uv run python scripts/deploy_space.py --space <user>/pantry-chef --data-repo <us
 Then add the secrets in the Space settings: `OPENAI_API_KEY`, `YOUTUBE_API_KEY` and
 `HF_TOKEN` (a read token for the data repo).
 
+## Servings for the chosen recipe
+
+After you pick a recipe, the app asks how many servings you want to make (when the recipe
+says how many it serves: 79% of recipes) and scales every ingredient line in code: a
+recipe for 2 made for 8 turns "2 cups rice" into "8 cups rice" and "400 g chicken" into
+"1600 g chicken". Amounts are shown as kitchen fractions ("1 1/2 cups", never "1.5"),
+packages scale by their count ("1 (8 ounce) bottle", not "4 ounce"), and lines without a
+number ("salt, to taste") stay as they are. If you gave amounts earlier, the scaled recipe
+is checked against them again and the answer says what you may be short of. The steps are
+never rewritten, so cooking times and pan sizes are for the original recipe (the answer
+says so).
+
 ## Video for the chosen recipe
 
 With `YOUTUBE_API_KEY` in `.env`, the app asks after you pick a recipe whether you want a

@@ -2,9 +2,10 @@
 
 START -> load_profile -> [safety_question -> safety_confirm]* -> parse_request -> search
 search -> search (retry with verifier feedback, max 3 attempts) -> [quantity_check] ->
-present -> [ask_video] -> respond -> END; quantity_check goes back to search when the
-amounts rule out every option; "show me more" goes from present back to search;
-ask_video only with a YouTube key. "Back to the recipes" after an answer goes from START
+present -> ask_servings -> [ask_video] -> respond -> END; quantity_check goes back to
+search when the amounts rule out every option; "show me more" goes from present back to
+search; ask_servings asks only when the recipe says how many it serves; ask_video only
+with a YouTube key. "Back to the recipes" after an answer goes from START
 straight to present, with the same options.
 """
 
@@ -31,6 +32,7 @@ def build_graph(
     graph.add_node("search", n.search)
     graph.add_node("quantity_check", n.quantity_check)
     graph.add_node("present", n.present)
+    graph.add_node("ask_servings", n.ask_servings)
     graph.add_node("ask_video", n.ask_video)
     graph.add_node("respond", n.respond)
 
@@ -49,10 +51,11 @@ def build_graph(
         ["search", "quantity_check", "present"],
     )
     graph.add_conditional_edges("quantity_check", nodes.after_quantity_check, ["search", "present"])
+    graph.add_conditional_edges("present", nodes.after_present, ["ask_servings", "search", END])
     graph.add_conditional_edges(
-        "present",
-        partial(nodes.after_present, offer_video=deps.video is not None),
-        ["ask_video", "respond", "search", END],
+        "ask_servings",
+        partial(nodes.after_ask_servings, offer_video=deps.video is not None),
+        ["ask_video", "respond"],
     )
     graph.add_edge("ask_video", "respond")
     graph.add_edge("respond", END)

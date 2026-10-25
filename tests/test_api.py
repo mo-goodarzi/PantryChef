@@ -200,3 +200,24 @@ def test_the_daily_budget_blocks_new_turns_when_spent(make_client):
     with pytest.raises(ApiError) as error:
         client.send(client.new_session(), "I have eggs")
     assert error.value.status == 429 and "today's budget" in error.value.message
+
+
+def test_the_servings_question_over_http(make_client, enriched_conn):
+    from pantry_chef.models.chat import ServingsReply
+
+    from .test_graph import load_pancake_amounts
+
+    load_pancake_amounts(enriched_conn)
+    enriched_conn.commit()
+    client = make_client(default_llm())
+    session = client.new_session()
+    pancakes = next(
+        o for o in through_safety(client, session).question.options if o.recipe_id == PANCAKES
+    )
+
+    turn = client.reply(session, ChoiceReply(choice=pancakes.number))
+    assert turn.type is TurnType.QUESTION and turn.question.kind is QuestionKind.SERVINGS
+    turn = client.reply(session, ServingsReply(servings=8))
+    assert turn.type is TurnType.FINAL
+    assert turn.answer.servings == 8 and turn.answer.scaled_from == 4
+    assert turn.answer.ingredients[0] == "4 cups flour"

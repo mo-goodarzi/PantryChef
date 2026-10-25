@@ -21,6 +21,7 @@ from pantry_chef.db.images import CARD, FULL, sized
 from pantry_chef.db.state import ProfileStore
 from pantry_chef.graph.state import MAX_ATTEMPTS, ChatState
 from pantry_chef.ingredients.quantities import unit_kind
+from pantry_chef.ingredients.scaling import scale_factor, scale_recipe
 from pantry_chef.ingredients.weights import load_weights
 from pantry_chef.llm.factory import StructuredLLM
 from pantry_chef.models.chat import (
@@ -33,12 +34,14 @@ from pantry_chef.models.chat import (
     QuestionKind,
     RecipeOption,
     SafetyReply,
+    ServingsReply,
     VideoReply,
 )
 from pantry_chef.models.profile import UserProfile
 from pantry_chef.models.query import AmountStatus, PantryItem, RecipeQuery
 from pantry_chef.models.recipe import Candidate
 from pantry_chef.models.verification import (
+    FailureCode,
     VerificationResult,
     VerificationStatus,
     VerifiedCandidate,
@@ -208,6 +211,22 @@ def health_disclaimer(profile: UserProfile | None, query: RecipeQuery | None) ->
     return None
 
 
+def scaled_notes(
+    servings: int, recipe_servings: int, recheck: VerificationResult | None
+) -> list[str]:
+    """What scaling does not change, and amounts the user may now be short of."""
+    notes = [
+        f"Amounts are adjusted from the recipe's {recipe_servings} servings to {servings}; "
+        "cooking times and pan sizes in the steps are for the original recipe."
+    ]
+    for reason in recheck.reasons if recheck else []:
+        if reason.code is FailureCode.INSUFFICIENT_QUANTITY:
+            notes.append(
+                f"For {servings} servings you may not have enough {reason.item}: {reason.detail}."
+            )
+    return notes
+
+
 # --- nodes ---------------------------------------------------------------------------
 
 
@@ -264,6 +283,8 @@ class ChatNodes:
                 "earlier": [],
                 "back": False,
                 "chosen": None,
+                "recipe_servings": None,
+                "wanted_servings": None,
                 "video": None,
                 "answer": None,
                 "reply": None,
@@ -395,7 +416,26 @@ class ChatNodes:
             if not 1 <= reply.choice <= len(options):
                 raise ValueError(f"choice must be 1..{len(options)}, got {reply.choice}")
             score("user_accepted_recipe", 1)
-            return {"chosen": offered[reply.choice - 1], "back": False}
+            chosen = offered[reply.choice - 1]
+            return {
+                "chosen": chosen,
+                "recipe_servings": self.deps.servings(chosen.candidate.recipe_id),
+                "wanted_servings": None,
+                "back": False,
+            }
+
+    def ask_servings(self, state: ChatState) -> dict:
+        if state.recipe_servings is None:  # the recipe does not say: shown as written
+            return {}
+        text = (
+            f"This recipe serves {state.recipe_servings}. How many servings would you like to make?"
+        )
+        reply = ServingsReply.model_validate(
+            ask(Question(kind=QuestionKind.SERVINGS, text=text, servings=state.recipe_servings))
+        )
+        wanted = reply.servings or state.recipe_servings
+        score("servings_scaled", int(wanted != state.recipe_servings))
+        return {"wanted_servings": wanted}
 
     def ask_video(self, state: ChatState) -> dict:
         assert state.chosen is not None
@@ -418,15 +458,16 @@ class ChatNodes:
 
     def respond(self, state: ChatState) -> dict:
         assert state.chosen is not None
-        vc = state.chosen
-        with span("node.respond", recipe_id=vc.candidate.recipe_id):
+        factor = scale_factor(state.recipe_servings, state.wanted_servings)
+        with span("node.respond", recipe_id=state.chosen.candidate.recipe_id, scaled=bool(factor)):
+            vc, scale_notes = self.scaled(state, factor) if factor else (state.chosen, [])
             uses = ingredients_with_status(vc, {"available", "substitute"})
             why = vc.candidate.rerank_reason or (
                 f"Uses your {', '.join(uses)}; ready in {vc.candidate.minutes} minutes."
                 if uses
                 else f"Ready in {vc.candidate.minutes} minutes."
             )
-            notes = []
+            notes = scale_notes
             if state.profile and state.profile.other_allergies:
                 notes.append(
                     f"I left out recipes listing {', '.join(state.profile.other_allergies)}, "
@@ -438,7 +479,8 @@ class ChatNodes:
                 minutes=vc.candidate.minutes,
                 why_it_fits=why,
                 ingredients=[i.amount_text or i.name for i in vc.candidate.ingredients],
-                servings=self.deps.servings(vc.candidate.recipe_id),
+                servings=state.wanted_servings if factor else state.recipe_servings,
+                scaled_from=state.recipe_servings if factor else None,
                 image_url=sized(self.deps.image(vc.candidate.recipe_id), FULL),
                 steps=self.deps.steps(vc.candidate.recipe_id),
                 adaptations=vc.verification.adaptations,
@@ -453,6 +495,25 @@ class ChatNodes:
                 ),
             )
             return {"answer": answer}
+
+    def scaled(self, state: ChatState, factor: float) -> tuple[VerifiedCandidate, list[str]]:
+        """The chosen recipe with its amounts scaled, checked again against the amounts
+        the user gave (more servings may need more than they have)."""
+        assert state.chosen is not None and state.query is not None
+        assert state.recipe_servings is not None and state.wanted_servings is not None
+        recipe = scale_recipe(state.chosen.candidate, factor)
+        verification = state.chosen.verification
+        recheck = None
+        if any(item.amount_status is AmountStatus.KNOWN for item in state.pantry_items):
+            recheck = self.deps.reverify([recipe], state.query, state.pantry_items)[0]
+            verification = verification.model_copy(
+                update={
+                    "adaptations": recheck.adaptations,
+                    "ingredient_status": recheck.ingredient_status,
+                }
+            )
+        notes = scaled_notes(state.wanted_servings, state.recipe_servings, recheck)
+        return VerifiedCandidate(candidate=recipe, verification=verification), notes
 
 
 # --- routing -------------------------------------------------------------------------
@@ -485,9 +546,13 @@ def after_quantity_check(state: ChatState) -> str:
     return "search" if state.retry else "present"
 
 
-def after_present(state: ChatState, offer_video: bool = False) -> str:
+def after_present(state: ChatState) -> str:
     if state.reply is not None:
         return END
     if state.chosen is None:
         return "search"
+    return "ask_servings"
+
+
+def after_ask_servings(state: ChatState, offer_video: bool = False) -> str:
     return "ask_video" if offer_video else "respond"

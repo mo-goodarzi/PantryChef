@@ -25,6 +25,7 @@ from pantry_chef.models.chat import (
     Question,
     QuestionKind,
     SafetyReply,
+    ServingsReply,
     Turn,
     VideoReply,
 )
@@ -65,6 +66,16 @@ def parse_amount(text: str, unit: AmountUnit = AmountUnit.COUNT) -> AmountReply:
     return AmountReply(quantity=quantity, unit=given.strip() or asked, status=AmountStatus.KNOWN)
 
 
+def parse_servings(text: str) -> ServingsReply:
+    """ "4" -> 4 servings; empty -> as the recipe is written."""
+    word = text.strip()
+    if not word:
+        return ServingsReply()
+    if not word.isdigit():
+        raise ValueError("type a whole number of servings, or press Enter to keep the recipe")
+    return ServingsReply(servings=int(word))
+
+
 def parse_choice(text: str) -> ChoiceReply:
     word = text.strip().lower()
     if word in {"more", "m", "other", "others"}:
@@ -89,6 +100,8 @@ def read_answer(question: Question, read: Callable[[str], str]) -> BaseModel:
             hint = "grams" if unit is AmountUnit.GRAMS else "how many"
             amounts[item] = parse_amount(read(f"  {item} ({hint}): "), unit)
         return QuantityReply(amounts=amounts)
+    if question.kind is QuestionKind.SERVINGS:
+        return parse_servings(read(f"servings (Enter for {question.servings})> "))
     if question.kind is QuestionKind.VIDEO:
         return VideoReply(want=parse_yes_no(read("Find a video? (yes/no) ")))
     hint = "number or 'more'" if question.can_show_more else "number"
@@ -128,6 +141,8 @@ def render_answer(answer: FinalAnswer) -> str:
     if answer.image_url:
         lines.append(f"Photo (Food.com): {answer.image_url}")
     serves = f" (serves {answer.servings})" if answer.servings else ""
+    if answer.scaled_from:
+        serves = f" (for {answer.servings} servings; the recipe serves {answer.scaled_from})"
     lines.append(f"Ingredients{serves}:")
     lines += [f" - {item}" for item in answer.ingredients]
     lines += [f"ALLERGY: {warning}" for warning in answer.warnings]
