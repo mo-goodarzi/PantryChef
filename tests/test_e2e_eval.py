@@ -34,6 +34,7 @@ from pantry_chef.models.chat import (
     Question,
     QuestionKind,
     SafetyReply,
+    ServingsReply,
 )
 from pantry_chef.models.query import AmountStatus
 from pantry_chef.models.recipe import Candidate, RecipeIngredient
@@ -63,6 +64,8 @@ def test_simulated_user_answers_each_question_the_same_way():
         correct=True, consent_to_store=False
     )
     assert user.answer(Question(kind=QuestionKind.CHOICE, text="?")) == ChoiceReply(choice=1)
+    servings = Question(kind=QuestionKind.SERVINGS, text="?", servings=4)
+    assert user.answer(servings) == ServingsReply()  # the recipe as written
     reply = user.answer(Question(kind=QuestionKind.QUANTITIES, text="?", items=["egg", "milk"]))
     assert reply.amounts["egg"] == AmountReply(quantity=2, status=AmountStatus.KNOWN)
     assert reply.amounts["milk"].status is AmountStatus.UNKNOWN  # not in the hidden amounts

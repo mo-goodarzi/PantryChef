@@ -17,6 +17,7 @@ import streamlit as st
 from pantry_chef.api.client import ApiError, PantryChefClient
 from pantry_chef.api.schemas import TurnOut, TurnType
 from pantry_chef.models.chat import (
+    MAX_SERVINGS,
     AmountReply,
     AmountUnit,
     ChoiceReply,
@@ -27,6 +28,7 @@ from pantry_chef.models.chat import (
     QuestionKind,
     RecipeOption,
     SafetyReply,
+    ServingsReply,
     VideoReply,
 )
 from pantry_chef.models.profile import UserProfile
@@ -51,6 +53,7 @@ STEP_OF_KIND = {
     QuestionKind.SAFETY_CONFIRM: 1,
     QuestionKind.QUANTITIES: 2,
     QuestionKind.CHOICE: 3,
+    QuestionKind.SERVINGS: 4,
     QuestionKind.VIDEO: 4,
 }
 
@@ -295,6 +298,22 @@ def choice_cards(question: Question) -> None:
         st.rerun()
 
 
+def servings_form(question: Question) -> None:
+    with st.form("servings", border=True):
+        servings = st.number_input(
+            "Servings",
+            min_value=1,
+            max_value=MAX_SERVINGS,
+            value=question.servings or 1,
+            step=1,
+            key="servings_value",
+        )
+        st.caption("The ingredient amounts are adjusted to this number.")
+        if st.form_submit_button("Continue", key="servings_send", type="primary"):
+            answer(ServingsReply(servings=int(servings)), f"{int(servings)} servings, please.")
+            st.rerun()
+
+
 def video_form(question: Question) -> None:
     yes, no = st.columns(2)
     if yes.button(
@@ -312,6 +331,7 @@ FORMS = {
     QuestionKind.SAFETY_CONFIRM: confirm_form,
     QuestionKind.QUANTITIES: quantity_form,
     QuestionKind.CHOICE: choice_cards,
+    QuestionKind.SERVINGS: servings_form,
     QuestionKind.VIDEO: video_form,
 }
 
@@ -328,7 +348,9 @@ def show_answer(answer: FinalAnswer) -> None:
     ingredients, extras = st.columns([3, 2])
     with ingredients:
         st.markdown("#### Ingredients")
-        if answer.servings:
+        if answer.scaled_from:
+            st.caption(f"For {answer.servings} servings (the recipe serves {answer.scaled_from})")
+        elif answer.servings:
             st.caption(f"Serves {answer.servings}")
         st.markdown("\n".join(f"- {item}" for item in answer.ingredients))
     with extras:

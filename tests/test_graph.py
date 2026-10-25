@@ -37,6 +37,7 @@ from pantry_chef.models.chat import (
     QuantityReply,
     QuestionKind,
     SafetyReply,
+    ServingsReply,
     VideoReply,
 )
 from pantry_chef.models.query import AmountStatus, Diet, RecipeQuery
@@ -125,22 +126,81 @@ def test_first_visit_asks_safety_then_offers_recipes_then_answers(enriched_conn,
     assert llm.calls == ["safety_intake", "request_parsing"]
 
 
-def test_answer_shows_the_recipe_amounts_and_servings(enriched_conn, state_conn):
+def load_pancake_amounts(conn):
     lines = ["2   cups    flour", "3   tablespoons    sugar", "1/2  teaspoon    salt"]
     lines += ["1   tablespoon    baking powder", "2       eggs", "1/4  cup    butter"]
     lines += ["1 3/4  cups    milk"]
     amounts = [{"id": PANCAKES, "ingredients_raw_str": json.dumps(lines), "servings": 4}]
-    load_amounts(enriched_conn, pd.DataFrame(amounts))
+    load_amounts(conn, pd.DataFrame(amounts))
+
+
+def pick_pancakes(chat, turn):
+    pancakes = next(o for o in turn.question.options if o.recipe_id == PANCAKES)
+    return chat.reply(ChoiceReply(choice=pancakes.number))
+
+
+def test_answer_shows_the_recipe_amounts_and_servings(enriched_conn, state_conn):
+    load_pancake_amounts(enriched_conn)
     llm = ScriptedLLM(safety_intake=SafetyAnswer(), request_parsing=BAKING)
     chat = conversation(make_deps(enriched_conn, state_conn, llm))
 
-    options = through_safety(chat).question.options
-    pancakes = next(o for o in options if o.recipe_id == PANCAKES)
-    answer = chat.reply(ChoiceReply(choice=pancakes.number)).answer
+    turn = pick_pancakes(chat, through_safety(chat))
+    assert turn.question.kind is QuestionKind.SERVINGS
+    assert turn.question.servings == 4 and "serves 4" in turn.question.text
+    answer = chat.reply(ServingsReply()).answer  # as written
 
     assert answer.ingredients[0] == "2 cups flour"
     assert "1 3/4 cups milk" in answer.ingredients
-    assert answer.servings == 4
+    assert answer.servings == 4 and answer.scaled_from is None
+    assert not any("adjusted" in note for note in answer.notes)
+
+
+@pytest.mark.parametrize(
+    ("servings", "flour", "eggs", "milk"),
+    [
+        (2, "1 cup flour", "1 egg", "7/8 cup milk"),
+        (8, "4 cups flour", "4 eggs", "3 1/2 cups milk"),
+        (6, "3 cups flour", "3 eggs", "2 5/8 cups milk"),
+    ],
+)
+def test_answer_amounts_are_scaled_to_the_wanted_servings(
+    enriched_conn, state_conn, servings, flour, eggs, milk
+):
+    load_pancake_amounts(enriched_conn)
+    llm = ScriptedLLM(safety_intake=SafetyAnswer(), request_parsing=BAKING)
+    chat = conversation(make_deps(enriched_conn, state_conn, llm))
+
+    pick_pancakes(chat, through_safety(chat))
+    answer = chat.reply(ServingsReply(servings=servings)).answer
+
+    assert answer.ingredients[0] == flour
+    assert eggs in answer.ingredients and milk in answer.ingredients
+    assert answer.servings == servings and answer.scaled_from == 4
+    assert any("from the recipe's 4 servings" in note for note in answer.notes)
+    assert answer.steps == load_steps(enriched_conn, PANCAKES)  # steps are never rewritten
+
+
+def test_scaled_amounts_are_checked_against_what_the_user_has(enriched_conn, state_conn):
+    load_pancake_amounts(enriched_conn)
+    llm = ScriptedLLM(safety_intake=SafetyAnswer(), request_parsing=BAKING)
+    chat = conversation(make_deps(enriched_conn, state_conn, llm, quantity_question="always"))
+
+    turn = through_safety(chat)
+    assert turn.question.kind is QuestionKind.QUANTITIES and "egg" in turn.question.items
+    two_eggs = AmountReply(quantity=2, status=AmountStatus.KNOWN)
+    turn = chat.reply(QuantityReply(amounts={"egg": two_eggs}))
+    pick_pancakes(chat, turn)  # 2 eggs: enough for the recipe as written
+    answer = chat.reply(ServingsReply(servings=12)).answer  # needs 6
+
+    assert "6 eggs" in answer.ingredients
+    assert any("not have enough egg" in note for note in answer.notes)
+
+
+def test_the_servings_question_is_skipped_when_the_recipe_does_not_say(enriched_conn, state_conn):
+    llm = ScriptedLLM(safety_intake=SafetyAnswer(), request_parsing=BAKING)
+    chat = conversation(make_deps(enriched_conn, state_conn, llm))
+    turn = pick_pancakes(chat, through_safety(chat))
+    assert turn.done and turn.answer.servings is None and turn.answer.scaled_from is None
 
 
 def test_cards_and_answer_show_the_recipe_photo(enriched_conn, state_conn):
@@ -747,6 +807,10 @@ def test_routing():
     assert nodes.after_search(state, ask_quantities=False) == "present"
     assert nodes.after_present(state.model_copy(update={"reply": "x"})) == nodes.END
     assert nodes.after_present(state) == "search"  # "show me more"
+    chosen = state.model_copy(update={"chosen": verified(1)})
+    assert nodes.after_present(chosen) == "ask_servings"
+    assert nodes.after_ask_servings(chosen, offer_video=True) == "ask_video"
+    assert nodes.after_ask_servings(chosen) == "respond"
 
 
 def test_close_refuses_to_skip_deletion_silently(enriched_conn, state_conn):

@@ -40,6 +40,8 @@ class ChatState(BaseModel):
     back: bool = False  # "back to the recipes": the next run starts at present
     note: str | None = None  # honest note when fewer than 2 recipes passed
     chosen: VerifiedCandidate | None = None
+    recipe_servings: int | None = None  # what the chosen recipe makes (None: unknown)
+    wanted_servings: int | None = None  # what the user wants to make (None: as written)
     video: VideoOutcome | None = None  # when the user asked for a video
     answer: FinalAnswer | None = None
     reply: str | None = None  # a plain message instead of a recipe (e.g. empty pantry)
