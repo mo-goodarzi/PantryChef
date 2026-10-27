@@ -221,3 +221,24 @@ def test_the_servings_question_over_http(make_client, enriched_conn):
     assert turn.type is TurnType.FINAL
     assert turn.answer.servings == 8 and turn.answer.scaled_from == 4
     assert turn.answer.ingredients[0] == "4 cups flour"
+
+
+@pytest.mark.parametrize(
+    ("status", "body", "message"),
+    [
+        (500, b"Internal Server Error", "something went wrong on our side"),  # plain text
+        (502, b"", "something went wrong on our side"),
+        (409, b'{"detail": "this session has no pending question"}', "no pending question"),
+        (404, b"Not Found", "Not Found"),
+    ],
+)
+def test_client_turns_any_error_body_into_a_message(status, body, message):
+    import httpx
+
+    from pantry_chef.api.client import PantryChefClient
+
+    transport = httpx.MockTransport(lambda request: httpx.Response(status, content=body))
+    client = PantryChefClient(http=httpx.Client(base_url="http://api", transport=transport))
+    with pytest.raises(ApiError, match=message) as error:
+        client.new_session()
+    assert error.value.status == status
