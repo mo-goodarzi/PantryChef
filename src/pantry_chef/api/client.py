@@ -17,6 +17,22 @@ class ApiError(Exception):
         self.message = message
 
 
+SERVER_ERROR = "something went wrong on our side; please try again in a moment"
+
+
+def error_message(response: httpx.Response) -> str:
+    """The API's `detail`, when the error body is JSON. An unexpected server error (e.g. an
+    LLM provider failure) comes back as plain text "Internal Server Error": a general
+    message instead, never a crash."""
+    try:
+        detail = response.json().get("detail")
+    except ValueError:  # not JSON
+        detail = None
+    if detail:
+        return str(detail)
+    return SERVER_ERROR if response.status_code >= 500 else response.reason_phrase
+
+
 class PantryChefClient:
     def __init__(self, base_url: str = "http://localhost:8000", http: httpx.Client | None = None):
         # LLM calls (rerank, matcher) can take a while on a cold cache.
@@ -30,8 +46,7 @@ class PantryChefClient:
                 503, f"cannot reach the PantryChef API ({type(error).__name__})"
             ) from error
         if response.status_code >= 400:
-            detail = response.json().get("detail") if response.content else None
-            raise ApiError(response.status_code, str(detail or response.reason_phrase))
+            raise ApiError(response.status_code, error_message(response))
         return response
 
     def health(self) -> bool:
