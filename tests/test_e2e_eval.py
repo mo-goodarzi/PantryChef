@@ -1,6 +1,7 @@
 """End-to-end eval: the simulated user drives the real graph on the fixture database
 (scripted LLM), and code checks what was shown against the case's truth."""
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -320,3 +321,34 @@ def test_report_has_one_row_per_variant(tmp_path):
     assert "| chat | 100% | 100% | 5.00 |" in text
     assert "| coverage-only | 100% | 0% | 2.00 |" in text
     assert "a weak fit" in text and "a sauce" in text
+
+
+def test_a_temp_cases_file_is_not_named_by_its_absolute_path(tmp_path):
+    # tmp_path is under /tmp on Linux and /private/var on macOS: outside the repo
+    cases_file = tmp_path / "rerun.json"
+    cases_file.write_text('[{"id": "s43"}]')
+    meta = {"timestamp": "t", "cases_file": str(cases_file), "models": "m", "stopped": None}
+    md, data = write_report({"chat": [E2EResult("s43", "g", recipe_id=1)]}, meta, tmp_path)
+    for text in (md.read_text(), data.read_text()):
+        assert "ad-hoc (1 cases, not committed, sha256 " in text
+        for leak in ("/tmp", "/Users", "/private", str(tmp_path), "rerun.json"):
+            assert leak not in text
+
+
+def test_a_cases_file_in_the_repo_is_named_from_the_repo_root(tmp_path):
+    assert e2e.describe_cases(e2e.REPO_ROOT / "eval/cases/e2e.json", 10) == (
+        "10 (`eval/cases/e2e.json`)"
+    )
+    root = tmp_path / "repo"
+    (root / "eval").mkdir(parents=True)
+    (root / "eval" / "c.json").write_text("[]")
+    assert e2e.describe_cases(root / "eval" / ".." / "eval" / "c.json", 3, root) == (
+        "3 (`eval/c.json`)"
+    )
+    # outside the root: named by content, so two runs on the same cases can be matched
+    outside = tmp_path / "rerun.json"
+    outside.write_text("[]")
+    digest = hashlib.sha256(b"[]").hexdigest()[:12]
+    assert e2e.describe_cases(outside, 0, root) == (
+        f"ad-hoc (0 cases, not committed, sha256 {digest})"
+    )

@@ -8,6 +8,7 @@ pipeline understood. So a parsing mistake ("coeliac" read as a diet only) shows 
 failure here even when every later step did its job.
 """
 
+import hashlib
 import json
 import sqlite3
 import time
@@ -49,6 +50,7 @@ from pantry_chef.models.query import AmountStatus, Diet
 from pantry_chef.models.recipe import Candidate
 
 MAX_TURNS = 10  # replies; a conversation needing more is stuck (counted as an error)
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 class TrueAmount(BaseModel):
@@ -397,6 +399,17 @@ def summary_row(variant: str, s: dict) -> str:
     )
 
 
+def describe_cases(path: str | Path, n: int, root: Path = REPO_ROOT) -> str:
+    """How a report names its cases file, never as an absolute path (that would show the
+    machine's folders): the path from the repo root, or, for a file outside the repo (a
+    temp file, not committed), "ad-hoc" and a short hash of its content."""
+    file = Path(path).resolve()
+    if file.is_relative_to(root.resolve()):
+        return f"{n} (`{file.relative_to(root.resolve()).as_posix()}`)"
+    digest = hashlib.sha256(file.read_bytes()).hexdigest()[:12]
+    return f"ad-hoc ({n} cases, not committed, sha256 {digest})"
+
+
 def write_report(
     all_results: dict[str, list[E2EResult]], meta: dict, out_dir: Path
 ) -> tuple[Path, Path]:
@@ -407,10 +420,12 @@ def write_report(
     md_path, json_path = out_dir / f"e2e_{stamp}.md", out_dir / f"e2e_{stamp}.json"
     summaries = {v: summarize(r) for v, r in all_results.items()}
     n = max((s["cases"] for s in summaries.values()), default=0)
+    cases = describe_cases(meta["cases_file"], n)
+    meta = {**meta, "cases_file": cases.replace("`", "")}  # the JSON too
     lines = [
         f"# End-to-end evaluation — {stamp}",
         "",
-        f"Cases: {n} (`{meta['cases_file']}`) | models: {meta['models']} | judge: "
+        f"Cases: {cases} | models: {meta['models']} | judge: "
         f"{meta.get('judge', '-')} | simulated user: confirms the safety read-back, answers "
         "amounts from the hidden truth, picks option 1",
     ]
