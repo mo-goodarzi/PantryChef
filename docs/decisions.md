@@ -1151,8 +1151,8 @@ suites, gpt-5.4-mini.
   their own (`1614`, 8 of 8 pass); the table combines both.
 - **e095 ("Tengo huevos, papas y cebolla"):** no recipe once. Request parsing sometimes
   keeps the Spanish names (`huevos, papas, cebolla`: 1 of 3 tries), which match nothing;
-  the case passed 3 of 3 when repeated (`1615`). Not caused by the amounts work; open:
-  the request-parsing prompt could ask for English ingredient names.
+  the case passed 3 of 3 when repeated (`archive/e2e_20261010-1615`). Not caused by the
+  amounts work; open: the request-parsing prompt could ask for English ingredient names.
 
 ## 2026-10-10 — Phase 8: video agent
 Built as planned (`agents/video.py`, `ask_video` after the choice, then `respond`), with
