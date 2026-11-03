@@ -25,3 +25,11 @@ repos:
         entry: uv run ruff format
         language: system
         types_or: [python, pyi]
+      # no absolute paths to this machine in anything committed (e2e reports once named
+      # their temp cases files this way)
+      - id: no-local-paths
+        name: no local paths
+        entry: uv run python scripts/check_local_paths.py
+        language: system
+        types: [text]
+        exclude: ^scripts/check_local_paths\.py$
