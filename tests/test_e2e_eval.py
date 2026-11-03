@@ -25,7 +25,7 @@ from pantry_chef.evaluation.e2e import (
     too_little,
     write_report,
 )
-from pantry_chef.evaluation.judge import CachedJudge, Judgment, JudgmentBatch
+from pantry_chef.evaluation.judge import CachedJudge, ReasonedJudgment, ReasonedJudgmentBatch
 from pantry_chef.ingredients.allergens import Allergen
 from pantry_chef.llm import usage
 from pantry_chef.models.chat import (
@@ -291,8 +291,8 @@ class OneScoreJudgeLLM:
     def generate(self, prompt, schema, **variables):
         self.wishes.append(variables["wish"])
         ids = [r["recipe_id"] for r in json.loads(variables["recipes"])]
-        return JudgmentBatch(
-            judgments=[Judgment(recipe_id=i, score=self.score, reason="r") for i in ids]
+        return ReasonedJudgmentBatch(
+            judgments=[ReasonedJudgment(recipe_id=i, reasoning="r", score=self.score) for i in ids]
         )
 
 

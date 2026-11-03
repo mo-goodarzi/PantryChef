@@ -3,7 +3,14 @@ import json
 import pytest
 
 from pantry_chef.evaluation.cases import SearchCase
-from pantry_chef.evaluation.judge import CachedJudge, Judgment, JudgmentBatch, recipe_summaries
+from pantry_chef.evaluation.judge import (
+    CachedJudge,
+    JudgeSpec,
+    JudgmentBatch,
+    ReasonedJudgmentBatch,
+    create_judge,
+    recipe_summaries,
+)
 from pantry_chef.evaluation.search_eval import evaluate_variant, summarize
 from pantry_chef.models.query import NutritionGoal
 from pantry_chef.search.engine import SearchOptions, find_recipes
@@ -18,22 +25,25 @@ class FakeJudgeLLM:
     def __init__(self):
         self.calls = []
         self.wishes = []
+        self.schemas = []
 
     def generate(self, prompt, schema, **variables):
-        assert prompt.name == "preference_judge" and schema is JudgmentBatch
+        assert prompt.name == "preference_judge"
+        assert schema is {"1": JudgmentBatch, "2": ReasonedJudgmentBatch}[prompt.version]
         recipes = json.loads(variables["recipes"])
         self.calls.append([r["recipe_id"] for r in recipes])
         self.wishes.append(variables["wish"])
-        return JudgmentBatch(
-            judgments=[
-                Judgment(
-                    recipe_id=r["recipe_id"],
-                    score=5 if "pancake" in r["name"] else 2,
-                    reason="test",
-                )
-                for r in recipes
-            ]
-        )
+        self.schemas.append(schema)
+        judgments = [
+            {
+                "recipe_id": r["recipe_id"],
+                "score": 5 if "pancake" in r["name"] else 2,
+                "reason": "test",  # v1
+                "reasoning": "test",  # v2
+            }
+            for r in recipes
+        ]
+        return schema.model_validate({"judgments": judgments})
 
 
 def test_recipe_summaries_skip_generic_tags(enriched_conn):
@@ -159,3 +169,57 @@ def test_another_judge_model_does_not_reuse_cached_verdicts(enriched_conn, tmp_p
     second.model_name = "gpt-5.4-nano"
     CachedJudge(second, tmp_path / "j.json").judge(enriched_conn, CASE, [PANCAKES])
     assert second.calls == [[PANCAKES]]  # asked again: a new ruler, new verdicts
+
+
+def test_prompt_v1_stays_runnable_and_v2_reasons_before_the_score(enriched_conn, tmp_path):
+    llm = FakeJudgeLLM()
+    old = CachedJudge(llm, tmp_path / "j.json", JudgeSpec("openai", "m", "1"))
+    new = CachedJudge(llm, tmp_path / "j.json", JudgeSpec("openai", "m", "2"))
+    assert old.prompt.version == "1" and new.prompt.version == "2"
+    assert old.judge(enriched_conn, CASE, [PANCAKES])[PANCAKES].score == 5
+    judgment = new.judge(enriched_conn, CASE, [PANCAKES])[PANCAKES]
+    assert judgment.score == 5 and judgment.reason == "test"  # reasoning becomes the reason
+    assert llm.schemas == [JudgmentBatch, ReasonedJudgmentBatch]  # another version, asked again
+    fields = list(
+        ReasonedJudgmentBatch.model_json_schema()["$defs"]["ReasonedJudgment"]["properties"]
+    )
+    assert fields.index("reasoning") < fields.index("score")
+
+
+def test_the_same_model_name_from_another_provider_is_another_judge(enriched_conn, tmp_path):
+    llm = FakeJudgeLLM()
+    CachedJudge(llm, tmp_path / "j.json", JudgeSpec("openai", "m", "1")).judge(
+        enriched_conn, CASE, [PANCAKES]
+    )
+    CachedJudge(llm, tmp_path / "j.json", JudgeSpec("anthropic", "m", "1")).judge(
+        enriched_conn, CASE, [PANCAKES]
+    )
+    assert llm.calls == [[PANCAKES], [PANCAKES]]
+
+
+def test_judge_spec_round_trips():
+    spec = JudgeSpec.parse("anthropic:claude-sonnet-5-5:v2")
+    assert spec == JudgeSpec("anthropic", "claude-sonnet-5-5", "2")
+    assert str(spec) == "anthropic:claude-sonnet-5-5:v2"
+    assert spec.label == "claude-sonnet-5-5 (preference_judge v2)"
+
+
+def test_create_judge_uses_the_judge_provider_not_the_pipeline_one(tmp_path):
+    from pydantic import SecretStr
+
+    from pantry_chef.config import Settings
+
+    settings = Settings(
+        llm_provider="openai",
+        llm_model="gpt-5.4-mini",
+        judge_provider="anthropic",
+        judge_model="claude-sonnet-5-5",
+        judge_prompt_version="2",
+        anthropic_api_key=SecretStr("test"),
+        openai_api_key=SecretStr("test"),
+    )
+    judge = create_judge(settings, tmp_path / "j.json")  # builds the client, no request
+    assert judge.spec == JudgeSpec("anthropic", "claude-sonnet-5-5", "2")
+    assert (judge.llm.provider, judge.llm.model_name) == ("anthropic", "claude-sonnet-5-5")
+    old = create_judge(settings, tmp_path / "j.json", JudgeSpec.parse("openai:gpt-5.4-mini:v1"))
+    assert (old.llm.provider, old.prompt.version) == ("openai", "1")
