@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     chroma_path: Path = Path("data/processed/chroma")
 
     # LLM
-    llm_provider: Literal["openai"] = "openai"
+    llm_provider: Literal["openai", "anthropic"] = "openai"
     # One model per role, so cheap steps can use a small model while safety checks and the
     # eval judge stay fixed (docs/decisions.md, "Model per role").
     # Request parsing, safety intake, rerank and the ingredient matcher:
@@ -36,7 +36,11 @@ class Settings(BaseSettings):
     label_model: str = "gpt-5.4-mini"
     wish_fit_model: str = "gpt-5.4-mini"  # the wish-fit check (agents/wish_fit.py)
     video_model: str = "gpt-5.4-mini"  # the video match check (agents/video.py)
-    judge_model: str = "gpt-5.4-mini"  # eval only: the preference judge (keep it fixed)
+    # Eval only: the preference judge (keep it fixed). Its own provider, so the judge is
+    # not the model family it grades (docs/decisions.md, "Judge v2").
+    judge_provider: Literal["openai", "anthropic"] = "openai"
+    judge_model: str = "gpt-5.4-mini"
+    judge_prompt_version: str = "1"  # preference_judge.md version
     wish_fit_enabled: bool = True  # chat: remove recipes that clearly miss the wish
     llm_reasoning_effort: Literal["minimal", "low", "medium", "high"] = "low"
     llm_timeout_seconds: float = 120
