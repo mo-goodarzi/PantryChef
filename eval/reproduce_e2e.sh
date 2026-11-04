@@ -11,6 +11,9 @@ run --cases eval/cases/safety.json \
     --variants chat,no-verifier,coverage-only,sql-off,no-safety --max-cost 5
 run --cases eval/cases/e2e.json --variants chat,no-verifier,coverage-only --max-cost 6
 
+# Named cuisines (docs/decisions.md "Cuisine-aware search")
+run --cases eval/cases/cuisine.json --variants chat --max-cost 1
+
 # Quantity question: never / when it matters (the app's default) / always
 run --cases eval/cases/quantities.json \
     --variants ask-never,ask-when-it-matters,ask-always --max-cost 3

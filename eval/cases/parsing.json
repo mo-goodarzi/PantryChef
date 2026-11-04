@@ -1,5 +1,5 @@
 {
- "_note": "Hand-written cases for eval/run_parsing_eval.py. intake: diets = every diet in the profile (chosen + health). requests: wish_words must each appear in the wish; allowed_extra_avoid = allergy words the model may also copy into avoid (stricter, not a mistake).",
+ "_note": "Hand-written cases for eval/run_parsing_eval.py. intake: diets = every diet in the profile (chosen + health). requests: wish_words must each appear in the wish; cuisine = the one cuisine the query must carry (absent = none: a dish found in many cuisines, several cuisines, or a negation); allowed_extra_avoid = allergy words the model may also copy into avoid (stricter, not a mistake).",
  "intake": [
   {"id": "s01", "answer": "none"},
   {"id": "s02", "answer": "I'm allergic to peanuts", "allergens": ["peanuts"]},
@@ -34,7 +34,7 @@
   {"id": "r05", "message": "tofu, soy sauce and some spring onions. I'm allergic to sesame", "pantry": ["tofu", "soy sauce", "spring onions"], "allergens": ["sesame"], "allowed_extra_avoid": ["sesame"]},
   {"id": "r06", "message": "what can I make with flour, butter, sugar and eggs in under an hour", "pantry": ["flour", "butter", "sugar", "eggs"], "max_minutes": 60},
   {"id": "r07", "message": "leftover rice, frozen peas, 2 eggs", "pantry": ["rice", "peas", "eggs"]},
-  {"id": "r08", "message": "Beef mince, tomatoes, onion. Something Mexican for dinner with lots of protein", "pantry": ["beef mince", "tomatoes", "onion"], "wish_words": ["mexican", "dinner"], "goals": ["high_protein"]},
+  {"id": "r08", "message": "Beef mince, tomatoes, onion. Something Mexican for dinner with lots of protein", "pantry": ["beef mince", "tomatoes", "onion"], "wish_words": ["mexican", "dinner"], "goals": ["high_protein"], "cuisine": "mexican"},
   {"id": "r09", "message": "canned tuna, mayo and bread", "pantry": ["tuna", "mayo", "bread"]},
   {"id": "r10", "message": "spinach, feta and puff pastry. I'm allergic to almonds", "pantry": ["spinach", "feta", "puff pastry"], "allergens": ["tree_nuts"], "allowed_extra_avoid": ["almonds"]},
   {"id": "r11", "message": "salmon fillets, lemon, dill. 20 min max", "pantry": ["salmon", "lemon", "dill"], "max_minutes": 20},
@@ -46,11 +46,20 @@
   {"id": "r17", "message": "shrimp, garlic, butter and linguine. My wife is allergic to mussels", "pantry": ["shrimp", "garlic", "butter", "linguine"], "allergens": ["molluscs"], "allowed_extra_avoid": ["mussels"]},
   {"id": "r18", "message": "cream cheese, smoked salmon, bagels", "pantry": ["cream cheese", "smoked salmon", "bagels"]},
   {"id": "r19", "message": "eggs, spinach, mushrooms - 10 minutes, no onions", "pantry": ["eggs", "spinach", "mushrooms"], "max_minutes": 10, "avoid": ["onions"]},
-  {"id": "r20", "message": "rice noodles, peanuts, lime, bean sprouts. Thai street food vibe", "pantry": ["rice noodles", "peanuts", "lime", "bean sprouts"], "wish_words": ["thai"]},
+  {"id": "r20", "message": "rice noodles, peanuts, lime, bean sprouts. Thai street food vibe", "pantry": ["rice noodles", "peanuts", "lime", "bean sprouts"], "wish_words": ["thai"], "cuisine": "thai"},
   {"id": "r21", "message": "half a cabbage, sausages and some potatoes", "pantry": ["cabbage", "sausages", "potatoes"]},
   {"id": "r22", "message": "coconut milk, curry paste, chicken thighs. I'm allergic to fish, careful with fish sauce", "pantry": ["coconut milk", "curry paste", "chicken thighs"], "allergens": ["fish"], "allowed_extra_avoid": ["fish", "fish sauce"]},
   {"id": "r23", "message": "apples, cinnamon, oats for a dessert, nothing too heavy", "pantry": ["apples", "cinnamon", "oats"], "wish_words": ["dessert"]},
   {"id": "r24", "message": "Got quinoa, black beans, corn, avocado. Lunch for work, high in protein, 25 mins", "pantry": ["quinoa", "black beans", "corn", "avocado"], "wish_words": ["lunch"], "goals": ["high_protein"], "max_minutes": 25},
-  {"id": "r25", "message": "milk and cereal, that's it", "pantry": ["milk", "cereal"]}
+  {"id": "r25", "message": "milk and cereal, that's it", "pantry": ["milk", "cereal"]},
+  {"id": "r26", "message": "rice noodles, shrimp, eggs, bean sprouts. pad thai tonight", "pantry": ["rice noodles", "shrimp", "eggs", "bean sprouts"], "wish_words": ["pad thai"], "cuisine": "thai"},
+  {"id": "r27", "message": "chicken thighs, onion, tomatoes, yogurt. I fancy a curry", "pantry": ["chicken thighs", "onion", "tomatoes", "yogurt"], "wish_words": ["curry"]},
+  {"id": "r28", "message": "salmon, rice, cucumber, soy sauce - something japanese", "pantry": ["salmon", "rice", "cucumber", "soy sauce"], "wish_words": ["japanese"], "cuisine": "japanese"},
+  {"id": "r29", "message": "I have tortillas, cheddar and black beans, want tacos", "pantry": ["tortillas", "cheddar", "black beans"], "wish_words": ["taco"], "cuisine": "mexican"},
+  {"id": "r30", "message": "egg noodles, carrots, soy sauce, garlic. some noodles", "pantry": ["egg noodles", "carrots", "soy sauce", "garlic"], "wish_words": ["noodle"]},
+  {"id": "r31", "message": "chicken, rice, lime, onion. mexican or thai, not sure", "pantry": ["chicken", "rice", "lime", "onion"]},
+  {"id": "r32", "message": "pasta, chicken, cream, mushrooms. anything but italian tonight", "pantry": ["pasta", "chicken", "cream", "mushrooms"]},
+  {"id": "r33", "message": "chicken drumsticks, buttermilk, flour. southern comfort food", "pantry": ["chicken drumsticks", "buttermilk", "flour"], "wish_words": ["southern"], "cuisine": "southern-united-states"},
+  {"id": "r34", "message": "sushi rice, nori, salmon, avocado. I'd love to make sushi", "pantry": ["sushi rice", "nori", "salmon", "avocado"], "wish_words": ["sushi"], "cuisine": "japanese"}
  ]
 }

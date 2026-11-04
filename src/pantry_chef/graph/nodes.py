@@ -269,14 +269,16 @@ class ChatNodes:
             return {"profile": profile, "proposed": None}
 
     def parse_request(self, state: ChatState) -> dict:
-        with span("node.parse_request"):
+        with span("node.parse_request") as meta:
             request = interpret_request(self.deps.llm, state.message)
+            meta["cuisine"] = request.cuisine.value if request.cuisine else None
             reset = {
                 "request": request,
                 "attempts": 0,
                 "retry": False,
                 "results": [],
                 "reason_counts": {},
+                "cuisine_fallback": False,
                 "pantry_items": [],
                 "asked_quantities": [],
                 "questions_asked": 0,
@@ -316,6 +318,8 @@ class ChatNodes:
                 "results": approved,
                 # Over the whole request, so "nothing found" can still say why.
                 "reason_counts": dict(Counter(state.reason_counts) + reasons),
+                "cuisine_fallback": state.cuisine_fallback
+                or bool(result.cuisine and result.cuisine.fallback),
                 "retry": False,
             }
             if len(approved) < 2 and attempt < MAX_ATTEMPTS:

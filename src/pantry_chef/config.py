@@ -63,6 +63,7 @@ class Settings(BaseSettings):
     coverage_pool: int = 1000  # top recipes by coverage that get a semantic score
     semantic_neighbors: int = 2000  # nearest recipes to the wish, added to the pool
     usage_weight: float = 0.5  # ingredient score = (1 - w) * coverage + w * pantry usage
+    cuisine_boost: float = 0.10  # added to the final score of recipes in the asked cuisine
 
     # Conversation
     # The quantity question (docs/decisions.md): "off", "when_it_matters" (key items whose

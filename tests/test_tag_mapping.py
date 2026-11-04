@@ -44,3 +44,10 @@ def test_mapping_lists_have_no_duplicates():
     assert len(cuisines) == len(set(cuisines))
     meal_tags = [tag for tag, _ in MEAL_TYPE_BY_TAG]
     assert len(meal_tags) == len(set(meal_tags))
+
+
+def test_the_cuisine_enum_is_exactly_the_tag_vocabulary():
+    from pantry_chef.db.tag_mapping import CUISINE_TAGS, Cuisine
+
+    assert [c.value for c in Cuisine] == CUISINE_TAGS
+    assert Cuisine("tex-mex").value == "tex-mex"

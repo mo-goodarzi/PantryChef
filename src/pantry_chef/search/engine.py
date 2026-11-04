@@ -1,6 +1,7 @@
 """Search pipeline.
 
-search():        hard filters -> ingredient coverage -> (semantic re-scoring) -> candidates
+search():        hard filters -> ingredient coverage -> (cuisine rule) -> (semantic
+                 re-scoring) -> (cuisine boost) -> candidates
 find_verified(): search -> verify -> (diversity) -> (LLM rerank) -> top k, with the
                  verification of every candidate (find_recipes(): candidates only)
 """
@@ -27,13 +28,21 @@ from pantry_chef.models.verification import (
     VerificationStatus,
     VerifiedCandidate,
 )
-from pantry_chef.observability import span
+from pantry_chef.observability import get_logger, score, span
 from pantry_chef.search.coverage import CATEGORY_WEIGHTS, CoverageRow, rank_by_coverage
+from pantry_chef.search.cuisine import (
+    DEFAULT_BOOST,
+    CuisineOutcome,
+    boost_matches,
+    exclude_other_cuisines,
+)
 from pantry_chef.search.diversity import mmr
 from pantry_chef.search.expansion import PantryExpander
 from pantry_chef.search.filters import filter_conditions
 from pantry_chef.search.rerank import Reranker
 from pantry_chef.search.semantic import Embedder, RecipeVectorStore, semantic_scores
+
+log = get_logger("search.engine")
 
 
 @dataclass
@@ -64,6 +73,7 @@ def semantic_from_settings(settings: Settings) -> SemanticSearch:
 class SearchResult:
     candidates: list[Candidate]
     matched_recipes: int  # recipes with >= 1 pantry key ingredient that passed the filters
+    cuisine: CuisineOutcome | None = None  # what the cuisine rule did (None: no cuisine)
 
 
 def pantry_names(query: RecipeQuery) -> list[str]:
@@ -132,6 +142,7 @@ def search(
     semantic: SemanticSearch | None = None,
     expander: PantryExpander | None = None,
     usage_weight: float = 0.5,
+    cuisine_boost: float = DEFAULT_BOOST,
 ) -> SearchResult:
     pantry = pantry_names(query)
     conditions, params = filter_conditions(query)
@@ -153,10 +164,24 @@ def search(
             usage_weight=usage_weight,
             pantry_weights=weights,
             goals=query.nutrition_goals,
+            cuisine=query.cuisine,
         )
+    cuisine = None
+    if query.cuisine:
+        with span("search.cuisine", cuisine=query.cuisine, candidates=len(rows)) as meta:
+            rows, cuisine = exclude_other_cuisines(rows, query.cuisine)
+            matched -= cuisine.excluded
+            meta.update(
+                matched=cuisine.matched, excluded=cuisine.excluded, fallback=cuisine.fallback
+            )
+        score("cuisine_fallback", float(cuisine.fallback))
+        if cuisine.fallback:
+            log.info("search.cuisine_fallback", cuisine=query.cuisine, candidates=len(rows))
     if semantic is not None and query.preferences_text.strip():
         with span("search.semantic", pool=min(len(rows), semantic.coverage_pool)):
             rows = rescore_with_semantics(rows, query.preferences_text, semantic)
+    if cuisine is not None:
+        rows = boost_matches(rows, cuisine_boost)
     rows = rows[:limit]
 
     with span("search.load_ingredients", candidates=len(rows)):
@@ -177,13 +202,13 @@ def search(
             n_ratings=row.n_ratings,
             ingredient_score=row.ingredient_score,
             semantic_score=row.semantic_score,
-            final_score=row.final_score if row.final_score is not None else row.ingredient_score,
+            final_score=row.final,
             sugar_pdv=nutrition.get(row.recipe_id, {}).get("sugar_pdv"),
             sodium_pdv=nutrition.get(row.recipe_id, {}).get("sodium_pdv"),
         )
         for row in rows
     ]
-    return SearchResult(candidates=candidates, matched_recipes=matched)
+    return SearchResult(candidates=candidates, matched_recipes=matched, cuisine=cuisine)
 
 
 @dataclass(frozen=True)
@@ -205,6 +230,7 @@ class SearchOptions:
     use_allergen_filter: bool = True
     use_allergy_review: bool = True
     usage_weight: float = 0.5  # weight of pantry usage in the ingredient score (0 = off)
+    cuisine_boost: float = DEFAULT_BOOST  # added to the final score of cuisine matches
     shortlist_size: int = 20  # verified recipes passed to diversity / rerank
     mmr_lambda: float = 0.7
 
@@ -214,6 +240,7 @@ class FindResult:
     top: list[VerifiedCandidate]  # the best pass/adapt recipes, at most top_k
     checked: list[VerifiedCandidate]  # every verified candidate, failures included
     matched_recipes: int  # recipes with >= 1 pantry key ingredient that passed the filters
+    cuisine: CuisineOutcome | None = None
 
     @property
     def approved(self) -> list[VerifiedCandidate]:
@@ -315,6 +342,7 @@ def find_verified(
         semantic=semantic if options.use_semantic else None,
         expander=expander if options.use_matcher else None,
         usage_weight=options.usage_weight,
+        cuisine_boost=options.cuisine_boost,
     )
     verifier = verifier if options.use_matcher and verifier else Verifier(conn)
     with span("search.verify", candidates=len(result.candidates)):
@@ -326,6 +354,7 @@ def find_verified(
             for c, v in zip(result.candidates, results, strict=True)
         ],
         matched_recipes=result.matched_recipes,
+        cuisine=result.cuisine,
     )
     passed = found.approved if options.use_verifier else found.checked
     shortlist = [vc.candidate for vc in passed[: options.shortlist_size]]

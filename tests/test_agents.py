@@ -1,5 +1,7 @@
 """Safety intake and request parsing: the LLM reads text, code decides (fake LLMs)."""
 
+import pytest
+
 from pantry_chef.agents.finder import RequestAnswer, build_query, interpret_request
 from pantry_chef.agents.safety import (
     AllergyMention,
@@ -177,6 +179,41 @@ def test_nutrition_goals_from_the_request_reach_the_query():
     assert query.nutrition_goals == [NutritionGoal.HIGH_PROTEIN]
     assert query.preferences_text == "dinner"
     assert build_query(UserProfile(), RequestAnswer(pantry=["egg"])).nutrition_goals == []
+
+
+def test_parsed_cuisine_reaches_the_query():
+    llm = FakeLLM(RequestAnswer(pantry=["rice noodles"], wish="pad thai", cuisine="thai"))
+    query = build_query(UserProfile(), interpret_request(llm, "rice noodles. pad thai"))
+    assert query.cuisine == "thai"
+    assert query.preferences_text == "pad thai"  # the wish keeps the cuisine words too
+
+
+def test_no_cuisine_leaves_the_query_as_before():
+    request = RequestAnswer(pantry=["chicken"], wish="a curry")
+    query = build_query(UserProfile(), request)
+    assert query.cuisine is None
+    assert query == build_query(UserProfile(), request.model_copy(update={"cuisine": None}))
+
+
+@pytest.mark.parametrize("value", ["mexican food", "Mexican", "thai-ish", ""])
+def test_cuisine_is_never_free_text(value):
+    # only the tag vocabulary (db/tag_mapping.CUISINE_TAGS) is accepted
+    with pytest.raises(ValueError):
+        RequestAnswer(cuisine=value)
+
+
+def test_request_schema_lists_the_cuisine_tags():
+    from pantry_chef.db.tag_mapping import CUISINE_TAGS
+
+    schema = RequestAnswer.model_json_schema()
+    assert schema["$defs"]["Cuisine"]["enum"] == CUISINE_TAGS
+
+
+def test_request_prompt_asks_for_a_cuisine():
+    from pantry_chef.llm.prompt_loader import load_prompt
+
+    prompt = load_prompt("request_parsing")
+    assert prompt.version == "3" and "cuisine" in prompt.render(message="x")
 
 
 def test_request_prompt_is_sensitive():

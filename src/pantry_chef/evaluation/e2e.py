@@ -215,6 +215,7 @@ class E2EResult:
     questions: dict[str, int] = field(default_factory=dict)  # kind -> times asked
     quantity_items_asked: int = 0
     searches: int = 0  # search attempts for the request (1 = no retry)
+    cuisine_fallback: bool = False  # too few recipes of the cuisine: other cuisines kept
     latency_s: float = 0.0
     cost_usd: float = 0.0
     llm_calls: int = 0
@@ -281,7 +282,8 @@ def run_case(
             turn = conversation.reply(user.answer(question))
         if not turn.done:
             raise RuntimeError(f"no answer after {MAX_TURNS} turns")
-        result.searches = conversation.state().attempts
+        state = conversation.state()
+        result.searches, result.cuisine_fallback = state.attempts, state.cuisine_fallback
         if turn.answer is not None:
             result.recipe_id, result.recipe_name = turn.answer.recipe_id, turn.answer.name
             result.failures = truth_failures(conn, turn.answer.recipe_id, case)
@@ -365,6 +367,7 @@ def summarize(results: list[E2EResult]) -> dict:
         "questions_per_request": sum(sum(r.questions.values()) for r in ran) / max(1, len(ran)),
         "quantity_items_per_request": sum(r.quantity_items_asked for r in ran) / max(1, len(ran)),
         "retries_per_request": sum(max(0, r.searches - 1) for r in ran) / max(1, len(ran)),
+        "cuisine_fallbacks": sum(r.cuisine_fallback for r in ran),
         "errors": n - len(ran),
         "mean_judge_score": mean([r.judge_score for r in ran if r.judge_score is not None]),
         # a recipe that is safe and makeable AND fits the request (judge >= GOOD_SCORE)
@@ -456,6 +459,8 @@ def write_report(
         "not against what the pipeline understood. Good answer = task success AND the "
         f"judge rates the final recipe >= {GOOD_SCORE} for the user's message.",
     ]
+    fallbacks = ", ".join(f"{v} {s['cuisine_fallbacks']}" for v, s in summaries.items())
+    lines += ["", f"Cuisine fallback fired (other cuisines kept, too few left): {fallbacks}."]
     for variant, results in all_results.items():
         lines += ["", f"## {variant}: failures by reason", ""]
         codes = failure_codes(results)

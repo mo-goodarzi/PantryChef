@@ -8,6 +8,7 @@ can only make the query stricter.
 from pydantic import BaseModel, Field
 
 from pantry_chef.agents.safety import AllergyMention, split_allergies
+from pantry_chef.db.tag_mapping import Cuisine
 from pantry_chef.llm.factory import StructuredLLM
 from pantry_chef.llm.prompt_loader import load_prompt
 from pantry_chef.models.profile import UserProfile
@@ -21,6 +22,9 @@ class RequestAnswer(BaseModel):
     avoid: list[str] = Field(default_factory=list)
     allergies: list[AllergyMention] = Field(default_factory=list)
     goals: list[NutritionGoal] = Field(default_factory=list)
+    # One cuisine from the tag vocabulary, named or implied by a dish ("pad thai" -> thai);
+    # None when there is none, several, or the dish exists in many cuisines ("a curry").
+    cuisine: Cuisine | None = None
 
 
 def interpret_request(llm: StructuredLLM, message: str) -> RequestAnswer:
@@ -41,4 +45,5 @@ def build_query(profile: UserProfile, request: RequestAnswer) -> RecipeQuery:
         other_allergies=sorted(w for w in other_allergies if w),
         diets=list(profile.diets),
         nutrition_goals=sorted(set(request.goals)),
+        cuisine=request.cuisine.value if request.cuisine else None,
     )

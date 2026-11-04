@@ -18,6 +18,7 @@ class SearchCase(BaseModel):
     allergies: list[str] = Field(default_factory=list)
     diets: list[Diet] = Field(default_factory=list)
     goals: list[NutritionGoal] = Field(default_factory=list)
+    cuisine: str | None = None  # the one cuisine the finder reads from the wish, if any
 
     @property
     def judged_wish(self) -> str:
@@ -39,6 +40,7 @@ class SearchCase(BaseModel):
             required_allergen_free=sorted(allergens),
             diets=self.diets,
             nutrition_goals=self.goals,
+            cuisine=self.cuisine,
         )
 
 

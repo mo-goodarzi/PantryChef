@@ -1,5 +1,5 @@
 """Measure the two text-reading steps on hand-written cases: the safety intake (allergies,
-diets, health) and request parsing (pantry, wish, time, goals, allergies, avoid).
+diets, health) and request parsing (pantry, wish, time, goals, allergies, avoid, cuisine).
 
 Scored on what code builds from the LLM's answer (the profile and the query), since that
 is what the rest of the system uses. A missed allergen code is the one critical mistake;
@@ -40,6 +40,7 @@ class RequestCase:
     allergens: list[str] = field(default_factory=list)
     avoid: list[str] = field(default_factory=list)
     allowed_extra_avoid: list[str] = field(default_factory=list)  # allergy words, stricter
+    cuisine: str | None = None  # the one cuisine the query should carry (None: none)
 
 
 @dataclass
@@ -110,6 +111,8 @@ def score_request(case: RequestCase, query: RecipeQuery) -> CaseResult:
     if query.max_minutes != case.max_minutes:
         mistakes.append(f"max_minutes: expected {case.max_minutes}, got {query.max_minutes}")
     mistakes += compare_sets("goals", case.goals, [g.value for g in query.nutrition_goals])
+    if query.cuisine != case.cuisine:
+        mistakes.append(f"cuisine: expected {case.cuisine}, got {query.cuisine}")
     allowed = case.avoid + case.allowed_extra_avoid
     mistakes += [
         m
