@@ -32,6 +32,7 @@ class ChatState(BaseModel):
     retry: bool = False  # the last search should be retried with a stricter query
     results: list[VerifiedCandidate] = Field(default_factory=list)  # approved, best first
     reason_counts: dict[str, int] = Field(default_factory=dict)  # failures, this request
+    cuisine_fallback: bool = False  # a search of this request kept the other cuisines
     pantry_items: list[PantryItem] = Field(default_factory=list)  # amounts the user gave
     asked_quantities: list[str] = Field(default_factory=list)  # never ask twice
     questions_asked: int = 0

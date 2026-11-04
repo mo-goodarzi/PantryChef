@@ -373,6 +373,26 @@ def test_too_few_approved_recipes_retry_with_verifier_feedback(enriched_conn, st
     assert [o.recipe_id for o in turn.question.options] == [1, 3]
 
 
+def test_the_parsed_cuisine_reaches_the_search_and_its_fallback_the_state(
+    enriched_conn, state_conn
+):
+    from dataclasses import replace
+
+    from pantry_chef.search.cuisine import CuisineOutcome
+
+    fell_back = CuisineOutcome("thai", matched=0, excluded=0, fallback=True)
+    find = ScriptedFind(replace(found(verified(1), verified(2)), cuisine=fell_back))
+    llm = ScriptedLLM(
+        safety_intake=SafetyAnswer(),
+        request_parsing=RequestAnswer.model_validate({**BAKING.model_dump(), "cuisine": "thai"}),
+    )
+    chat = conversation(make_deps(enriched_conn, state_conn, llm, find=find))
+    through_safety(chat)
+
+    assert find.queries[0].cuisine == "thai"
+    assert chat.state().cuisine_fallback
+
+
 def test_gives_up_after_three_searches_with_an_honest_note(enriched_conn, state_conn):
     failing = iter(range(100, 200))
     find = ScriptedFind(*[found(verified(1), verified(next(failing), "fail")) for _ in range(5)])
