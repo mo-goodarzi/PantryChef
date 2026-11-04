@@ -72,6 +72,14 @@ def test_span_metadata_is_sent(spans):
     assert "approved" in json.dumps(attrs(finished()["verify"]))
 
 
+def test_metadata_added_while_the_span_runs_is_sent(spans):
+    finished, _ = spans
+    with trace("t"), span("search.cuisine", cuisine="thai") as meta:
+        meta.update(excluded=7, fallback=False)
+    sent = json.dumps(attrs(finished()["search.cuisine"]))
+    assert "excluded" in sent and "fallback" in sent and "cuisine" in sent
+
+
 def test_generation_records_model_prompt_version_and_tokens(spans):
     finished, _ = spans
     with (

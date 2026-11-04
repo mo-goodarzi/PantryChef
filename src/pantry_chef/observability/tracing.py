@@ -76,7 +76,10 @@ def _observation(name: str, as_type: str = "span", **fields: Any) -> Iterator[An
 
 
 @contextmanager
-def _timed_log(name: str, observation: Any = None, **metadata: Any) -> Iterator[None]:
+def _timed_log(
+    name: str, observation: Any = None, late: dict[str, Any] | None = None, **metadata: Any
+) -> Iterator[None]:
+    """Log the span when it ends; `late` holds metadata added while it ran."""
     start = time.perf_counter()
     status = "ok"
     try:
@@ -88,7 +91,9 @@ def _timed_log(name: str, observation: Any = None, **metadata: Any) -> Iterator[
         raise
     finally:
         duration_ms = round((time.perf_counter() - start) * 1000, 1)
-        log.info("span", span=name, status=status, duration_ms=duration_ms, **metadata)
+        log.info(
+            "span", span=name, status=status, duration_ms=duration_ms, **metadata, **(late or {})
+        )
 
 
 @contextmanager
@@ -118,10 +123,19 @@ def trace(name: str, session_id: str | None = None, user_id: str | None = None) 
 
 
 @contextmanager
-def span(name: str, **metadata: Any) -> Iterator[None]:
-    """Time a unit of work (graph node, search stage, verifier check) and log the result."""
-    with _observation(name, metadata=metadata or None) as obs, _timed_log(name, obs, **metadata):
-        yield
+def span(name: str, **metadata: Any) -> Iterator[dict[str, Any]]:
+    """Time a unit of work (graph node, search stage, verifier check) and log the result.
+
+    Yields a dict for metadata known only at the end (`with span(...) as meta:
+    meta["excluded"] = 3`); it is logged and sent with the metadata given up front."""
+    late: dict[str, Any] = {}
+    with (
+        _observation(name, metadata=metadata or None) as obs,
+        _timed_log(name, obs, late, **metadata),
+    ):
+        yield late
+        if obs is not None and late:
+            obs.update(metadata={**metadata, **late})
 
 
 def score(name: str, value: float, comment: str | None = None) -> None:

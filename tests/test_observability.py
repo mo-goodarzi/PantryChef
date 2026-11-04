@@ -34,6 +34,14 @@ def test_span_logs_name_status_and_duration(capsys):
     assert line["duration_ms"] >= 0
 
 
+def test_span_logs_metadata_added_while_it_runs(capsys):
+    with span("search.cuisine", cuisine="thai") as meta:
+        meta["excluded"] = 3
+
+    [line] = read_lines(capsys)
+    assert line["cuisine"] == "thai" and line["excluded"] == 3
+
+
 def test_span_marks_errors_and_reraises(capsys):
     with pytest.raises(ValueError), span("verify"):
         raise ValueError("boom")
