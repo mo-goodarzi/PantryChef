@@ -41,6 +41,6 @@ def test_prompts_are_not_sensitive_unless_their_header_says_so():
 def test_an_archived_prompt_version_can_still_be_loaded():
     assert load_prompt("preference_judge", "1").version == "1"
     assert load_prompt("preference_judge", "2").version == "2"
-    assert load_prompt("preference_judge").version == "3"  # the current file
+    assert load_prompt("preference_judge").version == "4"  # the current file
     with pytest.raises(ValueError, match="no version 9"):
         load_prompt("preference_judge", "9")

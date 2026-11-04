@@ -18,7 +18,7 @@
      or more cost two); salt, pepper, water, oil and sugar are always at home.
 3. Score judges on the same labels (one report, test split = the reported numbers):
        uv run python eval/judge_calibration.py score --judges \\
-           openai:gpt-5.4-mini:v1,anthropic:claude-sonnet-5-5:v1,anthropic:claude-sonnet-5-5:v3
+           openai:gpt-5.4-mini:v1,anthropic:claude-sonnet-5-5:v1,anthropic:claude-sonnet-5-5:v4
 4. When changing the judge prompt, look only at dev disagreements:
        uv run python eval/judge_calibration.py dev-disagreements --judge <spec>
 """
@@ -48,7 +48,7 @@ ROOT = Path(__file__).parent
 DEFAULT_CSV = ROOT / "reports" / "judge_calibration.csv"
 JUDGE_CACHE = Path("data/processed/eval_cache/judgments.json")
 DEFAULT_JUDGES = (
-    "openai:gpt-5.4-mini:v1,anthropic:claude-sonnet-5-5:v1,anthropic:claude-sonnet-5-5:v3"
+    "openai:gpt-5.4-mini:v1,anthropic:claude-sonnet-5-5:v1,anthropic:claude-sonnet-5-5:v4"
 )
 
 
@@ -130,6 +130,12 @@ def main() -> None:
                 f"[{d['row']} {d['suite']}] wish {d['wish']!r} -> {d['recipe']}: "
                 f"human {d['human']}, judge {d['judge']} ({d['reason']})"
             )
+        dev = split_metrics(rows, scores)["dev"]
+        print(
+            f"dev only: n {dev['n']}, agreement {dev['binary_agreement']:.0%}, "
+            f"kappa {dev['kappa']:.2f}, weighted kappa {dev['weighted_kappa']:.2f}, "
+            f"judge - human {dev['mean_difference']:+.2f}"
+        )
 
 
 if __name__ == "__main__":

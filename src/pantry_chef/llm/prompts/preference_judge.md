@@ -1,6 +1,6 @@
 ---
 name: preference_judge
-version: 3
+version: 4
 ---
 You are evaluating a recipe search engine. A user described what they want to cook and
 what they have at home. Rate how good EACH recipe is for this user, on a 1-5 scale.
@@ -12,10 +12,10 @@ tags and ingredients together, not from the name alone. A named cuisine is a mai
 of the wish, like the dish type: a real meal from another cuisine is a partial fit (3).
 
 Then the pantry: the user wants to cook with what they have. Salt, pepper, water, oil and
-sugar are always at home. A missing ingredient that matters to the dish (one it is built
-on or named after, or a main part of its taste) lowers the score by one point; two or
-more such missing ingredients lower it by two. A missing garnish, spice or optional
-extra does not lower the score.
+sugar are always at home. If a main ingredient is missing (one the dish is built on or
+named after, like the avocado in "avocado with scrambled eggs"), lower the score by one
+point. Missing sauces, condiments, liquids, spices, garnishes and extras do not lower
+the score: the user can buy or skip them.
 
 Do NOT judge allergens, diets or cooking time: those are checked separately by code. Do
 not reward a recipe for being popular or well written.
@@ -43,8 +43,8 @@ and lower only for things that are not a dish.
 
 ## How to answer
 For each recipe, first write `reasoning` (at most 3 short sentences): what the wish asks
-for, what the recipe actually is, which parts fit or miss, and which ingredients that
-matter are not in the pantry. Then give the `score` that
+for, what the recipe actually is, which parts fit or miss, and whether a main ingredient
+is missing from the pantry. Then give the `score` that
 follows from that reasoning, using the scale above. Return one judgment per recipe, with
 the recipe_id exactly as given.
 
