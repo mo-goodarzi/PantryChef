@@ -33,9 +33,18 @@ class LangChainStructuredLLM:
     client (max_retries); an answer that does not fit the schema is asked for once more.
     """
 
-    def __init__(self, model: BaseChatModel, model_name: str, parse_attempts: int = 2):
+    def __init__(
+        self,
+        model: BaseChatModel,
+        model_name: str,
+        parse_attempts: int = 2,
+        provider: str = "openai",
+        structured_method: str | None = None,  # None = the LangChain default
+    ):
         self.model = model
         self.model_name = model_name
+        self.provider = provider
+        self.structured_method = structured_method
         self.parse_attempts = parse_attempts
         # running totals, so an eval can report what a model cost
         self.calls = 0
@@ -54,7 +63,8 @@ class LangChainStructuredLLM:
         raise AssertionError("unreachable")
 
     def _generate_once(self, prompt: Prompt, schema: type[T], text: str) -> T:
-        runnable = self.model.with_structured_output(schema, include_raw=True)
+        method = {"method": self.structured_method} if self.structured_method else {}
+        runnable = self.model.with_structured_output(schema, include_raw=True, **method)
         start = time.perf_counter()
         with generation(
             f"llm.{prompt.name}",
@@ -97,6 +107,9 @@ class LangChainStructuredLLM:
         return parsed
 
 
+ANTHROPIC_EFFORT = {"minimal": "low", "low": "low", "medium": "medium", "high": "high"}
+
+
 def create_llm(settings: Settings) -> StructuredLLM:
     if settings.llm_provider == "openai":
         from langchain_openai import ChatOpenAI
@@ -111,4 +124,24 @@ def create_llm(settings: Settings) -> StructuredLLM:
             max_retries=3,
         )
         return LangChainStructuredLLM(model, settings.llm_model)
+    if settings.llm_provider == "anthropic":
+        from langchain_anthropic import ChatAnthropic
+
+        if settings.anthropic_api_key is None:
+            raise ValueError("ANTHROPIC_API_KEY is not set")
+        claude = ChatAnthropic(
+            model_name=settings.llm_model,
+            api_key=settings.anthropic_api_key,
+            max_tokens_to_sample=16000,
+            # Claude has no "minimal" effort; temperature is left at the default (current
+            # models reject other values)
+            output_config={"effort": ANTHROPIC_EFFORT[settings.llm_reasoning_effort]},
+            timeout=settings.llm_timeout_seconds,
+            max_retries=3,
+            stop=None,  # mypy: the pydantic field has no default in the stubs
+        )
+        # Claude's own structured outputs: forced tool calls are rejected by current models
+        return LangChainStructuredLLM(
+            claude, settings.llm_model, provider="anthropic", structured_method="json_schema"
+        )
     raise ValueError(f"unsupported LLM provider: {settings.llm_provider}")

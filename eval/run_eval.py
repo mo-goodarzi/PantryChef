@@ -21,7 +21,7 @@ from pantry_chef.evaluation.cases import load_cases
 from pantry_chef.evaluation.e2e import cap_reached, load_e2e_cases, run_case
 from pantry_chef.evaluation.e2e import summarize as summarize_e2e
 from pantry_chef.evaluation.e2e import write_report as write_e2e_report
-from pantry_chef.evaluation.judge import CachedJudge
+from pantry_chef.evaluation.judge import create_judge
 from pantry_chef.evaluation.search_eval import evaluate_variant, summarize, write_report
 from pantry_chef.graph.app import chat_from_settings
 from pantry_chef.graph.runner import Conversation
@@ -132,8 +132,7 @@ def run_e2e(
     )
     conn = connect(settings.db_path)
     cases = load_e2e_cases(cases_path)[:limit]
-    judge_llm = create_llm(settings.model_copy(update={"llm_model": settings.judge_model}))
-    judge = CachedJudge(judge_llm, Path("data/processed/eval_cache/judgments.json"))
+    judge = create_judge(settings, Path("data/processed/eval_cache/judgments.json"))
     options = e2e_variants(settings)
     run_start = usage.snapshot()
     all_results: dict[str, list] = {}
@@ -172,7 +171,7 @@ def run_e2e(
         "timestamp": datetime.now().strftime("%Y%m%d-%H%M"),
         "cases_file": str(cases_path),
         "models": e2e_models(settings),
-        "judge": f"{settings.judge_model} (preference_judge v{judge.prompt.version})",
+        "judge": judge.spec.label,
         "stopped": stopped,
         "total_cost_usd": usage.priced_cost(usage.since(run_start)),
         "unpriced_models": usage.unpriced_models(usage.since(run_start)),
@@ -238,9 +237,7 @@ def main() -> None:
     conn = connect(args.db)
     cases = load_cases(args.cases or ROOT / "cases" / "search.json")[: args.limit]
     variants_arg = args.variants or ",".join(VARIANTS)
-    # the judge has its own model, so another LLM_MODEL changes the pipeline, not the ruler
-    judge_llm = create_llm(settings.model_copy(update={"llm_model": settings.judge_model}))
-    judge = CachedJudge(judge_llm, args.judge_cache)
+    judge = create_judge(settings, args.judge_cache)
     variants = variants_arg.split(",")
     needs_semantic = any(VARIANTS[v].use_semantic for v in variants)
     semantic = semantic_from_settings(settings) if needs_semantic else None
@@ -291,7 +288,7 @@ def main() -> None:
     meta = {
         "timestamp": datetime.now().strftime("%Y%m%d-%H%M"),
         "cases": len(cases),
-        "judge_model": settings.judge_model,
+        "judge_model": judge.spec.model,
         "pipeline_models": pipeline_models(settings),
         "judge_prompt_version": judge.prompt.version,
         "variants": list(all_results),

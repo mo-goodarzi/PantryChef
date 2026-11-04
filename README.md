@@ -213,9 +213,11 @@ low-salt (the last two from each recipe's nutrition per serving).
 50 evaluation cases; a result is good when it passes the hard rules (checked by code) and an
 LLM judge rates its fit to the wish at least 4/5. Reports: `eval/reports/search_20260926-2255.md`
 (Phase 4), `eval/reports/search_20260927-1942.md` (Phase 5a) and
-`eval/reports/search_20260928-1121.md` (pantry-usage ranking). The judge agrees with a human
-reviewer on about 56% of good/not-good calls and is stricter, so these numbers are conservative
-(details in `docs/decisions.md`).
+`eval/reports/search_20260928-1121.md` (pantry-usage ranking). These were judged by
+gpt-5.4-mini (`preference_judge` v1), which agrees with a human reviewer on 76% of
+good/not-good calls (Cohen's κ 0.51, 75 held-out pairs; `judge_calibration_20261104-1055`)
+and is slightly stricter, so they lean conservative. The end-to-end numbers below use the
+newer judge (see "How far to trust the judge").
 
 | Pipeline | hit@5 | MRR | allergen violations | median latency |
 |---|---|---|---|---|
@@ -236,17 +238,33 @@ recipe *shown* is then checked by code against the hand-written truth (the user'
 allergies, diets, time limit and pantry), not against what the system understood, so a
 misread allergy counts as a failure. 100 everyday cases and 50 safety traps (hidden
 allergens, misspellings, allergies said only in the request, the allergen in the pantry).
-**Good answer** = safe and makeable **and** an LLM judge rates the fit to the user's wish
-at least 4/5. Reports: `eval/reports/e2e_20261009-*.md`; reproduce with
-`eval/reproduce_e2e.sh`.
+**Good answer** = safe and makeable **and** an LLM judge (Claude Sonnet 5.5,
+`preference_judge` v4) rates the fit to the user's wish at least 4/5. Every run uses the
+app's defaults (quantity question when it matters, search again with the amounts).
+Reports: `eval/reports/e2e_20261104-*.md`; reproduce with `eval/reproduce_e2e.sh`.
 
-**What each part adds** (gpt-5.4-mini):
+**What each part adds** (gpt-5.4-mini; `e2e_20261104-1206`, `-1124`):
 
-| Pipeline | everyday: good answer | safety traps: good answer | safety violations (150 cases) | recipes needing missing ingredients |
+| Pipeline | everyday: good answer | safety traps: good answer | safety violations (150 cases) | recipes breaking a rule |
 |---|---|---|---|---|
-| Full app | **99%** | **84%** | **0** | 0% |
-| without the verifier | 93% | 86% | 0 | 4–5% |
-| without the LLM steps (coverage search only) | 69% | 44% | 0 | 0% |
+| Full app | **97%** | **78%** | **0** | 0% |
+| without the verifier | 96% | 78% | 0 | 0–1% |
+| without the LLM steps (coverage search only) | 66% | 34% | 0 | 0% |
+
+With the quantity question and the wish-fit check on, the verifier now adds little to fit
+(one everyday case: 1 chicken breast for a recipe that needs 4); it stays as a safety
+layer (next table). The safety traps score lower because their wishes are narrow (a
+caesar salad, pad thai, mac and cheese, a named cuisine) and the allergies remove many
+options: 11 of 50 get a safe recipe the judge rates below 4, four of them for the wrong
+cuisine (Tex-Mex "Spanish rice", a Chinese dish for "something Japanese").
+
+**How far to trust the judge.** On 150 recipe pairs scored blind by the owner, the judge
+agrees on 77% of good/not-good calls (Cohen's κ 0.54, 95% CI 0.34–0.73, 75 held-out pairs;
+`judge_calibration_20261104-1055`), below the 0.6 target. It is stricter than the owner
+(0.3 points lower on average), so "good answer" is more likely to be understated than
+overstated. Re-scoring these same recipes with the earlier judge (gpt-5.4-mini, v1) gives
+97% / 84%: the drop on the safety traps (84% → 78%, the earlier README figure) is the new
+judge, not the app. Details: `docs/decisions.md`, "Judge v2".
 
 **Safety, layer by layer** (the 50 safety traps; the LLM allergy review is off in the last two rows):
 
@@ -254,21 +272,25 @@ at least 4/5. Reports: `eval/reports/e2e_20261009-*.md`; reproduce with
 |---|---|---|
 | all (SQL filter, verifier, allergy review, last check) | 0 | 0 |
 | verifier only | 0 | 0 |
-| **none** | **23 of 50** | **71** |
+| **none** | **8 of 50** | **26** |
 
 Either code layer alone keeps every trap out, and the eval does catch violations when
-nothing stops them (pad thai with peanuts, sticky chicken with sesame oil).
+nothing stops them (soy sauce in a stir fry and in yakitori, egg yolk in French toast,
+shrimp for a shellfish allergy). The "none" row
+was 23 of 50 / 71 on 2026-10-09, when the amount question was off: the options shown after
+the user's amount answers differ, and the rerank and wish-fit steps still see the
+allergies, so with no layer on the count depends on which options happen to be shown.
 
 **Quantity question** (24 cases where the user has a hidden, often too small amount, e.g.
 1 egg for a cake; recipe amounts come from the original Food.com lines; gpt-5.4-mini;
-`e2e_20261010-1521`). When the answer rules out every option, the app searches again
+`e2e_20261104-1214`). When the answer rules out every option, the app searches again
 with the amounts:
 
 | Ask about amounts | task success | good answer | recipes the user cannot make | amounts asked / request | cost / conversation |
 |---|---|---|---|---|---|
 | never | 71% | 67% | 29% | 0 | $0.006 |
-| **when it matters** (the default) | **96%** | **88%** | 4% | 1.9 | $0.007 |
-| always | 100% | 92% | 0% | 3.9 | $0.007 |
+| **when it matters** (the default) | **96%** | **88%** | 4% | 2.2 | $0.007 |
+| always | 100% | 92% | 0% | 4.0 | $0.007 |
 
 Asking only about key ingredients whose amount matters gets nearly all of the gain with
 half the items; the one case it misses is milk, which is not asked by choice.
@@ -282,30 +304,30 @@ lines the question can be about, an answer in grams can now be checked against 9
 them (29% before) and a number against 64% (38%); the labels are within 25% of USDA
 reference weights for 41 of 42 items, median error 1.2% (`weights_20261013-1826`).
 
-The tables above it were measured with the question off. Re-run with the new defaults
-(real amounts, question on, re-search; `e2e_20261010-1603/1611/1614`): everyday 99% task
-success / 96% good answer, safety traps 100% / 84%, **0 safety violations**, one more
-question per request, $0.006 per conversation. The rows above this one were measured with
-the question off. One run of 24 cases: the "never" row moved 8 points between two runs.
+One run of 24 cases: the "never" row moved 8 points between two earlier runs. The new
+judge gives the same good-answer rates here as the earlier one.
 
-**Model for parsing, intake, rerank and matcher** (`LLM_MODEL`; same 50-case subset):
+**Model for parsing, intake, rerank and matcher** (`LLM_MODEL`; the same 50-case subset,
+the first 25 everyday and 25 safety cases; `e2e_20261104-1219/1225` for gpt-5.4):
 
 | Model | good answer | mean judge | safety violations | cost per conversation |
 |---|---|---|---|---|
 | gpt-5.4-nano* | 86% | 4.44 | **1** ("dairy free please" not read as a milk allergy) | ~$0.005 |
-| **gpt-5.4-mini** | **92%** | **4.52** | 0 | ~$0.02 |
-| gpt-5.4 | 88% | 4.47 | **1** (the same case) | ~$0.05 |
+| **gpt-5.4-mini** | **88%** | **4.45** | 0 | ~$0.005 |
+| gpt-5.4 | 88% | 4.45 | 0 | ~$0.019 |
 
-The bigger model is not better here, and both other models miss the same allergy, which
-every later check then trusts. Asked "dairy free please" five times each, gpt-5.4 read a
-milk allergy twice (twice a dislike, once nothing) and mini five times. One run per model
-and a small subset, so small differences are noise; the safety miss is not. Known limits:
+The bigger model is not better here (the same 44 of 50 good answers) and costs about four
+times as much. On 2026-10-09 gpt-5.4 also missed the "dairy free please" allergy that nano
+missed; in this run it read it. Asked "dairy free please" five times each, gpt-5.4 read a
+milk allergy twice (twice a dislike, once nothing) and mini five times, so the miss is
+still possible. One run per model and a small subset, so small differences are noise.
+Costs are what the runs spent, with earlier matcher answers cached. Known limits:
 the truth check uses the project's own ingredient allergen labels, and the quantity
-question is measured separately (below).
+question is measured separately (above).
 
 \*Measured before the ingredient matcher's cache was keyed by model, so nano's matcher
-reused mini's answers; its allergy miss is in the safety intake and stands. gpt-5.4 was
-re-measured after the fix (`e2e_20261009-1928/1933`). gpt-5.4-nano is no longer used or
+reused mini's answers; its allergy miss is in the safety intake and stands. Its row uses
+the earlier judge (gpt-5.4-mini, v1). gpt-5.4-nano is no longer used or
 evaluated: the missed allergy rules it out for the safety intake, and its cost saving
 does not justify a second model for the other steps.
 

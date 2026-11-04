@@ -86,3 +86,40 @@ def test_token_totals_add_up_over_calls():
     llm.generate(PROMPT, Answer, what="7")
     llm.generate(PROMPT, Answer, what="7")  # one retry: both attempts are paid for
     assert (llm.calls, llm.input_tokens, llm.output_tokens) == (3, 36, 9)
+
+
+def test_anthropic_models_use_claudes_own_structured_output():
+    from pydantic import SecretStr
+
+    from pantry_chef.config import Settings
+    from pantry_chef.llm.factory import create_llm
+
+    settings = Settings(
+        llm_provider="anthropic",
+        llm_model="claude-sonnet-5-5",
+        llm_reasoning_effort="minimal",
+        anthropic_api_key=SecretStr("test"),
+    )
+    llm = create_llm(settings)  # builds the client, sends nothing
+    assert isinstance(llm, LangChainStructuredLLM)
+    assert (llm.provider, llm.model_name, llm.structured_method) == (
+        "anthropic",
+        "claude-sonnet-5-5",
+        "json_schema",  # current Claude models reject forced tool calls
+    )
+    assert llm.model.output_config == {"effort": "low"}  # Claude has no "minimal"
+    with pytest.raises(ValueError, match="ANTHROPIC_API_KEY"):
+        create_llm(settings.model_copy(update={"anthropic_api_key": None}))
+
+
+def test_the_structured_output_method_is_passed_to_the_model():
+    class Recorder(FakeChatModel):
+        def with_structured_output(self, schema, include_raw, **kwargs):
+            self.kwargs = kwargs
+            return self
+
+    model = Recorder([OK])
+    LangChainStructuredLLM(model, "m", structured_method="json_schema").generate(
+        PROMPT, Answer, what="hi"
+    )
+    assert model.kwargs == {"method": "json_schema"}

@@ -36,3 +36,11 @@ def test_quantity_matters_prompt_follows_the_plan_examples():
 def test_prompts_are_not_sensitive_unless_their_header_says_so():
     assert not parse_prompt_file("---\nname: a\nversion: 1\n---\nx").sensitive
     assert parse_prompt_file("---\nname: a\nversion: 1\nsensitive: true\n---\nx").sensitive
+
+
+def test_an_archived_prompt_version_can_still_be_loaded():
+    assert load_prompt("preference_judge", "1").version == "1"
+    assert load_prompt("preference_judge", "2").version == "2"
+    assert load_prompt("preference_judge").version == "4"  # the current file
+    with pytest.raises(ValueError, match="no version 9"):
+        load_prompt("preference_judge", "9")

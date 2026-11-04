@@ -1,26 +1,52 @@
 ---
 name: preference_judge
-version: 1
+version: 4
 ---
-You are evaluating a recipe search engine. A user described what they want to cook.
-Rate how well EACH recipe matches the user's WISH, on a 1-5 scale.
+You are evaluating a recipe search engine. A user described what they want to cook and
+what they have at home. Rate how good EACH recipe is for this user, on a 1-5 scale.
 
-Judge only the wish (dish type, meal, taste, cuisine, occasion, style). Do NOT judge
-whether the user has the ingredients, allergens, diets or cooking time: those are checked
-separately by code. Do not reward a recipe for being popular or well written.
+## What to judge
+First the wish: the kind of dish, the meal, taste, cuisine, occasion, style, and any
+stated goal (e.g. "high protein", "light"). Decide from the recipe's name, description,
+tags and ingredients together, not from the name alone. A named cuisine is a main part
+of the wish, like the dish type: a real meal from another cuisine is a partial fit (3).
 
-Scale:
-5 = exactly what was asked for (e.g. wish "sweet breakfast" -> french toast)
-4 = a good fit with a small mismatch (right meal and taste, slightly different style)
-3 = partial fit (right meal but wrong taste, or right taste but wrong meal)
-2 = weak fit (only loosely related)
-1 = does not fit (e.g. wish "savory dinner" -> a cookie; a condiment when a meal was asked)
-A vague wish ("anything", "something tasty") accepts any real dish: score 4 for a
-normal dish or meal, lower only for things that are not a dish (a spice mix, a single
-sauce, a drink when food is expected).
+Then the pantry: the user wants to cook with what they have. Salt, pepper, water, oil and
+sugar are always at home. If a main ingredient is missing (one the dish is built on or
+named after, like the avocado in "avocado with scrambled eggs"), lower the score by one
+point. Missing sauces, condiments, liquids, spices, garnishes and extras do not lower
+the score: the user can buy or skip them.
 
-Return one judgment per recipe, using the recipe_id exactly as given, with a short reason
-(max 15 words).
+Do NOT judge allergens, diets or cooking time: those are checked separately by code. Do
+not reward a recipe for being popular or well written.
+
+## Scale (one example each)
+5 = Exactly what was asked for: every part of the wish fits.
+    Wish "a cozy soup for a cold evening" -> creamy potato leek soup.
+4 = A good fit with one small mismatch: the right kind of dish, slightly off in style,
+    taste or detail. A user would happily accept it.
+    Wish "a sweet breakfast" -> banana oat muffins (sweet and eaten at breakfast, but a
+    baked snack rather than a breakfast plate).
+3 = Partial fit: one main part of the wish fits and another main part clearly does not
+    (right meal but wrong taste or cuisine; right dish type but wrong meal).
+    Wish "a quick Italian dinner" -> chicken fajitas (a proper dinner, but not Italian).
+2 = Weak fit: only loosely related; most of the wish is missed.
+    Wish "a spicy Thai curry" -> garlic butter green beans (savory vegetables, but not a
+    curry, not Thai, not spicy).
+1 = Does not fit, or is not a dish at all when a dish was asked for (a sauce, dressing,
+    spice mix or drink when a meal was asked for).
+    Wish "a hearty dinner" -> homemade ranch dressing.
+
+A vague wish ("anything", "something tasty", "dinner") accepts any real dish of that kind:
+score 4 for a normal dish or meal, 5 only when it also fits every detail that was given,
+and lower only for things that are not a dish.
+
+## How to answer
+For each recipe, first write `reasoning` (at most 3 short sentences): what the wish asks
+for, what the recipe actually is, which parts fit or miss, and whether a main ingredient
+is missing from the pantry. Then give the `score` that
+follows from that reasoning, using the scale above. Return one judgment per recipe, with
+the recipe_id exactly as given.
 
 ## User
 Wish: $wish
