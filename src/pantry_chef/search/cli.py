@@ -11,6 +11,7 @@ Usage:
     uv run python -m pantry_chef.search.cli --have "egg,milk,bread" --allergy peanuts \\
         --diet vegetarian --max-minutes 30 --pref "something savory" --rerank --show-failed
     uv run python -m pantry_chef.search.cli --have "steak,potato,onion" --goal high-protein
+    uv run python -m pantry_chef.search.cli --have "chicken,onion,tomato" --cuisine mexican
 """
 
 import argparse
@@ -20,6 +21,7 @@ from pathlib import Path
 
 from pantry_chef.config import get_settings
 from pantry_chef.db.connection import connect
+from pantry_chef.db.tag_mapping import CUISINE_TAGS
 from pantry_chef.ingredients.allergens import Allergen, parse_user_allergy
 from pantry_chef.models.query import Diet, NutritionGoal, RecipeQuery
 from pantry_chef.models.recipe import Candidate, RecipeIngredient
@@ -104,7 +106,13 @@ def main() -> None:
     parser.add_argument("--exclude", help="comma-separated ingredients to avoid")
     parser.add_argument("--max-minutes", type=int)
     parser.add_argument("--meal-type", help="e.g. breakfast, main-dish, dessert")
-    parser.add_argument("--cuisine", help="e.g. italian, mexican")
+    parser.add_argument(
+        "--cuisine",
+        choices=CUISINE_TAGS,
+        metavar="CUISINE",
+        help="a cuisine tag, e.g. italian, mexican, asian: boosts it and leaves out other "
+        "cuisines (kept if too few recipes are left)",
+    )
     parser.add_argument("--top", type=int, default=5, help="verified recipes to show")
     parser.add_argument("--candidates", type=int, default=50, help="candidates to verify")
     parser.add_argument("--show-failed", action="store_true")
@@ -151,6 +159,13 @@ def main() -> None:
         f"{len(result.approved)} of the top {len(result.checked)} pass verification "
         f"({elapsed:.2f}s)\n"
     )
+    if result.cuisine is not None:
+        c = result.cuisine
+        kept = "kept anyway: too few recipes left" if c.fallback else "left out"
+        print(
+            f"Cuisine {c.cuisine}: {c.matched:,} tagged recipes boosted; other cuisines {kept}"
+            f" ({c.excluded:,} removed)\n"
+        )
     for number, found in enumerate(result.top, start=1):
         lines = describe(found.candidate, pantry, found.verification)
         print(f"{number:>2}. " + "\n".join(lines) + "\n")

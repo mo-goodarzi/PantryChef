@@ -100,11 +100,15 @@ def test_excluded_recipe_ids(enriched_conn):
     assert PANCAKES not in allowed(enriched_conn, exclude_recipe_ids=[PANCAKES, 1])
 
 
-def test_meal_type_and_cuisine(enriched_conn):
+def test_meal_type(enriched_conn):
     breakfast = allowed(enriched_conn, meal_type="breakfast")
     assert {PANCAKES, WAFFLES, POACHED_EGGS} <= breakfast
     assert CALZONES not in breakfast
-    assert allowed(enriched_conn, cuisine="no-such-cuisine") == set()
+
+
+def test_cuisine_is_not_a_hard_filter(enriched_conn):
+    # a preference with a fallback (search/cuisine.py), never a WHERE condition
+    assert allowed(enriched_conn, cuisine="mexican") == allowed(enriched_conn)
 
 
 def test_other_allergies_exclude_by_whole_word(enriched_conn):

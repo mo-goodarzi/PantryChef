@@ -87,6 +87,7 @@ def chat_from_settings(
         use_rerank=True,
         use_wish_fit=settings.wish_fit_enabled,
         usage_weight=settings.usage_weight,
+        cuisine_boost=settings.cuisine_boost,
     )
 
     def find(query: RecipeQuery, pantry_items: list[PantryItem]) -> FindResult:

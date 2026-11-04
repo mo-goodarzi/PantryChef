@@ -4,6 +4,8 @@ Recipes often carry several course/cuisine tags, so each mapping is an ordered l
 the first matching tag wins. All tags are also stored in recipe_tags, so nothing is lost.
 """
 
+from enum import StrEnum
+
 # (tag, meal_type), most specific course first. "brunch" and "lunch" come last because
 # they are often added next to a more specific course tag.
 MEAL_TYPE_BY_TAG: list[tuple[str, str]] = [
@@ -146,6 +148,16 @@ BROAD_CUISINES: list[str] = [
 ]
 
 
+CUISINE_TAGS: list[str] = SPECIFIC_CUISINES + BROAD_CUISINES
+
+# The cuisines a request can name: exactly the tag vocabulary, so a parsed cuisine is
+# never free text ("tex-mex" -> Cuisine("tex-mex")). Built from the list above, which
+# mypy cannot follow, hence the ignore.
+Cuisine = StrEnum(  # type: ignore[misc]
+    "Cuisine", {tag.replace("-", "_").upper(): tag for tag in CUISINE_TAGS}
+)
+
+
 def derive_meal_type(tags: list[str]) -> str | None:
     tag_set = set(tags)
     for tag, meal_type in MEAL_TYPE_BY_TAG:
@@ -156,7 +168,7 @@ def derive_meal_type(tags: list[str]) -> str | None:
 
 def derive_cuisine(tags: list[str]) -> str | None:
     tag_set = set(tags)
-    for cuisine in SPECIFIC_CUISINES + BROAD_CUISINES:
+    for cuisine in CUISINE_TAGS:
         if cuisine in tag_set:
             return cuisine
     return None

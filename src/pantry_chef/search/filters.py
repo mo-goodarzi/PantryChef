@@ -89,8 +89,7 @@ def filter_conditions(query: RecipeQuery) -> tuple[list[str], dict[str, object]]
         conditions.append("r.meal_type = :meal_type")
         params["meal_type"] = query.meal_type
 
-    if query.cuisine:
-        conditions.append("r.cuisine = :cuisine")
-        params["cuisine"] = query.cuisine
+    # query.cuisine is not a filter here: it is a preference with a fallback, applied in
+    # search/cuisine.py (other cuisines are removed only while enough recipes are left).
 
     return conditions, params

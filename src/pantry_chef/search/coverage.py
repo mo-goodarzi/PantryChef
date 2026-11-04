@@ -25,6 +25,7 @@ from pantry_chef.ingredients.protein import (  # noqa: F401  (re-exported for ca
     protein_calorie_share,
 )
 from pantry_chef.models.query import NutritionGoal
+from pantry_chef.search.cuisine import FIT_SQL, CuisineFit, fit_params
 
 MISSING_KEY_PENALTY = 0.1
 # Bayesian average: a recipe needs about this many ratings before its own average
@@ -51,10 +52,14 @@ class CoverageRow:
     pantry_usage: float = 0.0  # pantry_used / weighted number of non-staple pantry items
     semantic_score: float | None = None  # set by the semantic step (0..1 within the pool)
     final_score: float | None = None  # set by the semantic step; else = ingredient_score
+    cuisine_fit: CuisineFit = CuisineFit.NEUTRAL  # vs the requested cuisine (search/cuisine.py)
+
+    @property
+    def final(self) -> float:
+        return self.final_score if self.final_score is not None else self.ingredient_score
 
     def sort_key(self) -> tuple:
-        final = self.final_score if self.final_score is not None else self.ingredient_score
-        return (-final, -self.have_key, -self.weighted_rating, self.recipe_id)
+        return (-self.final, -self.have_key, -self.weighted_rating, self.recipe_id)
 
 
 def coverage_part(have_key: int, total_key: int) -> float:
@@ -106,7 +111,8 @@ WITH have AS (
     GROUP BY ri.recipe_id
 )
 SELECT r.id, r.name, r.minutes, r.n_key AS total_key, h.have_key, h.have_names,
-       s.avg_rating, COALESCE(s.n_ratings, 0) AS n_ratings, {high_protein} AS high_protein
+       s.avg_rating, COALESCE(s.n_ratings, 0) AS n_ratings, {high_protein} AS high_protein,
+       {cuisine_fit} AS cuisine_fit
 FROM have h
 JOIN recipes r ON r.id = h.recipe_id
 LEFT JOIN recipe_stats s ON s.recipe_id = r.id
@@ -123,9 +129,10 @@ def rank_by_coverage(
     usage_weight: float = 0.0,
     pantry_weights: dict[str, float] | None = None,
     goals: list[NutritionGoal] | None = None,
+    cuisine: str | None = None,
 ) -> tuple[list[CoverageRow], int]:
     """Recipes sorted by ingredient score (the first `limit`, or all), and how many passed
-    the filters.
+    the filters. With a `cuisine`, each row also says how its tags fit it (cuisine_fit).
 
     `pantry` is canonical names, or {covered name: pantry item it comes from} when the
     pantry was expanded. `pantry_weights` gives each non-staple pantry item its weight
@@ -146,9 +153,13 @@ def rank_by_coverage(
         # Read only when a goal needs it, so databases enriched before the column existed
         # still work without goals.
         high_protein="r.is_high_protein" if goals else "0",
+        cuisine_fit=FIT_SQL if cuisine else str(CuisineFit.NEUTRAL.value),
     )
+    params = {**params, "pantry": json.dumps(sorted(covered))}
+    if cuisine:
+        params |= fit_params(cuisine)
     try:
-        rows = conn.execute(sql, {**params, "pantry": json.dumps(sorted(covered))}).fetchall()
+        rows = conn.execute(sql, params).fetchall()
     except sqlite3.OperationalError as error:
         if "is_high_protein" in str(error):
             raise RuntimeError(
@@ -178,6 +189,7 @@ def rank_by_coverage(
                 weighted_rating=weighted_rating(row["avg_rating"], row["n_ratings"], overall_mean),
                 pantry_used=used,
                 pantry_usage=usage,
+                cuisine_fit=CuisineFit(row["cuisine_fit"]),
             )
         )
     ranked.sort(key=CoverageRow.sort_key)
