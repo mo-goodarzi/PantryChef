@@ -95,14 +95,15 @@ The search row was judged by gpt-5.4-mini (kappa 0.51). Full results and limits:
 
 ## How this was built
 
-I designed the architecture, the safety rules (allergens enforced twice in code) and the
-evaluation plan; each decision and why is in [docs/decisions.md](docs/decisions.md). I used
-Claude Code as a coding assistant under the rules in [CLAUDE.md](CLAUDE.md), one phase at a time
-from [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md). Every change after the first
-commit went through a pull request with tests, ruff, mypy and CI; a pre-commit hook blocks local
-paths and private keys. I labeled the human eval data myself, blind: 150 judge-calibration pairs
-and the videos for 40 recipes. The AI did not decide which numbers to report, when a result was
-good enough or what to cut (I dropped gpt-5.4-nano after its allergy miss).
+- **Design is mine:** the architecture, the safety rules (allergens enforced twice in code) and
+  the evaluation plan. Every decision and why: [docs/decisions.md](docs/decisions.md).
+- **Code was written with Claude Code** as a coding assistant, under the rules in
+  [CLAUDE.md](CLAUDE.md), one phase at a time from [the plan](docs/IMPLEMENTATION_PLAN.md).
+- **Every change went through a pull request** with tests, ruff, mypy and CI; a pre-commit hook
+  blocks local paths and private keys.
+- **Human labels are mine, done blind:** 150 judge-calibration pairs and the videos for 40 recipes.
+- **Judgment calls were mine:** which numbers to report, when a result was good enough, and what
+  to cut (e.g. dropping gpt-5.4-nano after it missed "dairy free please" as an allergy).
 
 ## Tech stack
 
