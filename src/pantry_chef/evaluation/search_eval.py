@@ -20,12 +20,12 @@ from pantry_chef.evaluation.metrics import (
     reciprocal_rank,
 )
 from pantry_chef.models.query import RecipeQuery
-from pantry_chef.models.recipe import Candidate
 from pantry_chef.observability import get_logger
+from pantry_chef.search.engine import FindResult
 
 log = get_logger("evaluation.search")
 
-FindFn = Callable[[RecipeQuery], list[Candidate]]
+FindFn = Callable[[RecipeQuery], FindResult]
 VectorsFn = Callable[[list[int]], dict]  # recipe ids -> {id: unit vector}
 K = 5
 
@@ -40,6 +40,7 @@ class CaseResult:
     allergen_violations: int = 0
     latency_s: float = 0.0
     similarity: float | None = None  # intra-list similarity of the top k
+    cuisine_fallback: bool = False  # too few recipes of the cuisine: other cuisines kept
     error: str | None = None  # the case could not run (e.g. network); counted as a miss
 
     @property
@@ -64,7 +65,8 @@ def evaluate_variant(
         query = case.to_query()
         start = time.perf_counter()
         try:
-            candidates = find(query)[:K]
+            pipeline = find(query)
+            candidates = [vc.candidate for vc in pipeline.top][:K]
             latency = time.perf_counter() - start
             judgments = judge.judge(conn, case, [c.recipe_id for c in candidates])
         except Exception as error:  # one failed API call must not lose the whole run
@@ -78,7 +80,13 @@ def evaluate_variant(
                 )
             )
             continue
-        result = CaseResult(case_id=case.id, group=case.group, variant=variant, latency_s=latency)
+        result = CaseResult(
+            case_id=case.id,
+            group=case.group,
+            variant=variant,
+            latency_s=latency,
+            cuisine_fallback=bool(pipeline.cuisine and pipeline.cuisine.fallback),
+        )
         for candidate in candidates:
             judgment = judgments.get(candidate.recipe_id)
             failures = hard_rule_failures(candidate, query)
@@ -123,6 +131,7 @@ def summarize(results: list[CaseResult]) -> dict:
         "allergen_violations": sum(r.allergen_violations for r in results),
         "intra_list_similarity": sum(similarities) / len(similarities) if similarities else None,
         "cases_without_results": sum(not r.recipes and not r.error for r in results),
+        "cuisine_fallbacks": sum(r.cuisine_fallback for r in results),
         "errors": sum(bool(r.error) for r in results),
         "latency_p50_s": percentile(latencies, 50),
         "latency_p95_s": percentile(latencies, 95),
@@ -178,8 +187,9 @@ def write_report(
         lines += [f"Models: {meta['pipeline_models']}", ""]
     lines += [
         "| Variant | hit@5 | MRR | mean judge score | hard-rule pass | allergen violations "
-        "| top-5 similarity (lower = more varied) | no results | errors | p50 s | p95 s |",
-        "|---|---|---|---|---|---|---|---|---|---|---|",
+        "| top-5 similarity (lower = more varied) | no results | cuisine fallback | errors "
+        "| p50 s | p95 s |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for variant, s in summaries.items():
         ils = s["intra_list_similarity"]
@@ -188,7 +198,8 @@ def write_report(
             f"| {variant} | {s['hit_at_5']:.0%} | {s['mrr']:.2f} | {s['mean_judge_score']:.2f} "
             f"| {s['hard_rule_pass_rate']:.0%} | {s['allergen_violations']} "
             f"| {similarity} "
-            f"| {s['cases_without_results']} | {s['errors']} | {s['latency_p50_s']:.2f} "
+            f"| {s['cases_without_results']} | {s.get('cuisine_fallbacks', 0)} "
+            f"| {s['errors']} | {s['latency_p50_s']:.2f} "
             f"| {s['latency_p95_s']:.2f} |"
         )
     spreads = {v: summarize_repeats(runs) for v, runs in (repeats or {}).items()}

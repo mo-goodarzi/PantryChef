@@ -30,7 +30,7 @@ from pantry_chef.llm.factory import create_llm
 from pantry_chef.observability import configure_logging
 from pantry_chef.search.engine import (
     SearchOptions,
-    find_recipes,
+    find_verified,
     matching_from_settings,
     semantic_from_settings,
 )
@@ -90,6 +90,7 @@ def e2e_variants(settings: Settings) -> dict[str, E2EVariant]:
         use_rerank=True,
         use_wish_fit=settings.wish_fit_enabled,
         usage_weight=settings.usage_weight,
+        cuisine_boost=settings.cuisine_boost,
     )
     # the code safety layers off (diet filters stay on); the LLM allergy review off too,
     # so the result is about the code layers only
@@ -99,7 +100,9 @@ def e2e_variants(settings: Settings) -> dict[str, E2EVariant]:
         # every verifier verdict ignored; SQL filters and the allergy review still run
         "no-verifier": E2EVariant(SearchOptions(**full, use_verifier=False)),
         # the no-LLM search: SQL filters + ingredient coverage, exact-name verifier
-        "coverage-only": E2EVariant(SearchOptions(usage_weight=settings.usage_weight)),
+        "coverage-only": E2EVariant(
+            SearchOptions(usage_weight=settings.usage_weight, cuisine_boost=settings.cuisine_boost)
+        ),
         # safety layers: only the verifier left
         "sql-off": E2EVariant(SearchOptions(**no_sql), final_allergen_check=False),
         # no allergen layer at all: shows the eval detects violations
@@ -263,7 +266,7 @@ def main() -> None:
                 conn,
                 cases,
                 variant,
-                lambda q, o=options: find_recipes(
+                lambda q, o=options: find_verified(
                     conn,
                     q,
                     o,

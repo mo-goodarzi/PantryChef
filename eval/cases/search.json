@@ -112,7 +112,8 @@
   "preferences": "classic italian pasta with meat sauce",
   "max_minutes": null,
   "allergies": [],
-  "diets": []
+  "diets": [],
+  "cuisine": "italian"
  },
  {
   "id": "d03",
@@ -127,7 +128,8 @@
   "preferences": "something spicy and asian for a weeknight",
   "max_minutes": 40,
   "allergies": [],
-  "diets": []
+  "diets": [],
+  "cuisine": "asian"
  },
  {
   "id": "d04",
@@ -157,7 +159,8 @@
   "preferences": "mexican tacos or burritos",
   "max_minutes": null,
   "allergies": [],
-  "diets": []
+  "diets": [],
+  "cuisine": "mexican"
  },
  {
   "id": "d06",
@@ -232,7 +235,8 @@
   "allergies": [],
   "diets": [
    "vegetarian"
-  ]
+  ],
+  "cuisine": "italian"
  },
  {
   "id": "d11",
@@ -425,7 +429,8 @@
   "preferences": "a fresh greek salad",
   "max_minutes": 15,
   "allergies": [],
-  "diets": []
+  "diets": [],
+  "cuisine": "greek"
  },
  {
   "id": "l06",
@@ -670,7 +675,8 @@
   "preferences": "indian food",
   "max_minutes": null,
   "allergies": [],
-  "diets": []
+  "diets": [],
+  "cuisine": "indian"
  },
  {
   "id": "c02",
@@ -685,7 +691,8 @@
   "preferences": "chinese fried rice",
   "max_minutes": 30,
   "allergies": [],
-  "diets": []
+  "diets": [],
+  "cuisine": "chinese"
  },
  {
   "id": "c03",
@@ -713,7 +720,8 @@
   "preferences": "authentic italian carbonara",
   "max_minutes": 30,
   "allergies": [],
-  "diets": []
+  "diets": [],
+  "cuisine": "italian"
  },
  {
   "id": "c05",
@@ -726,6 +734,232 @@
    "jalapeno"
   ],
   "preferences": "thai or vietnamese flavors",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "c06",
+  "group": "cuisine",
+  "pantry": [
+   "chicken breast",
+   "onion",
+   "bell pepper",
+   "tomato",
+   "garlic",
+   "rice"
+  ],
+  "preferences": "mexican food",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [],
+  "cuisine": "mexican"
+ },
+ {
+  "id": "c07",
+  "group": "cuisine",
+  "pantry": [
+   "salmon",
+   "rice",
+   "soy sauce",
+   "ginger",
+   "green onion"
+  ],
+  "preferences": "something japanese",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [],
+  "cuisine": "japanese"
+ },
+ {
+  "id": "c08",
+  "group": "cuisine",
+  "pantry": [
+   "rice noodle",
+   "egg",
+   "shrimp",
+   "garlic",
+   "lime",
+   "bean sprout"
+  ],
+  "preferences": "pad thai",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [],
+  "cuisine": "thai"
+ },
+ {
+  "id": "c09",
+  "group": "cuisine",
+  "pantry": [
+   "chicken thigh",
+   "lemon",
+   "garlic",
+   "potato",
+   "oregano"
+  ],
+  "preferences": "a greek dinner",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [],
+  "cuisine": "greek"
+ },
+ {
+  "id": "c10",
+  "group": "cuisine",
+  "pantry": [
+   "chicken",
+   "mushroom",
+   "onion",
+   "butter",
+   "heavy cream"
+  ],
+  "preferences": "a french dinner",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [],
+  "cuisine": "french"
+ },
+ {
+  "id": "c11",
+  "group": "cuisine",
+  "pantry": [
+   "ground beef",
+   "rice",
+   "soy sauce",
+   "garlic",
+   "green onion",
+   "egg"
+  ],
+  "preferences": "korean food",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [],
+  "cuisine": "korean"
+ },
+ {
+  "id": "c12",
+  "group": "cuisine",
+  "pantry": [
+   "potato",
+   "egg",
+   "onion",
+   "olive oil",
+   "chorizo"
+  ],
+  "preferences": "spanish tapas",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [],
+  "cuisine": "spanish"
+ },
+ {
+  "id": "c13",
+  "group": "cuisine",
+  "pantry": [
+   "chicken",
+   "chickpea",
+   "onion",
+   "carrot",
+   "cumin",
+   "cinnamon"
+  ],
+  "preferences": "a moroccan stew",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [],
+  "cuisine": "moroccan"
+ },
+ {
+  "id": "c14",
+  "group": "cuisine",
+  "pantry": [
+   "smoked sausage",
+   "rice",
+   "onion",
+   "bell pepper",
+   "celery"
+  ],
+  "preferences": "something cajun",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [],
+  "cuisine": "cajun"
+ },
+ {
+  "id": "c15",
+  "group": "cuisine",
+  "pantry": [
+   "rice noodle",
+   "beef",
+   "onion",
+   "ginger",
+   "lime"
+  ],
+  "preferences": "vietnamese food",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [],
+  "cuisine": "vietnamese"
+ },
+ {
+  "id": "c16",
+  "group": "cuisine",
+  "pantry": [
+   "chicken breast",
+   "tomato",
+   "garlic",
+   "mozzarella cheese",
+   "pasta"
+  ],
+  "preferences": "an italian chicken dinner",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [],
+  "cuisine": "italian"
+ },
+ {
+  "id": "c17",
+  "group": "cuisine",
+  "pantry": [
+   "ground beef",
+   "flour tortilla",
+   "cheddar cheese",
+   "black bean",
+   "tomato"
+  ],
+  "preferences": "a tex-mex night",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": [],
+  "cuisine": "tex-mex"
+ },
+ {
+  "id": "c18",
+  "group": "cuisine",
+  "pantry": [
+   "chicken thigh",
+   "coconut milk",
+   "onion",
+   "garlic",
+   "curry powder"
+  ],
+  "preferences": "a curry",
+  "max_minutes": null,
+  "allergies": [],
+  "diets": []
+ },
+ {
+  "id": "c19",
+  "group": "cuisine",
+  "pantry": [
+   "egg noodle",
+   "chicken breast",
+   "carrot",
+   "soy sauce",
+   "garlic"
+  ],
+  "preferences": "noodles for dinner",
   "max_minutes": null,
   "allergies": [],
   "diets": []

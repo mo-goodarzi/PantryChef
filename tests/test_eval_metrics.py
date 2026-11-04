@@ -97,9 +97,20 @@ def test_repository_eval_cases_are_valid():
     from pathlib import Path
 
     cases = load_cases(Path(__file__).parents[1] / "eval" / "cases" / "search.json")
-    assert len(cases) == 55
+    assert len(cases) == 69
     for case in cases:
         case.to_query()  # allergy words must all be known
+
+
+def test_search_case_cuisines_are_tags_and_reach_the_query():
+    from pathlib import Path
+
+    from pantry_chef.db.tag_mapping import CUISINE_TAGS
+
+    cases = load_cases(Path(__file__).parents[1] / "eval" / "cases" / "search.json")
+    with_cuisine = [case for case in cases if case.cuisine]
+    assert with_cuisine and all(case.cuisine in CUISINE_TAGS for case in with_cuisine)
+    assert all(case.to_query().cuisine == case.cuisine for case in cases)
 
 
 def test_intra_list_similarity():

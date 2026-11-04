@@ -13,7 +13,7 @@ from pantry_chef.evaluation.judge import (
 )
 from pantry_chef.evaluation.search_eval import evaluate_variant, summarize
 from pantry_chef.models.query import NutritionGoal
-from pantry_chef.search.engine import SearchOptions, find_recipes
+from pantry_chef.search.engine import SearchOptions, find_verified
 
 PANCAKES, WAFFLES = 5170, 31750
 CASE = SearchCase(
@@ -78,7 +78,7 @@ def test_evaluate_variant_end_to_end_on_fixture(enriched_conn, tmp_path):
         enriched_conn,
         [CASE],
         "coverage",
-        lambda q: find_recipes(enriched_conn, q, SearchOptions()),
+        lambda q: find_verified(enriched_conn, q, SearchOptions()),
         judge,
     )
     [result] = results
@@ -94,7 +94,7 @@ def test_a_failing_case_is_recorded_and_the_run_continues(enriched_conn, tmp_pat
     def find(query):
         if query.preferences_text == "boom":
             raise ConnectionError("network down")
-        return find_recipes(enriched_conn, query, SearchOptions())
+        return find_verified(enriched_conn, query, SearchOptions())
 
     failing = CASE.model_copy(update={"id": "bad", "preferences": "boom"})
     results = evaluate_variant(enriched_conn, [failing, other], "v", find, judge)

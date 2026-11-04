@@ -275,7 +275,7 @@ def test_the_spending_cap_stops_the_run_and_needs_every_price():
     assert stopped and "cannot be checked" in stopped and "unpriced-model" in stopped
 
 
-@pytest.mark.parametrize("name", ["e2e.json", "safety.json", "quantities.json"])
+@pytest.mark.parametrize("name", ["e2e.json", "safety.json", "quantities.json", "cuisine.json"])
 def test_case_files_load(name):
     cases = load_e2e_cases(Path(__file__).parents[1] / "eval" / "cases" / name)
     assert cases and all(c.pantry or not c.expect_recipe for c in cases)
@@ -310,6 +310,15 @@ def test_the_judge_rates_the_final_recipe_against_the_users_message(
     assert s["mean_judge_score"] == 3 and s["good_answer_rate"] == 0.0  # safe, weak fit
     assert judged_case(case()).judged_wish == MESSAGE
     assert judged_case(case(wish="breakfast")).judged_wish == "breakfast"
+
+
+def test_cuisine_fallbacks_are_counted_and_reported(tmp_path):
+    fell_back = E2EResult("a", "g", recipe_id=1, searches=1, cuisine_fallback=True)
+    normal = E2EResult("b", "g", recipe_id=2, searches=1)
+    assert summarize([fell_back, normal])["cuisine_fallbacks"] == 1
+    meta = {"timestamp": "t", "cases_file": "c.json", "models": "m", "stopped": None}
+    md, _ = write_report({"chat": [fell_back, normal]}, meta, tmp_path)
+    assert "Cuisine fallback fired (other cuisines kept, too few left): chat 1." in md.read_text()
 
 
 def test_report_has_one_row_per_variant(tmp_path):

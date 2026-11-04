@@ -1,0 +1,172 @@
+[
+ {
+  "id": "k01",
+  "group": "cuisine",
+  "message": "chicken breast, bell pepper, onion, garlic, rice. mexican food tonight",
+  "wish": "mexican food",
+  "pantry": [
+   "chicken breast",
+   "bell pepper",
+   "onion",
+   "garlic",
+   "rice"
+  ],
+  "note": "the BBQ-chicken-for-mexican miss"
+ },
+ {
+  "id": "k02",
+  "group": "cuisine",
+  "message": "salmon, rice, ginger, soy sauce, green onions. something japanese please",
+  "wish": "something japanese",
+  "pantry": [
+   "salmon",
+   "rice",
+   "ginger",
+   "soy sauce",
+   "green onion"
+  ],
+  "note": "teriyaki-style dishes from other cuisines compete"
+ },
+ {
+  "id": "k03",
+  "group": "cuisine",
+  "message": "shrimp, rice noodles, eggs, garlic, lime, peanuts. pad thai!",
+  "wish": "pad thai",
+  "pantry": [
+   "shrimp",
+   "rice noodle",
+   "egg",
+   "garlic",
+   "lime",
+   "peanut"
+  ],
+  "note": "a dish that implies a cuisine"
+ },
+ {
+  "id": "k04",
+  "group": "cuisine",
+  "message": "chicken thighs, lemon, garlic, potatoes, oregano. a greek dinner",
+  "wish": "a greek dinner",
+  "pantry": [
+   "chicken thigh",
+   "lemon",
+   "garlic",
+   "potato",
+   "oregano"
+  ],
+  "note": "Italian lemon chicken competes"
+ },
+ {
+  "id": "k05",
+  "group": "cuisine",
+  "message": "ground beef, rice, garlic, soy sauce, eggs, green onions. korean food",
+  "wish": "korean food",
+  "pantry": [
+   "ground beef",
+   "rice",
+   "garlic",
+   "soy sauce",
+   "egg",
+   "green onion"
+  ],
+  "note": "Chinese and American beef-and-rice compete"
+ },
+ {
+  "id": "k06",
+  "group": "cuisine",
+  "message": "potatoes, eggs, onion, chorizo, olive oil. spanish tapas",
+  "wish": "spanish tapas",
+  "pantry": [
+   "potato",
+   "egg",
+   "onion",
+   "chorizo",
+   "olive oil"
+  ],
+  "note": "Mexican chorizo dishes compete"
+ },
+ {
+  "id": "k07",
+  "group": "cuisine",
+  "message": "smoked sausage, rice, onion, bell pepper, celery. something cajun",
+  "wish": "something cajun",
+  "pantry": [
+   "smoked sausage",
+   "rice",
+   "onion",
+   "bell pepper",
+   "celery"
+  ],
+  "note": "a US regional cuisine (american family)"
+ },
+ {
+  "id": "k08",
+  "group": "cuisine",
+  "message": "chickpeas, spinach, tomatoes, onion, garlic. something indian",
+  "wish": "something indian",
+  "pantry": [
+   "chickpea",
+   "spinach",
+   "tomato",
+   "onion",
+   "garlic"
+  ],
+  "note": "Mediterranean chickpea dishes compete"
+ },
+ {
+  "id": "k09",
+  "group": "cuisine",
+  "message": "chicken breast, broccoli, soy sauce, garlic, rice. something asian",
+  "wish": "something asian",
+  "pantry": [
+   "chicken breast",
+   "broccoli",
+   "soy sauce",
+   "garlic",
+   "rice"
+  ],
+  "note": "a broad region: any Asian cuisine"
+ },
+ {
+  "id": "k10",
+  "group": "cuisine",
+  "message": "beef, rice noodles, onion, ginger, lime. vietnamese please",
+  "wish": "vietnamese food",
+  "pantry": [
+   "beef",
+   "rice noodle",
+   "onion",
+   "ginger",
+   "lime"
+  ],
+  "note": "a small cuisine (351 tagged recipes)"
+ },
+ {
+  "id": "k11",
+  "group": "cuisine",
+  "message": "chicken, mushrooms, onion, butter, cream. a french dinner",
+  "wish": "a french dinner",
+  "pantry": [
+   "chicken",
+   "mushroom",
+   "onion",
+   "butter",
+   "cream"
+  ],
+  "note": "American chicken-and-mushroom casseroles compete"
+ },
+ {
+  "id": "k12",
+  "group": "cuisine_control",
+  "message": "chicken thighs, coconut milk, onion, garlic, curry powder. a curry",
+  "wish": "a curry",
+  "pantry": [
+   "chicken thigh",
+   "coconut milk",
+   "onion",
+   "garlic",
+   "curry powder"
+  ],
+  "note": "control: a dish of many cuisines, no cuisine parsed"
+ }
+]
