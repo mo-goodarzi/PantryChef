@@ -7,13 +7,18 @@
            eval/reports/search_20260928-1121.json eval/reports/search_20261002-1828.json \\
            eval/reports/e2e_20261009-1112.json eval/reports/e2e_20261010-1603.json \\
            eval/reports/e2e_20261009-1047.json eval/reports/e2e_20261010-1611.json
-2. Fill in `human_score` (1-5) for every row: how well the recipe fits the WISH only
-   (not the pantry, allergens, diet or time; those are checked by code). Scale: 5 exactly
+2. Fill in `human_score` (1-5) for every row: how good the recipe is for this wish and
+   pantry (not allergens, diet or time; those are checked by code). Scale: 5 exactly
    what was asked, 4 good fit with a small mismatch, 3 partial fit, 2 weak fit, 1 does not
    fit / not a dish. The judge scores are in judge_calibration_key.json; do not open it.
+   Rules (fixed 2026-11-04 after the first run, see docs/decisions.md "Judge v2"):
+   - A named cuisine is a main part of the wish: a real meal from another cuisine is not
+     good (3 at most), like a wrong dish type.
+   - The pantry counts: a missing ingredient that matters to the dish costs a point (two
+     or more cost two); salt, pepper, water, oil and sugar are always at home.
 3. Score judges on the same labels (one report, test split = the reported numbers):
        uv run python eval/judge_calibration.py score --judges \\
-           openai:gpt-5.4-mini:v1,anthropic:claude-sonnet-5-5:v1,anthropic:claude-sonnet-5-5:v2
+           openai:gpt-5.4-mini:v1,anthropic:claude-sonnet-5-5:v1,anthropic:claude-sonnet-5-5:v3
 4. When changing the judge prompt, look only at dev disagreements:
        uv run python eval/judge_calibration.py dev-disagreements --judge <spec>
 """
@@ -43,8 +48,16 @@ ROOT = Path(__file__).parent
 DEFAULT_CSV = ROOT / "reports" / "judge_calibration.csv"
 JUDGE_CACHE = Path("data/processed/eval_cache/judgments.json")
 DEFAULT_JUDGES = (
-    "openai:gpt-5.4-mini:v1,anthropic:claude-sonnet-5-5:v1,anthropic:claude-sonnet-5-5:v2"
+    "openai:gpt-5.4-mini:v1,anthropic:claude-sonnet-5-5:v1,anthropic:claude-sonnet-5-5:v3"
 )
+
+
+def repo_path(path: Path) -> str:
+    """The path from the repo root, so reports never hold a local folder."""
+    try:
+        return str(path.resolve().relative_to(ROOT.parent.resolve()))
+    except ValueError:
+        return path.name
 
 
 def all_cases() -> dict:
@@ -73,7 +86,7 @@ def score(csv_path: Path, specs: list[JudgeSpec], workers: int) -> None:
         print(f"{label}: test kappa {results[label]['test'].get('kappa', float('nan')):.2f}")
     meta = {
         "timestamp": datetime.now().strftime("%Y%m%d-%H%M"),
-        "csv": str(csv_path),
+        "csv": repo_path(csv_path),
         "labeled": len(rows),
         "split_sizes": {s: sum(r.split == s for r in rows) for s in ("dev", "test")},
         "judges": [str(s) for s in specs],

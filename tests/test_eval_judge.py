@@ -29,7 +29,7 @@ class FakeJudgeLLM:
 
     def generate(self, prompt, schema, **variables):
         assert prompt.name == "preference_judge"
-        assert schema is {"1": JudgmentBatch, "2": ReasonedJudgmentBatch}[prompt.version]
+        assert schema is (JudgmentBatch if prompt.version == "1" else ReasonedJudgmentBatch)
         recipes = json.loads(variables["recipes"])
         self.calls.append([r["recipe_id"] for r in recipes])
         self.wishes.append(variables["wish"])
