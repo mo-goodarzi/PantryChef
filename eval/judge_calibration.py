@@ -14,8 +14,9 @@
    Rules (fixed 2026-11-04 after the first run, see docs/decisions.md "Judge v2"):
    - A named cuisine is a main part of the wish: a real meal from another cuisine is not
      good (3 at most), like a wrong dish type.
-   - The pantry counts: a missing ingredient that matters to the dish costs a point (two
-     or more cost two); salt, pepper, water, oil and sugar are always at home.
+   - The pantry counts: a missing main ingredient (one the dish is built on or named
+     after) costs a point; missing sauces, spices and extras do not. Salt, pepper, water,
+     oil and sugar are always at home.
 3. Score judges on the same labels (one report, test split = the reported numbers):
        uv run python eval/judge_calibration.py score --judges \\
            openai:gpt-5.4-mini:v1,anthropic:claude-sonnet-5-5:v1,anthropic:claude-sonnet-5-5:v4

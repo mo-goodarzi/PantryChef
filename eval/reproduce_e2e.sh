@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 run() { uv run python eval/run_eval.py --suite e2e "$@"; }
 
-# Pipeline comparison: what each part adds (gpt-5.4-mini everywhere)
+# Pipeline comparison: what each part adds (gpt-5.4-mini everywhere but the judge)
 run --cases eval/cases/safety.json \
     --variants chat,no-verifier,coverage-only,sql-off,no-safety --max-cost 5
 run --cases eval/cases/e2e.json --variants chat,no-verifier,coverage-only --max-cost 6
@@ -16,7 +16,8 @@ run --cases eval/cases/quantities.json \
     --variants ask-never,ask-when-it-matters,ask-always --max-cost 3
 
 # Model comparison for LLM_MODEL (parsing, safety intake, rerank, matcher);
-# the safety checks and the judge stay on gpt-5.4-mini. gpt-5.4-nano is no longer run
+# the safety checks stay on gpt-5.4-mini and the judge on Claude Sonnet 5.5
+# (preference_judge v4, docs/decisions.md "Judge v2"). gpt-5.4-nano is no longer run
 # (owner decision 2026-10-09, docs/decisions.md); its Phase 7 numbers stay in the README.
 LLM_MODEL=gpt-5.4 run --cases eval/cases/safety.json --limit 25 --max-cost 3
 LLM_MODEL=gpt-5.4 run --cases eval/cases/e2e.json --limit 25 --max-cost 3
