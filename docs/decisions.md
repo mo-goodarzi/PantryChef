@@ -1405,3 +1405,90 @@ backstop. Phase 8's acceptance criteria are met; tagged `v1.0`.
   shell"); a few have a unit glued to the number ("2oz pine nuts") and are not scaled.
 - Not done (open): converting units as amounts grow (16 teaspoons -> 1/3 cup), and
   seasoning or leavening that does not scale linearly. The amounts are exact multiples.
+
+## 2026-11-04 — Judge v2: another model family, 150 human labels, dev/test split
+**Problem:** the preference judge (gpt-5.4-mini, `preference_judge` v1) agreed with the
+owner on only ~56% of 40 rows, graded the model family the pipeline uses (self-preference
+risk), and the headline "good answer 99%" rested on it.
+
+**What changed**
+- **Judge = provider + model + prompt version** (`JUDGE_PROVIDER`, `JUDGE_MODEL`,
+  `JUDGE_PROMPT_VERSION`), built by the same `create_llm` factory; the cache key holds all
+  three, so changing any of them asks again. Anthropic is a second provider
+  (`langchain-anthropic`, Claude's own structured output: current Claude models reject
+  forced tool calls). The old judge stays selectable (`openai:gpt-5.4-mini:v1`).
+- **Why another family:** a judge from the pipeline's family can prefer what that family
+  would pick. Measured result below: on this task the family change alone bought little
+  (Claude v1 κ 0.55 vs gpt-5.4-mini v1 0.51, inside each other's CIs), likely because the
+  judge grades human-written Food.com recipes, not text the pipeline wrote. We keep the
+  separate family anyway: it removes the risk at a small cost (~$0.004 per judgment).
+- **Calibration sheet:** 150 (case, recipe) pairs, 50 per suite (search, e2e, safety),
+  stratified over judge scores 1-5 (seed 42); the 40 old rows and their labels kept. Blind:
+  judge scores only in the git-ignored key file. Split 50/50 within each suite into dev and
+  test (seed 2026). **Prompt work looks only at dev** (`dev-disagreements` prints dev
+  metrics only); the reported numbers are test.
+- **Metrics** (`evaluation/calibration.py`, unit-tested on hand-computed examples):
+  good/not-good agreement (good = score >= 4), Cohen's κ on that decision (the headline,
+  target 0.6), quadratic-weighted κ on 1-5, confusion matrix, mean judge − human score,
+  95% percentile-bootstrap CIs (2000 resamples).
+- **Labeling rules, fixed after the first run (owner decisions, 2026-11-04):** (1) the
+  pantry counts: a missing main ingredient lowers the score; (2) a named cuisine is a main
+  part of the wish: a real meal from another cuisine is a partial fit (3), like a wrong
+  dish type. The first run showed the owner scored cuisine misses leniently and dish-type
+  misses strictly; the owner re-scored the 35 cuisine-wish rows blind (chosen by the wish
+  text, not by judge scores; no judge or old scores shown): 27 changed, old and new in
+  `eval/reports/judge_recheck_changes.csv`. Caveat: the owner had seen judge scores for
+  some dev rows in a disagreement table before the re-check; no test-row judge scores
+  were shown.
+- **Prompt versions:** v2 (draft: anchored 1-5 rubric, one example per score, reasoning
+  before the score), v3 (+ the two rules, pantry: −1 per missing ingredient that matters),
+  v4 (pantry: only a missing *main* ingredient costs a point; dev showed v3 penalized
+  missing sauces and juices the owner did not). Dev κ on the re-checked labels: v1 0.46,
+  v2 0.51, v3 0.43, v4 0.51 (weighted κ 0.55 / 0.61 / 0.55 / 0.66). Stopped at v4: with 75
+  dev rows κ moves ±0.18, more rounds would fit noise.
+
+**Results (test split, 75 rows; `judge_calibration_20261104-1055.md`)**
+
+| Judge | agreement | κ (95% CI) | weighted κ | judge − human |
+|---|---|---|---|---|
+| gpt-5.4-mini, v1 (old default) | 76% | 0.51 (0.30–0.70) | 0.62 | −0.19 |
+| Claude Sonnet 5.5, v1 | 77% | 0.55 (0.37–0.73) | 0.62 | −0.45 |
+| **Claude Sonnet 5.5, v4 (new default)** | 77% | 0.54 (0.34–0.73) | 0.64 | −0.29 |
+| gpt-5.4-mini, v4 | 73% | 0.46 (0.25–0.66) | 0.57 | −0.23 |
+
+On the original labels (before the re-check, `..._original_labels.md`): 0.50 / 0.45 /
+0.54 / 0.40. **No judge reaches κ 0.6**; the best is ~0.55, moderate agreement. The
+judges are still stricter than the owner.
+
+**Owner decision: Claude Sonnet 5.5 + v4 is the default,** not Claude v1, although v1 has
+the best test κ by 0.01. That is a deliberate deviation from the "best test κ" rule, made
+after seeing test: the gap is noise, v4 is stable across both label sets (0.54 / 0.54, v1
+drops to 0.45), has the better weighted κ and smaller bias, and v1's rubric ignores the
+pantry, which contradicts rule (1).
+
+**Known limits:** one human labeler (no inter-annotator agreement, so we do not know how
+high κ could be); 75 test rows give wide CIs (±0.2); the test split was scored once per
+judge after the prompt was fixed, but test numbers were visible for the first-run v1/v2
+report; the labels were partly re-scored after a first look at disagreements. Treat the
+judge as a moderate-agreement ruler: good for comparing variants, not an absolute score.
+
+**Effect on the end-to-end numbers** (`eval/reproduce_e2e.sh` re-run with the new judge,
+`e2e_20261104-1124/1206/1214/1219/1225`; app defaults, so the quantity question is on).
+Full app: everyday good answer **97%** (README had 99% with the question off, 96% with it
+on), safety traps **78%** (was 84%), 0 safety violations in 150 cases. To separate the
+judge from run-to-run change, the same final recipes were re-scored with the old judge
+(gpt-5.4-mini v1, $0.24, mostly cached): 97% / 84%. So the app did not get worse; the
+safety-trap drop is three cuisine calls the new judge makes (Tex-Mex "Spanish rice" for
+Spanish, a Chinese dish for "something Japanese", plain fried noodles for Thai). Quantity
+question: identical under both judges. As planned, the new number is reported, and
+nothing was tuned to win the points back.
+
+Two other changes surfaced by the re-run, not caused by the judge: (1) with the quantity
+question on, "without the verifier" is now within one point of the full app (96% / 78%);
+the verifier still matters as a safety layer. (2) With every allergen layer off, 8 of 50
+traps show an unsafe recipe (26 recipes), against 23 / 71 on 2026-10-09 with the question
+off: the options shown after the amount answers differ, and the rerank and wish-fit steps
+still see the allergies. That row only shows that the eval catches violations; the cause
+of the drop was not investigated further. gpt-5.4 vs mini on the 50-case subset: 88% /
+88%, both 0 violations (gpt-5.4 read "dairy free please" this time), $0.019 vs $0.005 per
+conversation; mini stays the default.
