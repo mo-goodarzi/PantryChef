@@ -1,13 +1,14 @@
 # CLAUDE.md — PantryChef
 
-## What this project is
-PantryChef is a multi-agent recipe assistant. The user says what they have at home
-("I have eggs, milk, toast"), and the system returns safe, suitable recipes they can
-actually make, plus an optional matching YouTube video.
+Instructions for the AI coding assistant used on this repository. The design, rules and
+evaluation plan are the owner's; see docs/decisions.md.
 
-It is a portfolio project for a junior AI engineer. The goal is not just a working demo,
-but a system that is **measured**: every important component has tests and an evaluation
-with before/after numbers.
+## What this project is
+PantryChef is a multi-agent recipe assistant: the user says what they have at home
+("I have eggs, milk, toast"), and the system returns safe, suitable recipes they can
+actually make, plus an optional matching YouTube video. The project is built to be
+**measured**, not only to work. Every important component has tests and an evaluation
+against a simpler baseline, with before/after numbers.
 
 The full design and build order live in `docs/IMPLEMENTATION_PLAN.md`. Read it before
 starting any task, and work on **one phase at a time**.
