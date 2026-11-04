@@ -1492,3 +1492,104 @@ still see the allergies. That row only shows that the eval catches violations; t
 of the drop was not investigated further. gpt-5.4 vs mini on the 50-case subset: 88% /
 88%, both 0 violations (gpt-5.4 read "dairy free please" this time), $0.019 vs $0.005 per
 conversation; mini stays the default.
+
+## 2026-11-04 — Cuisine-aware search
+
+**Problem.** A named cuisine ("mexican food", "something japanese", "pad thai") reached
+only the embeddings, the reranker and wish fit; the chat never set `RecipeQuery.cuisine`.
+The app often returned a good meal from another cuisine, which the owner rates 3/5 and the
+judge (Claude Sonnet 5.5, `preference_judge` v4, unchanged here) does too.
+
+**Decision.**
+1. **Parse one cuisine** (`RequestAnswer.cuisine`, `request_parsing` v3). It is an enum
+   built from the Food.com cuisine tags (`db/tag_mapping.Cuisine`), never free text. A
+   dish implies its cuisine ("pad thai" -> thai, "sushi" -> japanese); a dish of many
+   cuisines ("a curry", "noodles", "fried rice") gets none, and so do several cuisines
+   ("mexican or thai") and negations ("anything but italian"): both are out of scope.
+2. **Cuisine families in code** (`search/cuisine.py`, `CUISINE_FAMILIES`), following
+   Food.com's own tagging (a member's recipes nearly always carry the parent tag):
+   mexican ⊃ tex-mex, baja, oaxacan; asian ⊃ East, Southeast and South Asian cuisines
+   (indian included, the Middle East not); american ⊃ the US regional tags, tex-mex
+   included (through southwestern-united-states); chinese ⊃ cantonese, szechuan, hunan,
+   beijing, mongolian; plus european, scandinavian, middle-eastern, african, the Americas
+   and south-west-pacific. All of a recipe's tags (`recipe_tags`) count, not only
+   `recipes.cuisine`.
+3. **Three-way rule.** Match (the cuisine or a family member) -> **+0.10 on the final
+   score**, after semantic re-scoring (about two missing key ingredients); another
+   cuisine -> excluded; untagged (61% of recipes), or only a tag that contains the asked
+   cuisine ("asian" for "thai", "north-american" for "mexican") -> kept, no boost.
+   **Specific tags decide**: a recipe's broad tags are read only when none of its specific
+   tags is a match or another cuisine, because Food.com adds "asian" to 1,639 Middle
+   Eastern recipes and "american" to 1,999 non-US ones. A Lebanese recipe tagged "asian"
+   is "other" for "something asian".
+4. **Fallback.** If fewer than 5 candidates survive the exclusion, the exclusion is
+   dropped for that search (the boost stays). A cuisine is a preference, not safety.
+5. **Wish fit** `wish_fit` v3: a real meal from another cuisine is "partly", not "fits"
+   (a note; "partly" never removes a recipe).
+6. **The CLI's `--cuisine`** uses the same rule (it was a hard `r.cuisine = :cuisine`
+   filter, which missed Tex-Mex and recipes whose single cuisine column holds another tag).
+
+Owner decisions (asked before building): boost +0.10 on the final score; threshold 5; the
+wide families; specific tags decide; the CLI uses the new rule.
+
+**Implementation notes.** The coverage query computes each recipe's fit in SQL (a CASE
+over `recipe_tags`); the excluded rows are then dropped in Python, so one query gives both
+the result and the counts for the fallback and the trace (no measurable extra time on a
+75k-candidate pantry). Allergens are still filtered in SQL before ranking. The trace gets
+a `search.cuisine` span (cuisine, candidates, matched, excluded, fallback), a
+`cuisine_fallback` score, and the parsed cuisine on `node.parse_request`; `span()` now
+yields a dict for metadata known only at the end.
+
+**Alternatives considered.**
+- *Pure filter* (only recipes tagged with the cuisine): 61% of recipes have no cuisine
+  tag, so it throws away most good untagged dishes, and small cuisines (oaxacan: 72
+  recipes) would often leave nothing that the pantry covers.
+- *Pure boost* (no exclusion): not run as its own variant. The closest measurement is
+  "before", where the cuisine only nudged the ranking through the embeddings and the
+  reranker: 16% (no LLM steps) and 5% (full) of the top 5 were still another cuisine. A
+  boost of +0.10 alone would not stop a better-covered BBQ chicken; the exclusion does,
+  and the fallback covers its risk.
+- *Single `recipes.cuisine` column*: one value per recipe, from an ordered list, misses
+  "mexican" on recipes whose first tag is "tex-mex" or "southwestern-united-states".
+
+**Results** (same judge, same caches; before = `main`, run from a worktree on the same
+cases).
+
+| Measure | before | after |
+|---|---|---|
+| search, 69 cases, no LLM steps: hit@5 (`search_20261104-1707` -> `-1723`) | 86% | 87% |
+| search, full (wish fit + rerank): hit@5 | 94% | 93% |
+| search, 20 cuisine cases, no LLM steps: hit@5 / other-cuisine share of top 5 | 70% / 16% | 75% / **0%** |
+| search, 20 cuisine cases, full: hit@5 / other-cuisine share of top 5 | 80% / 5% | 80% / **0%** |
+| e2e everyday (100): good answer / no recipe (`-1206` -> `-1829`) | 97% / 1 | 96% / 1 |
+| e2e safety traps (50): good answer (`-1124` -> `-1800`) | 78% | **82%** |
+| e2e cuisine conversations (12, new): good answer (`-1712` -> `-1831`) | 83% | 75% |
+| quantity cases (24), ask when it matters: good answer (`-1214` -> `-1839`) | 88% | 92% |
+| safety violations (all runs) | 0 | 0 |
+| cuisine fallback fired | - | 0 (every run) |
+
+Parsing (`parsing_20261104-1654`, 34 requests + 25 intakes): 100% on gpt-5.4-mini and
+gpt-5.4, all 11 cuisine checks right, no allergen missed.
+
+**What the numbers say.** The rule works as specified: no recipe of another cuisine
+reaches the top 5 any more, and two safety traps that the judge-v2 PR flagged as cuisine
+misses (Tex-Mex "Spanish rice" for Spanish, a Chinese dish for Japanese) are fixed. It
+does **not** clearly improve fit overall: the full search and the everyday conversations
+are flat (±1 case), and the 12 cuisine conversations lost one good answer ("something
+cajun": Cajun kabobs (4) became a Cajun "trinity" prep mix (2)). The boost lifts every
+tagged recipe, including condiments and prep mixes of the cuisine (Vietnamese pickled
+onions, the Cajun trinity mix, Japanese dipping sauces in the no-LLM top 5), and wish fit
+keeps them because the wish ("vietnamese
+food") does not name a dish type. Most differences are one or two cases on 12-50 cases,
+within run-to-run noise. The judge was not changed.
+
+**Cost and latency.** The SQL adds no measurable time. The after runs started with an
+empty wish-fit cache (v3 is a new cache key), so the safety-trap chat p50 went 5.1 ->
+9.8 s and cost $0.0055 -> $0.0130 per conversation. A warm re-run of the first 10 traps
+(`e2e_20261104-1857`): p50 6.4 s (6.2 s before), cost $0.0074 (was $0.0053 on the same
+10). The remaining ~40% is not explained yet (likely the longer v3 prompts and recipes
+that are new to the caches); worth a look before the next deploy.
+
+**Next (needs the owner's decision).** Boost only real dishes, e.g. no boost for
+`meal_type` condiment/appetizer unless the wish asks for one, or let wish fit say "no" to
+a condiment for a cuisine-only wish.

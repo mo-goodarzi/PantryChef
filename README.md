@@ -185,6 +185,7 @@ turn is traced in Langfuse (health text masked).
 uv run python -m pantry_chef.search.cli --have "eggs,milk,bread" --pref "sweet breakfast"
 uv run python -m pantry_chef.search.cli --have "eggs,milk,bread" --pref "savory lunch" --rerank
 uv run python -m pantry_chef.search.cli --have "eggs,milk,bread" --max-minutes 30
+uv run python -m pantry_chef.search.cli --have "chicken,onion,tomato" --pref "dinner" --cuisine mexican
 uv run python -m pantry_chef.search.cli --have "eggs,milk,flour,butter" \
     --allergy "peanuts,tree nuts" --diet vegetarian --show-failed
 ```
@@ -243,20 +244,42 @@ allergens, misspellings, allergies said only in the request, the allergen in the
 app's defaults (quantity question when it matters, search again with the amounts).
 Reports: `eval/reports/e2e_20261104-*.md`; reproduce with `eval/reproduce_e2e.sh`.
 
-**What each part adds** (gpt-5.4-mini; `e2e_20261104-1206`, `-1124`):
+**What each part adds** (gpt-5.4-mini; `e2e_20261104-1829`, `-1800`, with the cuisine
+rule; before it, `-1206`, `-1124`):
 
 | Pipeline | everyday: good answer | safety traps: good answer | safety violations (150 cases) | recipes breaking a rule |
 |---|---|---|---|---|
-| Full app | **97%** | **78%** | **0** | 0% |
-| without the verifier | 96% | 78% | 0 | 0–1% |
-| without the LLM steps (coverage search only) | 66% | 34% | 0 | 0% |
+| Full app | **96%** (97% before) | **82%** (78%) | **0** | 0% |
+| without the verifier | 95% (96%) | 82% (78%) | 0 | 0–1% |
+| without the LLM steps (coverage search only) | 70% (66%) | 36% (34%) | 0 | 0% |
 
-With the quantity question and the wish-fit check on, the verifier now adds little to fit
-(one everyday case: 1 chicken breast for a recipe that needs 4); it stays as a safety
-layer (next table). The safety traps score lower because their wishes are narrow (a
-caesar salad, pad thai, mac and cheese, a named cuisine) and the allergies remove many
-options: 11 of 50 get a safe recipe the judge rates below 4, four of them for the wrong
-cuisine (Tex-Mex "Spanish rice", a Chinese dish for "something Japanese").
+With the quantity question and the wish-fit check on, the verifier now adds little to fit;
+it stays as a safety layer (next table). The safety traps score lower because their
+wishes are narrow (a caesar salad, pad thai, mac and cheese, a named cuisine) and the
+allergies remove many options: 9 of 50 get a safe recipe the judge rates below 4 (11
+before the cuisine rule, which fixed Tex-Mex "Spanish rice" for "something spanish" and a
+Chinese dish for "something japanese"); three of the nine are still Thai wishes.
+
+**Named cuisines** (`docs/decisions.md`, "Cuisine-aware search"). The finder reads one
+cuisine from the request ("pad thai" -> thai, "a curry" -> none; 11 of 11 parsing checks
+right on gpt-5.4-mini and gpt-5.4, `parsing_20261104-1654`). The search then boosts
+recipes tagged with that cuisine or a member of its family (Tex-Mex for Mexican, any Asian
+cuisine for "asian") and leaves out recipes tagged only with other cuisines, unless fewer
+than 5 would be left. Untagged recipes (61%) stay. On the 20 search cases that name a
+cuisine (`search_20261104-1707` -> `-1723`):
+
+| Pipeline | other-cuisine recipes in the top 5 | tagged with the cuisine | hit@5 | mean judge |
+|---|---|---|---|---|
+| without the LLM steps | 16% -> **0%** | 32% -> 82% | 70% -> 75% | 3.25 -> 3.34 |
+| full search (wish fit + rerank) | 5% -> **0%** | 59% -> 62% | 80% -> 80% | 4.11 -> 4.09 |
+
+The rule does what it is meant to: no recipe of another cuisine reaches the top 5. Fit
+improves little, because the LLM rerank already handled most cuisine misses, and the
+boost also lifts tagged sauces and prep mixes (Vietnamese pickled onions, a Cajun
+"trinity" mix). On 12 new end-to-end cuisine conversations (`e2e_20261104-1712` ->
+`-1831`) good answers went from 10 to 9: "something cajun" now gets the Cajun prep mix
+instead of Cajun kabobs, and the pad thai and Vietnamese misses stayed. The fallback never fired in any
+run; "no recipe" did not rise.
 
 **How far to trust the judge.** On 150 recipe pairs scored blind by the owner, the judge
 agrees on 77% of good/not-good calls (Cohen's κ 0.54, 95% CI 0.34–0.73, 75 held-out pairs;
@@ -283,17 +306,20 @@ allergies, so with no layer on the count depends on which options happen to be s
 
 **Quantity question** (24 cases where the user has a hidden, often too small amount, e.g.
 1 egg for a cake; recipe amounts come from the original Food.com lines; gpt-5.4-mini;
-`e2e_20261104-1214`). When the answer rules out every option, the app searches again
-with the amounts:
+`e2e_20261104-1839`, with the cuisine rule; `-1214` before it). When the answer rules out
+every option, the app searches again with the amounts:
 
 | Ask about amounts | task success | good answer | recipes the user cannot make | amounts asked / request | cost / conversation |
 |---|---|---|---|---|---|
-| never | 71% | 67% | 29% | 0 | $0.006 |
-| **when it matters** (the default) | **96%** | **88%** | 4% | 2.2 | $0.007 |
-| always | 100% | 92% | 0% | 4.0 | $0.007 |
+| never | 75% | 71% | 25% | 0 | $0.010 |
+| **when it matters** (the default) | **100%** | **92%** | 0% | 2.0 | $0.008 |
+| always | 100% | 92% | 0% | 3.8 | $0.007 |
 
-Asking only about key ingredients whose amount matters gets nearly all of the gain with
-half the items; the one case it misses is milk, which is not asked by choice.
+Asking only about key ingredients whose amount matters gets the whole gain with half the
+items. In the run before (`-1214`) it missed one case (milk, which is not asked by
+choice): 96% / 88%. Only one of these cases implies a cuisine ("tacos"), so the change
+between runs is mostly run-to-run variation; the higher cost of "never" is a cold wish-fit cache (new prompt
+version).
 
 **Grams or a number.** Each item is asked as a number ("how many eggs?") or in grams
 ("chicken breast, grams?"), whichever way the recipes on screen mostly measure it. Recipes
@@ -308,16 +334,20 @@ One run of 24 cases: the "never" row moved 8 points between two earlier runs. Th
 judge gives the same good-answer rates here as the earlier one.
 
 **Model for parsing, intake, rerank and matcher** (`LLM_MODEL`; the same 50-case subset,
-the first 25 everyday and 25 safety cases; `e2e_20261104-1219/1225` for gpt-5.4):
+the first 25 everyday and 25 safety cases; with the cuisine rule, `e2e_20261104-1848/1855`
+for gpt-5.4 and the first 50 cases of `-1800/1829` for mini):
 
 | Model | good answer | mean judge | safety violations | cost per conversation |
 |---|---|---|---|---|
 | gpt-5.4-nano* | 86% | 4.44 | **1** ("dairy free please" not read as a milk allergy) | ~$0.005 |
-| **gpt-5.4-mini** | **88%** | **4.45** | 0 | ~$0.005 |
-| gpt-5.4 | 88% | 4.45 | 0 | ~$0.019 |
+| **gpt-5.4-mini** | **90%** | **4.55** | 0 | ~$0.007 (warm cache) |
+| gpt-5.4 | 88% | 4.47 | 0 | ~$0.023 |
 
-The bigger model is not better here (the same 44 of 50 good answers) and costs about four
-times as much. On 2026-10-09 gpt-5.4 also missed the "dairy free please" allergy that nano
+The bigger model is not better here (44 of 50 good answers against mini's 45; before the
+cuisine rule both had 43 when counted the same way) and costs about three times as much.
+Costs rose with the cuisine change: these runs started with an empty wish-fit cache (new
+prompt version), and a warm re-run of 10 cases still costs $0.0074 against $0.0053
+(`e2e_20261104-1857`). On 2026-10-09 gpt-5.4 also missed the "dairy free please" allergy that nano
 missed; in this run it read it. Asked "dairy free please" five times each, gpt-5.4 read a
 milk allergy twice (twice a dislike, once nothing) and mini five times, so the miss is
 still possible. One run per model and a small subset, so small differences are noise.
